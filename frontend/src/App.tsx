@@ -1,9 +1,16 @@
-export function App() {
+import { Navbar } from './components/layout/Navbar';
+import { Footer } from './components/layout/Footer';
+import { LandingPage } from './features/landing/LandingPage';
+
+
+function App() {
   return (
-    <main>
-      <h1>App</h1>
-    </main>
-  )
+    <>
+      <Navbar />
+      <LandingPage />
+      <Footer />
+    </>
+  );
 }
 
-export default App
+export default App;
