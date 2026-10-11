@@ -1,9 +1,9 @@
 import './Footer.css';
 import { Button } from '../common/Button';
 
+const CURRENT_YEAR = new Date().getFullYear();
+
 export function Footer() {
-  const currentYear = new Date().getFullYear();
-  
   return (
     <footer className="footer">
       <div className="container">
@@ -59,7 +59,7 @@ export function Footer() {
         <div className="footer-bottom">
           <div className="footer-giant-brand">Nhà Lo 24h</div>
           <p className="footer-copyright">
-            &copy; {currentYear} Nhalo24h. All rights reserved.
+            &copy; {CURRENT_YEAR} Nhalo24h. All rights reserved.
           </p>
         </div>
       </div>

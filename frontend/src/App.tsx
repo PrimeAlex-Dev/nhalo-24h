@@ -1,16 +1,7 @@
-import { Navbar } from './components/layout/Navbar';
-import { Footer } from './components/layout/Footer';
-import { LandingPage } from './features/landing/LandingPage';
+import { AppRouter } from './routes';
 
-
-function App() {
-  return (
-    <>
-      <Navbar />
-      <LandingPage />
-      <Footer />
-    </>
-  );
+export function App() {
+  return <AppRouter />;
 }
 
 export default App;
