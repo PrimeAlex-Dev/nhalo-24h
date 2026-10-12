@@ -1,4 +1,5 @@
 import './CategoryBrowseSection.css';
+import { Link } from 'react-router-dom';
 import { 
   ArrowRight, 
   Snowflake, 
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import { mockCategories } from '../data/customerMockData';
 import type { CategoryItem } from '../types/customer';
+import { PATHS } from '../../../routes/paths';
 
 const renderCategoryIcon = (icon: CategoryItem['icon']) => {
   switch (icon) {
@@ -49,25 +51,23 @@ export function CategoryBrowseSection() {
             </p>
           </div>
           <div className="category-header-right">
-            <a 
-              href="#all-providers" 
+            <Link 
+              to={PATHS.CUSTOMER.PROVIDERS} 
               className="view-all-providers-link"
-              onClick={(e) => e.preventDefault()}
             >
               <span>View all providers</span>
               <ArrowRight size={15} />
-            </a>
+            </Link>
           </div>
         </div>
 
         {/* Categories Grid */}
         <div className="category-grid">
           {mockCategories.map((category) => (
-            <div 
+            <Link 
               key={category.id} 
+              to={`${PATHS.CUSTOMER.PROVIDERS}?category=${encodeURIComponent(category.title)}`}
               className="category-card"
-              role="button"
-              tabIndex={0}
             >
               <div className="category-icon-wrapper">
                 {renderCategoryIcon(category.icon)}
@@ -82,7 +82,7 @@ export function CategoryBrowseSection() {
                 <span className="category-price">from ${category.priceFrom}</span>
                 <span className="category-jobs-count">{category.completedJobs}</span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

@@ -1,0 +1,446 @@
+.find-provider-page {
+  padding-top: 2.5rem;
+  padding-bottom: 5rem;
+  background-color: #FFFFFF;
+  min-height: calc(100vh - 72px);
+}
+
+/* Header */
+.find-provider-header {
+  margin-bottom: 1.75rem;
+}
+
+.find-provider-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px 0;
+}
+
+.find-provider-subtitle {
+  font-size: 15px;
+  color: #64748B;
+  margin: 0;
+}
+
+/* Search Bar */
+.provider-search-wrapper {
+  position: relative;
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.provider-search-icon {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94A3B8;
+  pointer-events: none;
+}
+
+.provider-search-input {
+  width: 100%;
+  height: 52px;
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 0 20px 0 50px;
+  font-family: inherit;
+  font-size: 15px;
+  color: #0F172A;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.provider-search-input::placeholder {
+  color: #94A3B8;
+}
+
+.provider-search-input:focus {
+  border-color: #93C5FD;
+  box-shadow: 0 0 0 3px rgba(29, 106, 229, 0.1);
+}
+
+/* Category Filter Pills */
+.provider-category-pills {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 1.5rem;
+  scrollbar-width: thin;
+}
+
+.provider-category-pills::-webkit-scrollbar {
+  height: 4px;
+}
+
+.provider-category-pills::-webkit-scrollbar-thumb {
+  background-color: #E2E8F0;
+  border-radius: 4px;
+}
+
+.provider-pill {
+  padding: 8px 18px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 9999px;
+  white-space: nowrap;
+  cursor: pointer;
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  color: #334155;
+  transition: all 0.15s ease;
+}
+
+.provider-pill:hover {
+  border-color: #CBD5E1;
+  background-color: #F8FAFC;
+}
+
+.provider-pill.active {
+  background-color: #1D6AE5;
+  color: #FFFFFF;
+  border-color: #1D6AE5;
+  box-shadow: 0 2px 6px rgba(29, 106, 229, 0.25);
+}
+
+/* Controls Bar */
+.provider-controls-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.75rem;
+}
+
+.available-today-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.available-checkbox {
+  width: 17px;
+  height: 17px;
+  accent-color: #1D6AE5;
+  cursor: pointer;
+}
+
+.available-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+}
+
+.provider-sort-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sort-by-text {
+  font-size: 14px;
+  color: #64748B;
+}
+
+.sort-select-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 6px 12px;
+  transition: border-color 0.15s ease;
+}
+
+.sort-select-wrapper:hover {
+  border-color: #CBD5E1;
+}
+
+.sort-select {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0F172A;
+  appearance: none;
+  padding-right: 20px;
+  cursor: pointer;
+}
+
+.sort-chevron-icon {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+  color: #64748B;
+}
+
+/* Providers Grid */
+.providers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+
+.provider-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.provider-card:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 10px 25px -4px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Card Header */
+.provider-card-header {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.provider-avatar {
+  width: 62px;
+  height: 62px;
+  border-radius: 14px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background-color: #F1F5F9;
+}
+
+.provider-primary-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.provider-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.provider-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.provider-verified-badge {
+  color: #1D6AE5;
+  flex-shrink: 0;
+}
+
+.provider-company {
+  font-size: 13.5px;
+  color: #64748B;
+  margin: 3px 0 8px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.provider-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.provider-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.rating-star-icon {
+  color: #F59E0B;
+}
+
+.reviews-count {
+  font-weight: 400;
+  color: #64748B;
+}
+
+.provider-distance {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #64748B;
+}
+
+.distance-pin-icon {
+  color: #94A3B8;
+}
+
+.provider-price-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.price-prefix {
+  font-size: 11.5px;
+  color: #94A3B8;
+}
+
+.price-rate {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.price-unit {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748B;
+}
+
+/* Tags Row */
+.provider-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.provider-tag {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  line-height: 1.4;
+}
+
+.service-tag {
+  background-color: #F1F5F9;
+  color: #334155;
+  font-weight: 500;
+}
+
+.top-rated-tag {
+  background-color: #FEF3C7;
+  color: #B45309;
+  font-weight: 600;
+}
+
+/* Availability Badge */
+.provider-availability-row {
+  margin-bottom: 16px;
+}
+
+.availability-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  line-height: 1.4;
+}
+
+.availability-pill.available-today {
+  background-color: #DCFCE7;
+  color: #15803D;
+  font-weight: 600;
+}
+
+.availability-pill.available-soon {
+  background-color: #F1F5F9;
+  color: #64748B;
+  font-weight: 500;
+}
+
+/* Actions Row */
+.provider-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.provider-action-btn {
+  flex: 1;
+  height: 38px;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  background-color: #FFFFFF;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0F172A;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.provider-action-btn:hover {
+  background-color: #F8FAFC;
+  border-color: #CBD5E1;
+}
+
+/* No providers */
+.no-providers-found {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #64748B;
+}
+
+.reset-filters-btn {
+  margin-top: 1rem;
+  background-color: #1D6AE5;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .providers-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  .providers-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .find-provider-title {
+    font-size: 26px;
+  }
+
+  .provider-controls-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}

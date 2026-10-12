@@ -12,3 +12,18 @@ export interface UserProfile {
   avatarLetter: string;
   unreadNotifications: number;
 }
+
+export interface ProviderItem {
+  id: string;
+  name: string;
+  verified: boolean;
+  company: string;
+  rating: number;
+  reviewsCount: number;
+  distance: string;
+  pricePerHour: number;
+  category: string;
+  isTopRated?: boolean;
+  availability: 'Available today' | 'Available soon';
+  avatar: string;
+}

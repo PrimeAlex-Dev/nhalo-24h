@@ -3,12 +3,9 @@ import './CustomerNavbar.css';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Wrench, 
-  Search, 
   Bell, 
   ClipboardList, 
   ChevronDown, 
-  Menu, 
-  X, 
   User, 
   Settings, 
   LogOut 
@@ -22,7 +19,6 @@ interface CustomerNavbarProps {
 
 export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -59,31 +55,8 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
           </Link>
         </div>
 
-        {/* Center: Navigation Links */}
-        <nav className="customer-nav-links">
-          <a href="#services" className="customer-nav-link">
-            Services
-          </a>
-          <a href="#providers" className="customer-nav-link">
-            Find a Provider
-          </a>
-          <a href="#how-it-works" className="customer-nav-link">
-            How It Works
-          </a>
-        </nav>
-
         {/* Right: Actions & User Info */}
         <div className="customer-actions">
-          {/* Search Button */}
-          <button 
-            type="button" 
-            className="customer-icon-btn" 
-            aria-label="Search services"
-            title="Search"
-          >
-            <Search size={19} />
-          </button>
-
           {/* Notifications Bell with Badge */}
           <button 
             type="button" 
@@ -164,65 +137,10 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
               </div>
             )}
           </div>
-
-          {/* Mobile Menu Button */}
-          <button 
-            type="button" 
-            className="customer-mobile-toggle"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label="Toggle navigation"
-          >
-            {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
         </div>
       </div>
-
-      {/* Mobile Nav Drawer */}
-      {isMobileMenuOpen && (
-        <div className="customer-mobile-menu">
-          <nav className="customer-mobile-links">
-            <a 
-              href="#services" 
-              className="mobile-link"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Services
-            </a>
-            <a 
-              href="#providers" 
-              className="mobile-link"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Find a Provider
-            </a>
-            <a 
-              href="#how-it-works" 
-              className="mobile-link"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              How It Works
-            </a>
-            <a 
-              href="#orders" 
-              className="mobile-link"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              My Orders
-            </a>
-            <button
-              type="button"
-              className="mobile-link dropdown-logout-btn"
-              style={{ background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' }}
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                handleLogoutClick();
-              }}
-            >
-              Log Out (Về Landing Page)
-            </button>
-          </nav>
-        </div>
-      )}
     </header>
   );
 }
+
+export default CustomerNavbar;
