@@ -1,19 +1,62 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './CustomerHeroSection.css';
+import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   CheckCircle2,
-  Star
+  Star,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
-import heroAcImg from '../../../assets/customer_hero_ac.png';
+import bannerTho1 from '../../../assets/banner-tho-1.jpg';
+import bannerTho2 from '../../../assets/banner-tho-2.jpg';
 import { mockSuggestionPrompts } from '../data/customerMockData';
+import { PATHS } from '../../../routes/paths';
+
+const heroBanners = [
+  {
+    id: 1,
+    image: bannerTho1,
+    alt: 'Thợ sửa chữa chuyên nghiệp tận tâm tại nhà',
+    tag: 'AC Repair',
+    headline: 'Cooling problems? Fixed today.'
+  },
+  {
+    id: 2,
+    image: bannerTho2,
+    alt: 'Đội ngũ kỹ thuật viên uy tín, báo giá minh bạch',
+    tag: 'Verified Pros',
+    headline: 'Trusted experts for every home need.'
+  }
+];
 
 export function CustomerHeroSection() {
   const [problemDescription, setProblemDescription] = useState('');
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   const handleSuggestionClick = (prompt: string) => {
     setProblemDescription(prompt);
   };
+
+  const nextSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev + 1) % heroBanners.length);
+  }, []);
+
+  const prevSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev - 1 + heroBanners.length) % heroBanners.length);
+  }, []);
+
+  // Auto transition slides
+  useEffect(() => {
+    if (isPaused) return;
+
+    const timer = setInterval(() => {
+      nextSlide();
+    }, 4500);
+
+    return () => clearInterval(timer);
+  }, [isPaused, nextSlide]);
 
   return (
     <section className="customer-hero-section">
@@ -49,23 +92,14 @@ export function CustomerHeroSection() {
             </div>
 
             <div className="search-card-actions">
-              <a
-                href="#find-pro"
-                className="find-pro-link"
-                onClick={(e) => e.preventDefault()}
-              >
-                <span>Find a Pro</span>
-                <ArrowRight size={15} />
-              </a>
-
-              <button
-                type="button"
+              <Link
+                to={PATHS.CUSTOMER.PROVIDERS}
                 className="ai-search-submit-btn"
-                aria-label="Search pros"
+                aria-label="Find a pro"
               >
-                <span>Search</span>
+                <span>Find a pro</span>
                 <ArrowRight size={15} />
-              </button>
+              </Link>
             </div>
 
             {/* Suggestions Row */}
@@ -99,17 +133,69 @@ export function CustomerHeroSection() {
           </div>
         </div>
 
-        {/* Right Column: Hero Visual Card */}
+        {/* Right Column: Dynamic Banner Carousel Card */}
         <div className="customer-hero-right">
-          <div className="hero-pro-card">
-            <img
-              src={heroAcImg}
-              alt="AC Repair Technician at work"
-              className="hero-pro-image"
-            />
+          <div 
+            className="hero-slider-card"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+          >
+            {/* Banner Slides */}
+            {heroBanners.map((banner, index) => (
+              <div 
+                key={banner.id}
+                className={`hero-slide ${index === currentSlide ? 'active' : ''}`}
+                aria-hidden={index !== currentSlide}
+              >
+                <img
+                  src={banner.image}
+                  alt={banner.alt}
+                  className="hero-slide-image"
+                />
+                
+                {/* Content Overlay */}
+                <div className="hero-slide-overlay">
+                  <span className="hero-slide-tag">{banner.tag}</span>
+                  <h3 className="hero-slide-headline">{banner.headline}</h3>
+                </div>
+              </div>
+            ))}
+
+            {/* Navigation Arrows */}
+            <button
+              type="button"
+              className="slider-nav-arrow slider-prev-arrow"
+              onClick={prevSlide}
+              aria-label="Previous banner"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <button
+              type="button"
+              className="slider-nav-arrow slider-next-arrow"
+              onClick={nextSlide}
+              aria-label="Next banner"
+            >
+              <ChevronRight size={20} />
+            </button>
+
+            {/* Indicator Dots */}
+            <div className="hero-slider-dots">
+              {heroBanners.map((banner, index) => (
+                <button
+                  key={banner.id}
+                  type="button"
+                  className={`slider-dot-btn ${index === currentSlide ? 'active' : ''}`}
+                  onClick={() => setCurrentSlide(index)}
+                  aria-label={`Slide ${index + 1}`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
     </section>
   );
 }
+
+export default CustomerHeroSection;

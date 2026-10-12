@@ -2,7 +2,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { LandingLayout } from '../layouts/LandingLayout';
 import { CustomerLayout } from '../layouts/CustomerLayout';
 import { LandingPage } from '../features/landing/LandingPage';
-import { CustomerHomePage } from '../features/customer';
+import { CustomerHomePage, FindProviderPage } from '../features/customer';
 import { PATHS } from './paths';
 
 const router = createBrowserRouter([
@@ -18,19 +18,27 @@ const router = createBrowserRouter([
     ],
   },
 
-  // Customer Module Routes (Authenticated Portal)
+  // Customer Module Routes (Authenticated Portal with CustomerLayout)
   {
-    path: PATHS.CUSTOMER.ROOT,
     element: <CustomerLayout />,
     children: [
       {
-        index: true,
+        path: PATHS.CUSTOMER.ROOT,
         element: <CustomerHomePage />,
       },
-      // Foundation for future customer sub-routes:
-      // { path: 'orders', element: <CustomerOrdersPage /> },
-      // { path: 'services', element: <CustomerServicesPage /> },
-      // { path: 'profile', element: <CustomerProfilePage /> },
+      {
+        path: PATHS.CUSTOMER.PROVIDERS,
+        element: <FindProviderPage />,
+      },
+      // Convenience aliases so any provider link or direct path works seamlessly
+      {
+        path: '/customer/providers/*',
+        element: <FindProviderPage />,
+      },
+      {
+        path: '/providers',
+        element: <FindProviderPage />,
+      },
     ],
   },
 

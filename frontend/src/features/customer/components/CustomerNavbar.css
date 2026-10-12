@@ -62,8 +62,10 @@
   transition: color 0.15s ease;
 }
 
-.customer-nav-link:hover {
+.customer-nav-link:hover,
+.customer-nav-link.active {
   color: #1D6AE5;
+  font-weight: 600;
 }
 
 /* Right Actions */
@@ -280,52 +282,13 @@
   color: #DC2626;
 }
 
-/* Mobile Toggle */
-.customer-mobile-toggle {
-  display: none;
-  background: none;
-  border: none;
-  color: #334155;
-  cursor: pointer;
-  padding: 6px;
-}
-
-.customer-mobile-menu {
-  display: none;
-}
-
 /* Responsive */
-@media (max-width: 900px) {
-  .customer-nav-links {
-    display: none;
+@media (max-width: 640px) {
+  .customer-actions {
+    gap: 12px;
   }
 
   .customer-orders-btn .orders-text {
     display: none;
-  }
-
-  .customer-mobile-toggle {
-    display: block;
-  }
-
-  .customer-mobile-menu {
-    display: block;
-    background-color: #FFFFFF;
-    border-bottom: 1px solid #E2E8F0;
-    padding: 1rem 1.5rem;
-  }
-
-  .customer-mobile-links {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .mobile-link {
-    font-size: 15px;
-    font-weight: 500;
-    color: #334155;
-    text-decoration: none;
-    padding: 6px 0;
   }
 }
