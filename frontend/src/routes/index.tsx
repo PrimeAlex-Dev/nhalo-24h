@@ -2,7 +2,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { LandingLayout } from '../layouts/LandingLayout';
 import { CustomerLayout } from '../layouts/CustomerLayout';
 import { LandingPage } from '../features/landing/LandingPage';
-import { CustomerHomePage, FindProviderPage } from '../features/customer';
+import { CustomerHomePage, FindProviderPage, ProviderProfilePage, MyOrdersPage } from '../features/customer';
 import { PATHS } from './paths';
 
 const router = createBrowserRouter([
@@ -30,14 +30,30 @@ const router = createBrowserRouter([
         path: PATHS.CUSTOMER.PROVIDERS,
         element: <FindProviderPage />,
       },
-      // Convenience aliases so any provider link or direct path works seamlessly
       {
-        path: '/customer/providers/*',
-        element: <FindProviderPage />,
+        path: PATHS.CUSTOMER.PROVIDER_DETAIL,
+        element: <ProviderProfilePage />,
+      },
+      {
+        path: PATHS.CUSTOMER.ORDERS,
+        element: <MyOrdersPage />,
+      },
+      // Convenience aliases so direct paths work seamlessly
+      {
+        path: '/orders',
+        element: <MyOrdersPage />,
+      },
+      {
+        path: '/my-orders',
+        element: <MyOrdersPage />,
       },
       {
         path: '/providers',
         element: <FindProviderPage />,
+      },
+      {
+        path: '/providers/:providerId',
+        element: <ProviderProfilePage />,
       },
     ],
   },
