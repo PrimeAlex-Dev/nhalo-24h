@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import './FindProviderPage.css';
 import { 
   Search, 
@@ -162,15 +162,25 @@ export function FindProviderPage() {
             <div key={provider.id} className="provider-card">
               {/* Card Header */}
               <div className="provider-card-header">
-                <img
-                  src={provider.avatar}
-                  alt={provider.name}
-                  className="provider-avatar"
-                />
+                <Link
+                  to={`/customer/providers/${provider.id}`}
+                  className="provider-avatar-link"
+                >
+                  <img
+                    src={provider.avatar}
+                    alt={provider.name}
+                    className="provider-avatar"
+                  />
+                </Link>
 
                 <div className="provider-primary-info">
                   <div className="provider-name-row">
-                    <h3 className="provider-name">{provider.name}</h3>
+                    <Link
+                      to={`/customer/providers/${provider.id}`}
+                      className="provider-name-link"
+                    >
+                      <h3 className="provider-name">{provider.name}</h3>
+                    </Link>
                     {provider.verified && (
                       <BadgeCheck size={17} className="provider-verified-badge" />
                     )}
@@ -222,13 +232,12 @@ export function FindProviderPage() {
 
               {/* Action Buttons */}
               <div className="provider-card-actions">
-                <button
-                  type="button"
+                <Link
+                  to={`/customer/providers/${provider.id}`}
                   className="provider-action-btn view-profile-btn"
-                  onClick={(e) => e.preventDefault()}
                 >
                   View Profile
-                </button>
+                </Link>
                 <button
                   type="button"
                   className="provider-action-btn compare-btn"

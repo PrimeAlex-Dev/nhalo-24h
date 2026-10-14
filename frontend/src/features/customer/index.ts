@@ -1,6 +1,8 @@
 export { CustomerModule, default } from './CustomerModule';
 export { CustomerHomePage } from './CustomerHomePage';
 export { FindProviderPage } from './components/FindProviderPage';
+export { ProviderProfilePage } from './components/ProviderProfilePage';
+export { MyOrdersPage } from './components/MyOrdersPage';
 export { CustomerNavbar } from './components/CustomerNavbar';
 export { CustomerHeroSection } from './components/CustomerHeroSection';
 export { CategoryBrowseSection } from './components/CategoryBrowseSection';

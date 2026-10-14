@@ -73,14 +73,14 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
           </button>
 
           {/* My Orders */}
-          <button 
-            type="button" 
+          <Link 
+            to={PATHS.CUSTOMER.ORDERS} 
             className="customer-orders-btn" 
             aria-label="My Orders"
           >
             <ClipboardList size={18} className="orders-icon" />
             <span className="orders-text">My Orders</span>
-          </button>
+          </Link>
 
           {/* User Profile Avatar Pill */}
           <div className="customer-user-dropdown" ref={userMenuRef}>
@@ -109,6 +109,14 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
                   </div>
                 </div>
                 <div className="dropdown-divider" />
+                <Link 
+                  to={PATHS.CUSTOMER.ORDERS} 
+                  className="dropdown-item" 
+                  onClick={() => setIsUserMenuOpen(false)}
+                >
+                  <ClipboardList size={16} />
+                  <span>My Orders</span>
+                </Link>
                 <a 
                   href="#profile" 
                   className="dropdown-item" 

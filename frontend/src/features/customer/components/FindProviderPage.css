@@ -217,6 +217,14 @@
   margin-bottom: 14px;
 }
 
+.provider-avatar-link {
+  display: block;
+  flex-shrink: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  text-decoration: none;
+}
+
 .provider-avatar {
   width: 62px;
   height: 62px;
@@ -224,6 +232,11 @@
   object-fit: cover;
   flex-shrink: 0;
   background-color: #F1F5F9;
+  transition: transform 0.2s ease;
+}
+
+.provider-avatar-link:hover .provider-avatar {
+  transform: scale(1.04);
 }
 
 .provider-primary-info {
@@ -237,12 +250,22 @@
   gap: 6px;
 }
 
+.provider-name-link {
+  text-decoration: none;
+  color: inherit;
+}
+
 .provider-name {
   font-size: 16px;
   font-weight: 700;
   color: #0F172A;
   margin: 0;
   line-height: 1.25;
+  transition: color 0.15s ease;
+}
+
+.provider-name-link:hover .provider-name {
+  color: #1D6AE5;
 }
 
 .provider-verified-badge {
@@ -390,6 +413,7 @@
   font-weight: 600;
   color: #0F172A;
   cursor: pointer;
+  text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -13,6 +13,16 @@ export interface UserProfile {
   unreadNotifications: number;
 }
 
+export interface ProviderReview {
+  id: string;
+  author: string;
+  avatarLetter: string;
+  service: string;
+  date: string;
+  rating: number;
+  comment: string;
+}
+
 export interface ProviderItem {
   id: string;
   name: string;
@@ -26,4 +36,32 @@ export interface ProviderItem {
   isTopRated?: boolean;
   availability: 'Available today' | 'Available soon';
   avatar: string;
+
+  // Rich profile properties
+  experienceYears?: number;
+  completedJobsCount?: string;
+  responseTime?: string;
+  availabilityDetail?: string;
+  about?: string;
+  skills?: string[];
+  aiInsight?: string;
+  reviews?: ProviderReview[];
+}
+
+export type OrderStatus = 'In progress' | 'Scheduled' | 'Completed';
+
+export interface CustomerOrder {
+  id: string;
+  orderCode: string;
+  serviceCategory: string;
+  serviceDetail: string;
+  providerId: string;
+  providerName: string;
+  providerAvatar: string;
+  status: OrderStatus;
+  scheduledTime: string;
+  price: number;
+  reviewPending?: boolean;
+  address?: string;
+  notes?: string;
 }

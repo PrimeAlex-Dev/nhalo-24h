@@ -12,6 +12,7 @@ export const PATHS = {
     SERVICES: '/customer/services',
     ORDERS: '/customer/orders',
     PROVIDERS: '/customer/providers',
+    PROVIDER_DETAIL: '/customer/providers/:providerId',
     PROFILE: '/customer/profile',
     SETTINGS: '/customer/settings',
   },
