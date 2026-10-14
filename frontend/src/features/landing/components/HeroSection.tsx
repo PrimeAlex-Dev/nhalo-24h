@@ -1,7 +1,8 @@
 import './HeroSection.css';
-import { Button } from '../../../components/common/Button';
-import { Search, ShieldCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, ShieldCheck } from 'lucide-react';
 import heroImg from '../../../assets/hero_image.jpg';
+import { PATHS } from '../../../routes/paths';
 
 export function HeroSection() {
   return (
@@ -21,16 +22,19 @@ export function HeroSection() {
             Kết nối nhanh chóng với thợ kỹ thuật uy tín gần bạn nhất. Báo giá minh bạch, an tâm chất lượng, có mặt kịp thời khi bạn cần.
           </p>
           
-          <div className="hero-search-box">
-            <div className="search-input-wrapper">
-              <Search className="search-icon" size={20} />
-              <input 
-                type="text" 
-                placeholder="Nhập vấn đề bạn gặp phải (vd: rò rỉ nước, sửa máy lạnh...)" 
-                className="search-input"
-              />
+          <div className="hero-action-area">
+            <Link to={PATHS.CUSTOMER.ROOT} className="hero-start-btn">
+              <span className="btn-shimmer" aria-hidden="true" />
+              <span className="btn-text">Bắt đầu ngay</span>
+              <span className="btn-arrow-circle">
+                <ArrowRight size={17} strokeWidth={2.5} />
+              </span>
+            </Link>
+
+            <div className="hero-fast-dispatch-tag">
+              <span className="pulsing-live-dot" />
+              <span>Có mặt nhanh sau 15–30 phút</span>
             </div>
-            <Button size="lg" className="search-btn">Tìm dịch vụ</Button>
           </div>
           
           <div className="hero-trust">
