@@ -7,10 +7,22 @@ export interface CategoryItem {
   icon: 'snowflake' | 'zap' | 'wrench' | 'sparkles' | 'key' | 'hammer' | 'paint-roller' | 'bug';
 }
 
+export interface UserAddress {
+  id: string;
+  label: string;
+  fullAddress: string;
+  isDefault?: boolean;
+}
+
 export interface UserProfile {
   name: string;
   avatarLetter: string;
   unreadNotifications: number;
+  role?: string;
+  email?: string;
+  phone?: string;
+  addresses?: UserAddress[];
+  joinedDate?: string;
 }
 
 export interface ProviderReview {
