@@ -117,14 +117,14 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
                   <ClipboardList size={16} />
                   <span>My Orders</span>
                 </Link>
-                <a 
-                  href="#profile" 
+                <Link 
+                  to={PATHS.CUSTOMER.PROFILE} 
                   className="dropdown-item" 
-                  onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); }}
+                  onClick={() => setIsUserMenuOpen(false)}
                 >
                   <User size={16} />
                   <span>My Profile</span>
-                </a>
+                </Link>
                 <a 
                   href="#settings" 
                   className="dropdown-item" 

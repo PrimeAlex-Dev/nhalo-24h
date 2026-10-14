@@ -7,9 +7,27 @@ import provider5Img from '../../../assets/provider_5.png';
 import provider6Img from '../../../assets/provider_6.png';
 
 export const mockCurrentUser: UserProfile = {
-  name: 'Alex Johnson',
+  name: 'Nguyễn Văn A',
   avatarLetter: 'A',
-  unreadNotifications: 1
+  unreadNotifications: 1,
+  role: 'Tài khoản khách hàng',
+  email: 'nguyenvana@gmail.com',
+  phone: '0912 345 678',
+  joinedDate: 'Tháng 03, 2026',
+  addresses: [
+    {
+      id: 'addr-1',
+      label: 'Nhà riêng',
+      fullAddress: '142 Đường Nguyễn Trãi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh',
+      isDefault: true
+    },
+    {
+      id: 'addr-2',
+      label: 'Văn phòng',
+      fullAddress: 'Tòa nhà Landmark 81, 720A Điện Biên Phủ, Phường 22, Bình Thạnh, TP. Hồ Chí Minh',
+      isDefault: false
+    }
+  ]
 };
 
 export const mockSuggestionPrompts: string[] = [

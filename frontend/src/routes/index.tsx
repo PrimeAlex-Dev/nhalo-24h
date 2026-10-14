@@ -2,7 +2,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { LandingLayout } from '../layouts/LandingLayout';
 import { CustomerLayout } from '../layouts/CustomerLayout';
 import { LandingPage } from '../features/landing/LandingPage';
-import { CustomerHomePage, FindProviderPage, ProviderProfilePage, MyOrdersPage } from '../features/customer';
+import { CustomerHomePage, FindProviderPage, ProviderProfilePage, MyOrdersPage, MyProfilePage } from '../features/customer';
 import { PATHS } from './paths';
 
 const router = createBrowserRouter([
@@ -38,7 +38,19 @@ const router = createBrowserRouter([
         path: PATHS.CUSTOMER.ORDERS,
         element: <MyOrdersPage />,
       },
+      {
+        path: PATHS.CUSTOMER.PROFILE,
+        element: <MyProfilePage />,
+      },
       // Convenience aliases so direct paths work seamlessly
+      {
+        path: '/profile',
+        element: <MyProfilePage />,
+      },
+      {
+        path: '/my-profile',
+        element: <MyProfilePage />,
+      },
       {
         path: '/orders',
         element: <MyOrdersPage />,

@@ -3,6 +3,7 @@ export { CustomerHomePage } from './CustomerHomePage';
 export { FindProviderPage } from './components/FindProviderPage';
 export { ProviderProfilePage } from './components/ProviderProfilePage';
 export { MyOrdersPage } from './components/MyOrdersPage';
+export { MyProfilePage } from './components/MyProfilePage';
 export { CustomerNavbar } from './components/CustomerNavbar';
 export { CustomerHeroSection } from './components/CustomerHeroSection';
 export { CategoryBrowseSection } from './components/CategoryBrowseSection';
