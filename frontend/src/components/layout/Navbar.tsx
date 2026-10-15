@@ -1,7 +1,7 @@
 import './Navbar.css';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../common/Button';
-import { ArrowUpRight, Menu } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { PATHS } from '../../routes/paths';
 
 interface NavbarProps {
@@ -36,15 +36,12 @@ export function Navbar({ onLogin }: NavbarProps = {}) {
         <div className="navbar-actions">
           <Link to={PATHS.PROVIDER.ROOT} className="partner-link">Trở thành đối tác</Link>
           <Button 
-            icon={<ArrowUpRight size={18} />} 
+            icon={<ArrowUpRight size={17} />} 
             className="find-pro-btn"
             onClick={handleNavigateToCustomer}
           >
             Tìm thợ ngay
           </Button>
-          <button className="mobile-menu-btn" aria-label="Toggle menu">
-            <Menu size={24} />
-          </button>
         </div>
       </div>
     </header>
