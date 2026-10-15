@@ -31,4 +31,13 @@ export const PATHS = {
     EARNINGS: '/provider/earnings',
     ACCOUNT: '/provider/account',
   },
+
+  // Admin Portal Module
+  ADMIN: {
+    ROOT: '/admin',
+    DASHBOARD: '/admin/dashboard',
+    ORDERS: '/admin/orders',
+    USERS: '/admin/users',
+    SERVICES: '/admin/services',
+  },
 } as const;

@@ -11,6 +11,13 @@ import {
   ProviderEarningsPage, 
   ProviderAccountPage 
 } from '../features/provider';
+import { AdminLayout } from '../layouts/AdminLayout';
+import { 
+  AdminDashboardPage, 
+  AdminOrdersPage, 
+  AdminUsersPage,
+  AdminServicesPage
+} from '../features/admin';
 import { PATHS } from './paths';
 
 const router = createBrowserRouter([
@@ -119,6 +126,34 @@ const router = createBrowserRouter([
       {
         path: 'account',
         element: <ProviderAccountPage />,
+      },
+    ],
+  },
+
+  // Admin Module Routes (Dedicated Dashboard Portal with AdminLayout)
+  {
+    path: PATHS.ADMIN.ROOT,
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <AdminDashboardPage />,
+      },
+      {
+        path: 'dashboard',
+        element: <AdminDashboardPage />,
+      },
+      {
+        path: 'orders',
+        element: <AdminOrdersPage />,
+      },
+      {
+        path: 'users',
+        element: <AdminUsersPage />,
+      },
+      {
+        path: 'services',
+        element: <AdminServicesPage />,
       },
     ],
   },
