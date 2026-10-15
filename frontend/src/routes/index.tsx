@@ -3,9 +3,27 @@ import { LandingLayout } from '../layouts/LandingLayout';
 import { CustomerLayout } from '../layouts/CustomerLayout';
 import { LandingPage } from '../features/landing/LandingPage';
 import { CustomerHomePage, FindProviderPage, ProviderProfilePage, MyOrdersPage, MyProfilePage } from '../features/customer';
+import { LoginPage, RegisterPage } from '../features/auth';
 import { PATHS } from './paths';
 
 const router = createBrowserRouter([
+  // Authentication Routes (Standalone full-page experience)
+  {
+    path: PATHS.AUTH.LOGIN,
+    element: <LoginPage />,
+  },
+  {
+    path: PATHS.AUTH.REGISTER,
+    element: <RegisterPage />,
+  },
+  {
+    path: '/sign-in',
+    element: <LoginPage />,
+  },
+  {
+    path: '/sign-up',
+    element: <RegisterPage />,
+  },
   // Landing Page Route (Guest)
   {
     path: PATHS.HOME,

@@ -49,39 +49,66 @@
 }
 
 .partner-link {
-  display: none;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 550;
+  font-size: 0.925rem;
   color: var(--color-text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s ease;
 }
 
 .partner-link:hover {
-  color: var(--color-text-main);
+  color: var(--color-primary);
 }
 
-.mobile-menu-btn {
-  display: block;
-  background: none;
-  border: none;
-  color: var(--color-text-main);
-  padding: 0.5rem;
+.find-pro-btn {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
 }
 
 @media (min-width: 1024px) {
   .navbar-links {
     display: flex;
   }
-  
-  .partner-link {
-    display: block;
+}
+
+@media (max-width: 768px) {
+  .navbar-header {
+    padding: 0.75rem 0;
   }
-  
-  .mobile-menu-btn {
-    display: none;
+
+  .navbar-actions {
+    gap: 0.85rem;
+  }
+
+  .partner-link {
+    font-size: 0.85rem;
+  }
+
+  .find-pro-btn {
+    padding: 0.45rem 1rem;
+    font-size: 0.85rem;
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 480px) {
+  .logo-text {
+    font-size: 1.25rem;
+  }
+
+  .navbar-actions {
+    gap: 0.6rem;
+  }
+
+  .partner-link {
+    font-size: 0.8rem;
+  }
+
   .find-pro-btn {
-    display: none;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
   }
 }
