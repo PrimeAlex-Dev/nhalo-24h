@@ -1,0 +1,408 @@
+/* ============================================================================
+   PROVIDER NAVIGATION (Top Navbar & Mobile Bottom Nav)
+   Nhà Lo 24h - Grab Driver & Home Service Provider Style
+   Optimized for Laptop (Desktop) & Mobile Phone
+   ============================================================================ */
+
+/* Top Header */
+.provider-top-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+}
+
+.provider-header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 70px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  box-sizing: border-box;
+}
+
+/* Brand Section */
+.provider-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  text-decoration: none;
+}
+
+.provider-brand-logo-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1D6AE5 0%, #1555C0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(29, 106, 229, 0.28);
+  flex-shrink: 0;
+}
+
+.provider-brand-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.provider-brand-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0F172A;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+
+.provider-brand-subtitle {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #1D6AE5;
+  background: #EFF6FF;
+  border: 1px solid #DBEAFE;
+  padding: 1px 6px;
+  border-radius: 5px;
+  width: fit-content;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Desktop Navigation Links */
+.provider-desktop-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.provider-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #475569;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.provider-nav-link:hover {
+  color: #1D6AE5;
+  background: #F1F5F9;
+}
+
+.provider-nav-link.active {
+  color: #1D6AE5;
+  background: #EFF6FF;
+  font-weight: 700;
+}
+
+.provider-nav-badge {
+  background: #EF4444;
+  color: #FFFFFF;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.4;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+}
+
+/* Header Right Actions */
+.provider-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+/* Status Quick Toggle Button */
+.provider-status-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: 9999px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  user-select: none;
+}
+
+.provider-status-toggle-btn.online {
+  background: #ECFDF5;
+  color: #047857;
+  border-color: #A7F3D0;
+}
+
+.provider-status-toggle-btn.online:hover {
+  background: #D1FAE5;
+  border-color: #6EE7B7;
+  transform: translateY(-1px);
+}
+
+.provider-status-toggle-btn.offline {
+  background: #F1F5F9;
+  color: #64748B;
+  border-color: #CBD5E1;
+}
+
+.provider-status-toggle-btn.offline:hover {
+  background: #E2E8F0;
+}
+
+.provider-status-pulse-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #10B981;
+  position: relative;
+}
+
+.provider-status-pulse-dot::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.4);
+  animation: pulseProviderDot 1.8s infinite;
+}
+
+@keyframes pulseProviderDot {
+  0% { transform: scale(0.9); opacity: 0.9; }
+  70% { transform: scale(1.8); opacity: 0; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* Notification Bell */
+.provider-icon-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.provider-icon-btn:hover {
+  background: #F8FAFC;
+  border-color: #CBD5E1;
+  color: #1D6AE5;
+  transform: translateY(-1px);
+}
+
+.provider-icon-badge-dot {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 8px;
+  height: 8px;
+  background: #EF4444;
+  border-radius: 50%;
+  border: 1.5px solid #FFFFFF;
+}
+
+/* Switch Portal Pill */
+.provider-switch-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #475569;
+  padding: 0.48rem 0.85rem;
+  border-radius: 12px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.provider-switch-mode-btn:hover {
+  color: #1D6AE5;
+  background: #EFF6FF;
+  border-color: #BFDBFE;
+  transform: translateY(-1px);
+}
+
+/* Provider Avatar Pill */
+.provider-avatar-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.8rem 0.35rem 0.35rem;
+  border-radius: 9999px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.provider-avatar-pill:hover {
+  border-color: #BFDBFE;
+  background: #EFF6FF;
+  transform: translateY(-1px);
+}
+
+.provider-avatar-img {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #1D6AE5;
+}
+
+.provider-avatar-texts {
+  display: flex;
+  flex-direction: column;
+}
+
+.provider-avatar-name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1.2;
+}
+
+.provider-avatar-rating {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #D97706;
+}
+
+/* ============================================================================
+   MOBILE BOTTOM NAVIGATION BAR (Grab Driver Style)
+   ============================================================================ */
+.provider-bottom-nav {
+  display: none; /* Hidden on laptop/desktop */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #FFFFFF;
+  border-top: 1px solid #E2E8F0;
+  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+  padding: 0.4rem 0 calc(0.4rem + env(safe-area-inset-bottom, 0px)) 0;
+}
+
+.provider-bottom-nav-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+.provider-bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.25rem;
+  text-decoration: none;
+  color: #64748B;
+  transition: all 0.2s ease;
+  position: relative;
+  user-select: none;
+}
+
+.provider-bottom-nav-item:active {
+  transform: scale(0.96);
+}
+
+.provider-bottom-nav-icon-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 2px;
+}
+
+.provider-bottom-nav-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.provider-bottom-nav-item.active {
+  color: #1D6AE5;
+}
+
+.provider-bottom-nav-item.active .provider-bottom-nav-label {
+  font-weight: 700;
+}
+
+.provider-bottom-nav-item.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 32px;
+  height: 3px;
+  background: #1D6AE5;
+  border-radius: 0 0 3px 3px;
+}
+
+.provider-bottom-badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  background: #EF4444;
+  color: #FFFFFF;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 9999px;
+  border: 1.5px solid #FFFFFF;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* ============================================================================
+   RESPONSIVE BREAKPOINTS
+   ============================================================================ */
+@media (max-width: 991px) {
+  .provider-desktop-nav,
+  .provider-switch-mode-btn,
+  .provider-avatar-pill {
+    display: none;
+  }
+
+  .provider-bottom-nav {
+    display: block;
+  }
+
+  .provider-header-container {
+    height: 60px;
+    padding: 0 1.25rem;
+  }
+
+  .provider-brand-title {
+    font-size: 1.02rem;
+  }
+}

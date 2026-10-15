@@ -1,0 +1,236 @@
+/* ============================================================================
+   PROVIDER ACCOUNT PAGE (Tài khoản thợ & Cài đặt nhận việc)
+   Responsive for Laptop & Mobile
+   ============================================================================ */
+
+.provider-account-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.provider-account-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+/* Desktop 2-column layout */
+.provider-account-desktop-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.provider-account-left-col,
+.provider-account-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Profile Card */
+.provider-profile-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 22px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  transition: all 0.2s;
+}
+
+.provider-profile-card:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
+}
+
+.provider-profile-avatar-box {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.provider-profile-avatar-img {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #1D6AE5;
+}
+
+.provider-verified-check {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: #059669;
+  color: #FFFFFF;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2.5px solid #FFFFFF;
+}
+
+.provider-profile-info h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0 0 4px 0;
+}
+
+.provider-profile-role {
+  font-size: 0.88rem;
+  color: #1D6AE5;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+}
+
+.provider-profile-rating-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #FEF3C7;
+  color: #B45309;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0.25rem 0.7rem;
+  border-radius: 9999px;
+}
+
+/* Sections / Setting Groups */
+.provider-settings-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 22px;
+  padding: 1.4rem;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05);
+}
+
+.provider-settings-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0 0 1rem 0;
+}
+
+.provider-setting-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.provider-setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.95rem 1rem;
+  background: #F8FAFC;
+  border: 1px solid #F1F5F9;
+  border-radius: 14px;
+  transition: all 0.2s;
+}
+
+.provider-setting-item:hover {
+  background: #F1F5F9;
+  border-color: #E2E8F0;
+}
+
+.provider-setting-label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.provider-setting-icon {
+  color: #1D6AE5;
+  flex-shrink: 0;
+}
+
+.provider-setting-text-main {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.provider-setting-text-sub {
+  font-size: 0.8rem;
+  color: #64748B;
+}
+
+.provider-setting-value {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #059669;
+  white-space: nowrap;
+}
+
+/* Action Buttons List */
+.provider-account-actions-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.provider-menu-btn {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-decoration: none;
+  color: #0F172A;
+  font-weight: 700;
+  font-size: 0.94rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.provider-menu-btn:hover {
+  background: #F8FAFC;
+  border-color: #BFDBFE;
+  color: #1D6AE5;
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(29, 106, 229, 0.08);
+}
+
+.provider-menu-btn.logout {
+  color: #EF4444;
+  border-color: #FEE2E2;
+}
+
+.provider-menu-btn.logout:hover {
+  background: #FEF2F2;
+  border-color: #FCA5A5;
+}
+
+/* ============================================================================
+   LAPTOP & DESKTOP ENHANCEMENTS (min-width: 992px)
+   ============================================================================ */
+@media (min-width: 992px) {
+  .provider-account-desktop-grid {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 1.75rem;
+    align-items: start;
+  }
+}
+
+/* Mobile & Tablet fallback */
+@media (max-width: 991px) {
+  .provider-account-page {
+    max-width: 600px;
+  }
+}

@@ -1,0 +1,282 @@
+/* ============================================================================
+   JOB DETAIL MODAL (Grab Driver Style Bottom Sheet / Modal)
+   ============================================================================ */
+
+.job-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.job-modal-sheet {
+  background: #FFFFFF;
+  width: 100%;
+  max-width: 520px;
+  border-radius: 24px 24px 0 0;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+  animation: sheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@media (min-width: 769px) {
+  .job-modal-backdrop {
+    align-items: center;
+    padding: 1.5rem;
+  }
+
+  .job-modal-sheet {
+    border-radius: 24px;
+    max-height: 85vh;
+  }
+}
+
+/* Grab handle for touch */
+.job-modal-grab-bar {
+  width: 44px;
+  height: 5px;
+  background: #CBD5E1;
+  border-radius: 9999px;
+  margin: 12px auto 6px auto;
+}
+
+/* Modal Header */
+.job-modal-header {
+  padding: 0.75rem 1.25rem 0.5rem 1.25rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.job-modal-category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #EFF6FF;
+  color: #1D6AE5;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  margin-bottom: 0.35rem;
+}
+
+.job-modal-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.job-modal-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #F1F5F9;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748B;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.job-modal-close-btn:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+/* Modal Body */
+.job-modal-body {
+  padding: 0.75rem 1.25rem 1.25rem 1.25rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Price Box */
+.job-modal-price-box {
+  background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
+  border: 1px solid #BBF7D0;
+  border-radius: 16px;
+  padding: 1rem 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.job-modal-price-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #166534;
+  margin-bottom: 2px;
+}
+
+.job-modal-price-value {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #15803D;
+  line-height: 1.2;
+}
+
+.job-modal-price-tag {
+  background: #FFFFFF;
+  color: #166534;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid #86EFAC;
+}
+
+/* Info Grid */
+.job-modal-info-card {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.job-modal-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.job-modal-info-icon {
+  color: #1D6AE5;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.job-modal-info-label {
+  font-size: 0.75rem;
+  color: #64748B;
+  margin-bottom: 1px;
+}
+
+.job-modal-info-val {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1.35;
+}
+
+/* Note box */
+.job-modal-note-box {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+}
+
+.job-modal-note-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #92400E;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.job-modal-note-text {
+  font-size: 0.86rem;
+  color: #78350F;
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* Materials Pills */
+.job-modal-materials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.job-modal-mat-pill {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+  color: #334155;
+  font-weight: 500;
+}
+
+/* Modal Footer Actions (CTA lớn) */
+.job-modal-footer {
+  padding: 1rem 1.25rem;
+  background: #FFFFFF;
+  border-top: 1px solid #E2E8F0;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.job-modal-accept-btn {
+  flex: 2;
+  background: #059669;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 14px;
+  padding: 0.95rem 1.25rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 8px 20px -4px rgba(5, 150, 105, 0.4);
+  transition: all 0.2s ease;
+}
+
+.job-modal-accept-btn:hover {
+  background: #047857;
+  transform: translateY(-1px);
+}
+
+.job-modal-decline-btn {
+  flex: 1;
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #CBD5E1;
+  border-radius: 14px;
+  padding: 0.95rem 1rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.job-modal-decline-btn:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}

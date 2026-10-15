@@ -34,7 +34,7 @@ export function Navbar({ onLogin }: NavbarProps = {}) {
         </nav>
         
         <div className="navbar-actions">
-          <a href="#partner" className="partner-link">Trở thành đối tác</a>
+          <Link to={PATHS.PROVIDER.ROOT} className="partner-link">Trở thành đối tác</Link>
           <Button 
             icon={<ArrowUpRight size={18} />} 
             className="find-pro-btn"
