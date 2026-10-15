@@ -1,0 +1,241 @@
+/* ============================================================================
+   PROVIDER EARNINGS PAGE (Thu nhập & Ví thợ)
+   Responsive for Laptop & Mobile
+   ============================================================================ */
+
+.provider-earnings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.provider-earnings-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+/* Desktop 2-column layout */
+.provider-earnings-desktop-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.provider-earnings-left-col,
+.provider-earnings-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Wallet Card */
+.provider-wallet-card {
+  background: linear-gradient(140deg, #0F3E8C 0%, #1D6AE5 55%, #0284C7 100%);
+  color: #FFFFFF;
+  border-radius: 22px;
+  padding: 1.5rem 1.6rem;
+  box-shadow: 0 12px 32px -6px rgba(29, 106, 229, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.provider-wallet-card::after {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.provider-wallet-sub {
+  font-size: 0.85rem;
+  color: #BAE6FD;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+}
+
+.provider-wallet-balance {
+  font-size: 2.2rem;
+  font-weight: 900;
+  line-height: 1.15;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.provider-wallet-actions {
+  display: flex;
+  gap: 0.75rem;
+  position: relative;
+  z-index: 2;
+}
+
+.provider-wallet-btn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 14px;
+  padding: 0.75rem 1rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  transition: all 0.2s;
+}
+
+.provider-wallet-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.provider-wallet-btn.primary {
+  background: #FFFFFF;
+  color: #1D6AE5;
+  border-color: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+.provider-wallet-btn.primary:hover {
+  background: #F8FAFC;
+}
+
+/* 4 Metrics Grid */
+.provider-earnings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem;
+}
+
+.provider-metric-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 18px;
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s;
+}
+
+.provider-metric-card:hover {
+  border-color: #CBD5E1;
+  transform: translateY(-1px);
+}
+
+.provider-metric-label {
+  font-size: 0.8rem;
+  color: #64748B;
+  font-weight: 600;
+}
+
+.provider-metric-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.provider-metric-sub {
+  font-size: 0.74rem;
+  color: #059669;
+  font-weight: 700;
+}
+
+/* History Section */
+.provider-history-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 22px;
+  padding: 1.4rem;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05);
+}
+
+.provider-history-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0 0 1rem 0;
+}
+
+.provider-history-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.provider-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.95rem 0;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.provider-history-item:last-child {
+  border-bottom: none;
+}
+
+.provider-history-info h4 {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0 0 3px 0;
+}
+
+.provider-history-info p {
+  font-size: 0.82rem;
+  color: #64748B;
+  margin: 0;
+}
+
+.provider-history-right {
+  text-align: right;
+}
+
+.provider-history-amount {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #059669;
+}
+
+.provider-history-method {
+  font-size: 0.75rem;
+  color: #94A3B8;
+  font-weight: 600;
+}
+
+/* ============================================================================
+   LAPTOP & DESKTOP ENHANCEMENTS (min-width: 992px)
+   ============================================================================ */
+@media (min-width: 992px) {
+  .provider-earnings-desktop-grid {
+    display: grid;
+    grid-template-columns: 440px 1fr;
+    gap: 1.75rem;
+    align-items: start;
+  }
+}
+
+/* Mobile & Tablet fallback */
+@media (max-width: 991px) {
+  .provider-earnings-page {
+    max-width: 600px;
+  }
+}

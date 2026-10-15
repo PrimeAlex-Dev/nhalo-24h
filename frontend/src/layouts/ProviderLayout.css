@@ -1,0 +1,27 @@
+/* ============================================================================
+   PROVIDER LAYOUT STYLES
+   ============================================================================ */
+.provider-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #F8FAFC;
+  color: #0F172A;
+  font-family: inherit;
+}
+
+.provider-main-wrapper {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.75rem 2rem 4rem 2rem;
+  box-sizing: border-box;
+}
+
+@media (max-width: 991px) {
+  .provider-main-wrapper {
+    max-width: 600px;
+    padding: 1rem 1rem calc(5.5rem + env(safe-area-inset-bottom, 0px)) 1rem;
+  }
+}

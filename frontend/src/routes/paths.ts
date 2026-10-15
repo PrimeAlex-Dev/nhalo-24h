@@ -27,5 +27,8 @@ export const PATHS = {
   PROVIDER: {
     ROOT: '/provider',
     DASHBOARD: '/provider/dashboard',
+    JOBS: '/provider/jobs',
+    EARNINGS: '/provider/earnings',
+    ACCOUNT: '/provider/account',
   },
 } as const;

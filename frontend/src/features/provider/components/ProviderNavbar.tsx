@@ -1,0 +1,202 @@
+import { Link, useLocation } from 'react-router-dom';
+import { 
+  Wrench, 
+  Home, 
+  Briefcase, 
+  Wallet, 
+  User, 
+  Bell, 
+  Repeat,
+  Power
+} from 'lucide-react';
+import { PATHS } from '../../../routes/paths';
+import { mockProviderProfile } from '../data/providerMockData';
+import './ProviderNavbar.css';
+
+interface ProviderNavbarProps {
+  isOnline: boolean;
+  onToggleOnline: () => void;
+  unreadNotifications?: number;
+}
+
+export function ProviderNavbar({
+  isOnline,
+  onToggleOnline,
+  unreadNotifications = 2
+}: ProviderNavbarProps) {
+  const location = useLocation();
+
+  const isCurrentPath = (path: string) => {
+    if (path === PATHS.PROVIDER.ROOT) {
+      return location.pathname === PATHS.PROVIDER.ROOT || location.pathname === '/provider/dashboard';
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  return (
+    <>
+      {/* ======================================================================
+          TOP HEADER (Desktop & Mobile)
+          ====================================================================== */}
+      <header className="provider-top-header">
+        <div className="provider-header-container">
+          {/* Brand Logo & Tag */}
+          <Link to={PATHS.PROVIDER.ROOT} className="provider-brand-group">
+            <div className="provider-brand-logo-icon">
+              <Wrench size={20} strokeWidth={2.4} />
+            </div>
+            <div className="provider-brand-texts">
+              <span className="provider-brand-title">Nhà Lo 24h</span>
+              <span className="provider-brand-subtitle">Thợ Đối Tác</span>
+            </div>
+          </Link>
+
+          {/* Desktop Navigation Links */}
+          <nav className="provider-desktop-nav" aria-label="Điều hướng chính">
+            <Link 
+              to={PATHS.PROVIDER.ROOT} 
+              className={`provider-nav-link ${isCurrentPath(PATHS.PROVIDER.ROOT) ? 'active' : ''}`}
+            >
+              <Home size={18} />
+              <span>Trang chủ</span>
+            </Link>
+
+            <Link 
+              to={PATHS.PROVIDER.JOBS} 
+              className={`provider-nav-link ${isCurrentPath(PATHS.PROVIDER.JOBS) ? 'active' : ''}`}
+            >
+              <Briefcase size={18} />
+              <span>Công việc</span>
+              <span className="provider-nav-badge">3</span>
+            </Link>
+
+            <Link 
+              to={PATHS.PROVIDER.EARNINGS} 
+              className={`provider-nav-link ${isCurrentPath(PATHS.PROVIDER.EARNINGS) ? 'active' : ''}`}
+            >
+              <Wallet size={18} />
+              <span>Thu nhập</span>
+            </Link>
+
+            <Link 
+              to={PATHS.PROVIDER.ACCOUNT} 
+              className={`provider-nav-link ${isCurrentPath(PATHS.PROVIDER.ACCOUNT) ? 'active' : ''}`}
+            >
+              <User size={18} />
+              <span>Tài khoản</span>
+            </Link>
+          </nav>
+
+          {/* Header Right Actions */}
+          <div className="provider-header-actions">
+            {/* Quick Online / Offline Toggle */}
+            <button
+              type="button"
+              className={`provider-status-toggle-btn ${isOnline ? 'online' : 'offline'}`}
+              onClick={onToggleOnline}
+              title={isOnline ? 'Nhấn để tạm dừng nhận việc' : 'Nhấn để bật sẵn sàng nhận việc'}
+            >
+              {isOnline ? (
+                <>
+                  <span className="provider-status-pulse-dot" />
+                  <span>Online</span>
+                </>
+              ) : (
+                <>
+                  <Power size={13} />
+                  <span>Tạm nghỉ</span>
+                </>
+              )}
+            </button>
+
+            {/* Notification Bell */}
+            <button 
+              type="button" 
+              className="provider-icon-btn" 
+              aria-label="Thông báo"
+              title="Thông báo mới"
+            >
+              <Bell size={19} />
+              {unreadNotifications > 0 && <span className="provider-icon-badge-dot" />}
+            </button>
+
+            {/* Switch to Customer Portal Mode */}
+            <Link 
+              to={PATHS.CUSTOMER.ROOT} 
+              className="provider-switch-mode-btn"
+              title="Chuyển sang giao diện Khách hàng để trải nghiệm"
+            >
+              <Repeat size={14} />
+              <span>Khách hàng</span>
+            </Link>
+
+            {/* Provider Mini Profile */}
+            <Link to={PATHS.PROVIDER.ACCOUNT} className="provider-avatar-pill" title="Hồ sơ thợ đối tác">
+              <img 
+                src={mockProviderProfile.avatar} 
+                alt={mockProviderProfile.name} 
+                className="provider-avatar-img" 
+              />
+              <div className="provider-avatar-texts">
+                <span className="provider-avatar-name">{mockProviderProfile.name.split(' ').slice(-1)[0]}</span>
+                <span className="provider-avatar-rating">★ {mockProviderProfile.rating}</span>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* ======================================================================
+          MOBILE BOTTOM NAVIGATION (Grab Driver Style)
+          ====================================================================== */}
+      <nav className="provider-bottom-nav" aria-label="Thanh điều hướng dưới">
+        <div className="provider-bottom-nav-container">
+          {/* 1. Trang chủ */}
+          <Link
+            to={PATHS.PROVIDER.ROOT}
+            className={`provider-bottom-nav-item ${isCurrentPath(PATHS.PROVIDER.ROOT) ? 'active' : ''}`}
+          >
+            <div className="provider-bottom-nav-icon-box">
+              <Home size={22} strokeWidth={isCurrentPath(PATHS.PROVIDER.ROOT) ? 2.5 : 2} />
+            </div>
+            <span className="provider-bottom-nav-label">Trang chủ</span>
+          </Link>
+
+          {/* 2. Công việc */}
+          <Link
+            to={PATHS.PROVIDER.JOBS}
+            className={`provider-bottom-nav-item ${isCurrentPath(PATHS.PROVIDER.JOBS) ? 'active' : ''}`}
+          >
+            <div className="provider-bottom-nav-icon-box">
+              <Briefcase size={22} strokeWidth={isCurrentPath(PATHS.PROVIDER.JOBS) ? 2.5 : 2} />
+              <span className="provider-bottom-badge">3</span>
+            </div>
+            <span className="provider-bottom-nav-label">Công việc</span>
+          </Link>
+
+          {/* 3. Thu nhập */}
+          <Link
+            to={PATHS.PROVIDER.EARNINGS}
+            className={`provider-bottom-nav-item ${isCurrentPath(PATHS.PROVIDER.EARNINGS) ? 'active' : ''}`}
+          >
+            <div className="provider-bottom-nav-icon-box">
+              <Wallet size={22} strokeWidth={isCurrentPath(PATHS.PROVIDER.EARNINGS) ? 2.5 : 2} />
+            </div>
+            <span className="provider-bottom-nav-label">Thu nhập</span>
+          </Link>
+
+          {/* 4. Tài khoản */}
+          <Link
+            to={PATHS.PROVIDER.ACCOUNT}
+            className={`provider-bottom-nav-item ${isCurrentPath(PATHS.PROVIDER.ACCOUNT) ? 'active' : ''}`}
+          >
+            <div className="provider-bottom-nav-icon-box">
+              <User size={22} strokeWidth={isCurrentPath(PATHS.PROVIDER.ACCOUNT) ? 2.5 : 2} />
+            </div>
+            <span className="provider-bottom-nav-label">Tài khoản</span>
+          </Link>
+        </div>
+      </nav>
+    </>
+  );
+}

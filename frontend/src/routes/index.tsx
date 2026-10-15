@@ -1,9 +1,16 @@
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { LandingLayout } from '../layouts/LandingLayout';
 import { CustomerLayout } from '../layouts/CustomerLayout';
+import { ProviderLayout } from '../layouts/ProviderLayout';
 import { LandingPage } from '../features/landing/LandingPage';
 import { CustomerHomePage, FindProviderPage, ProviderProfilePage, MyOrdersPage, MyProfilePage } from '../features/customer';
 import { LoginPage, RegisterPage } from '../features/auth';
+import { 
+  ProviderHomePage, 
+  ProviderJobsPage, 
+  ProviderEarningsPage, 
+  ProviderAccountPage 
+} from '../features/provider';
 import { PATHS } from './paths';
 
 const router = createBrowserRouter([
@@ -84,6 +91,34 @@ const router = createBrowserRouter([
       {
         path: '/providers/:providerId',
         element: <ProviderProfilePage />,
+      },
+    ],
+  },
+
+  // Provider Module Routes (Dedicated Partner Portal with ProviderLayout)
+  {
+    path: PATHS.PROVIDER.ROOT,
+    element: <ProviderLayout />,
+    children: [
+      {
+        index: true,
+        element: <ProviderHomePage />,
+      },
+      {
+        path: 'dashboard',
+        element: <ProviderHomePage />,
+      },
+      {
+        path: 'jobs',
+        element: <ProviderJobsPage />,
+      },
+      {
+        path: 'earnings',
+        element: <ProviderEarningsPage />,
+      },
+      {
+        path: 'account',
+        element: <ProviderAccountPage />,
       },
     ],
   },
