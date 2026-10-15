@@ -23,7 +23,7 @@ export function HeroSection() {
           </p>
           
           <div className="hero-action-area">
-            <Link to={PATHS.CUSTOMER.ROOT} className="hero-start-btn">
+            <Link to={PATHS.AUTH.LOGIN} className="hero-start-btn">
               <span className="btn-shimmer" aria-hidden="true" />
               <span className="btn-text">Bắt đầu ngay</span>
               <span className="btn-arrow-circle">
