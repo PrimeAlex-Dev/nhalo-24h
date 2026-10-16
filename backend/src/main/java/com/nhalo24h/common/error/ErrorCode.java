@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "Dữ liệu yêu cầu không hợp lệ"),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy tài nguyên yêu cầu"),
+    CONFLICT(HttpStatus.CONFLICT, "Dữ liệu đã tồn tại hoặc xảy ra xung đột"),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "Phương thức HTTP không được hỗ trợ"),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Yêu cầu xác thực để truy cập tài nguyên này"),
     FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không có quyền truy cập tài nguyên này"),
