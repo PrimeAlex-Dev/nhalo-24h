@@ -5,6 +5,7 @@ export { AdminServicesPage } from './pages/AdminServicesPage';
 export { AdminKpiCards } from './components/AdminKpiCards';
 export { OrderDetailModal } from './components/OrderDetailModal';
 export { UserDetailModal } from './components/UserDetailModal';
+export { CreateUserModal } from './components/CreateUserModal';
 export { CategoryEditModal } from './components/CategoryEditModal';
 export { AdminSidebar } from './components/AdminSidebar';
 export { AdminHeader } from './components/AdminHeader';

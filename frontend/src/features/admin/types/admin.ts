@@ -1,21 +1,43 @@
-export type UserRole = 'customer' | 'provider' | 'admin';
-export type UserStatus = 'active' | 'pending' | 'suspended';
+export type UserRole = 'CUSTOMER' | 'PROVIDER' | 'ADMIN';
+export type UserStatus = 'ACTIVE' | 'DISABLED';
 
 export interface AdminUserItem {
-  id: string;
+  id: string; // UUID from backend
   fullName: string;
   email: string;
-  phoneNumber: string;
-  avatarUrl: string;
+  phone: string | null;
   role: UserRole;
   status: UserStatus;
-  joinedAt: string;
-  totalOrders: number;
-  rating?: number;
-  profession?: string;
-  city: string;
-  idCardNumber?: string;
-  bio?: string;
+  isEmailVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SpringPageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+  empty: boolean;
+}
+
+export interface CreateUserPayload {
+  fullName: string;
+  email: string;
+  phone?: string;
+  role?: UserRole;
+}
+
+export interface UpdateUserPayload {
+  fullName?: string;
+  phone?: string;
+}
+
+export interface UpdateUserStatusPayload {
+  status: UserStatus;
 }
 
 export type OrderStatus = 'new' | 'unassigned' | 'in_progress' | 'completed' | 'cancelled';
@@ -66,8 +88,8 @@ export interface AdminKpiMetric {
   icon: 'users' | 'wrench' | 'package' | 'clock' | 'user-check';
 }
 
-export type UserRoleFilter = 'all' | 'customer' | 'provider' | 'admin';
-export type UserStatusFilter = 'all' | 'active' | 'pending' | 'suspended';
+export type UserRoleFilter = 'ALL' | 'CUSTOMER' | 'PROVIDER' | 'ADMIN';
+export type UserStatusFilter = 'ALL' | 'ACTIVE' | 'DISABLED';
 export type OrderFilterTab = 'all' | 'backlog' | 'new' | 'unassigned' | 'in_progress' | 'completed' | 'cancelled';
 
 export interface AdminServiceItem {
