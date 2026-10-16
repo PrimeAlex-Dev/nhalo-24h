@@ -138,6 +138,75 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(response);
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(
+        org.springframework.http.converter.HttpMessageNotReadableException ex,
+        HttpServletRequest request
+    ) {
+        log.warn("Dữ liệu request body không đọc được hoặc sai định dạng trên path {}: {}", request.getRequestURI(), ex.getMessage());
+
+        String message = "Dữ liệu JSON không hợp lệ hoặc sai định dạng";
+        List<ErrorResponse.FieldErrorItem> details = null;
+
+        Throwable cause = ex.getCause();
+        if (cause instanceof com.fasterxml.jackson.databind.exc.InvalidFormatException ifx) {
+            String fieldName = ifx.getPath().stream()
+                .map(ref -> ref.getFieldName() != null ? ref.getFieldName() : "")
+                .filter(name -> !name.isEmpty())
+                .reduce((first, second) -> second)
+                .orElse("field");
+
+            Class<?> targetType = ifx.getTargetType();
+            if (targetType != null && targetType.isEnum()) {
+                String acceptedValues = java.util.Arrays.toString(targetType.getEnumConstants());
+                message = "Giá trị '" + ifx.getValue() + "' không hợp lệ cho trường '" + fieldName + "'. Các giá trị được chấp nhận: " + acceptedValues;
+                details = List.of(new ErrorResponse.FieldErrorItem(fieldName, "Phải là một trong các giá trị: " + acceptedValues));
+            } else {
+                message = "Giá trị '" + ifx.getValue() + "' không đúng kiểu dữ liệu cho trường '" + fieldName + "'";
+                details = List.of(new ErrorResponse.FieldErrorItem(fieldName, message));
+            }
+        }
+
+        ErrorResponse response = ErrorResponse.of(
+            HttpStatus.BAD_REQUEST.value(),
+            ErrorCode.INVALID_INPUT.name(),
+            message,
+            request.getRequestURI(),
+            details
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
+        org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex,
+        HttpServletRequest request
+    ) {
+        log.warn("Tham số request không đúng kiểu dữ liệu trên path {}: param={}, value={}", request.getRequestURI(), ex.getName(), ex.getValue());
+
+        String paramName = ex.getName();
+        Object value = ex.getValue();
+        Class<?> requiredType = ex.getRequiredType();
+
+        String message;
+        if (requiredType != null && requiredType.isEnum()) {
+            String acceptedValues = java.util.Arrays.toString(requiredType.getEnumConstants());
+            message = "Tham số '" + paramName + "' nhận giá trị '" + value + "' không hợp lệ. Các giá trị được chấp nhận: " + acceptedValues;
+        } else if (requiredType != null && requiredType.equals(java.util.UUID.class)) {
+            message = "Tham số '" + paramName + "' có giá trị '" + value + "' không phải là định dạng UUID hợp lệ";
+        } else {
+            message = "Tham số '" + paramName + "' có giá trị '" + value + "' không hợp lệ";
+        }
+
+        ErrorResponse response = ErrorResponse.of(
+            HttpStatus.BAD_REQUEST.value(),
+            ErrorCode.INVALID_INPUT.name(),
+            message,
+            request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralException(
         Exception ex,
