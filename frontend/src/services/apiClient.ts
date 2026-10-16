@@ -1,0 +1,68 @@
+/**
+ * Generic API Client wrapper around Fetch API
+ * Directly handles request formatting, JSON parsing, and Spring Boot ErrorResponse handling
+ */
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
+export interface ApiErrorResponse {
+  timestamp?: string;
+  status?: number;
+  errorCode?: string;
+  message?: string;
+  path?: string;
+  details?: Array<{ field: string; message: string }>;
+}
+
+export class ApiError extends Error {
+  status: number;
+  errorCode?: string;
+  details?: Array<{ field: string; message: string }>;
+
+  constructor(status: number, message: string, errorCode?: string, details?: Array<{ field: string; message: string }>) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.errorCode = errorCode;
+    this.details = details;
+  }
+}
+
+export async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const url = `${BASE_URL}${endpoint}`;
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    ...(options.headers || {}),
+  };
+
+  const config: RequestInit = {
+    ...options,
+    headers,
+  };
+
+  let response: Response;
+  try {
+    response = await fetch(url, config);
+  } catch (error) {
+    const errMessage = error instanceof Error ? error.message : 'Lỗi kết nối mạng';
+    throw new ApiError(0, `Không thể kết nối đến máy chủ (${errMessage}). Vui lòng kiểm tra xem backend đã được khởi chạy chưa.`);
+  }
+
+  // Handle No Content (204)
+  if (response.status === 204) {
+    return {} as T;
+  }
+
+  const isJson = response.headers.get('content-type')?.includes('application/json');
+  const data = isJson ? await response.json() : await response.text();
+
+  if (!response.ok) {
+    const errorData = data as ApiErrorResponse;
+    const errorMessage = errorData?.message || `Yêu cầu thất bại với mã lỗi HTTP ${response.status}`;
+    throw new ApiError(response.status, errorMessage, errorData?.errorCode, errorData?.details);
+  }
+
+  return data as T;
+}

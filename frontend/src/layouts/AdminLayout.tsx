@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { AdminSidebar } from '../features/admin/components/AdminSidebar';
 import { AdminHeader } from '../features/admin/components/AdminHeader';
-import { ADMIN_MOCK_ORDERS, ADMIN_MOCK_USERS } from '../features/admin/data/adminMockData';
+import { ADMIN_MOCK_ORDERS } from '../features/admin/data/adminMockData';
 import './AdminLayout.css';
 
 export interface AdminContextType {
@@ -14,7 +14,7 @@ export function AdminLayout() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Calculate dynamic badge counters for sidebar/header
-  const pendingUsersCount = ADMIN_MOCK_USERS.filter((u) => u.status === 'pending').length;
+  const pendingUsersCount = 0;
   const backlogOrdersCount = ADMIN_MOCK_ORDERS.filter((o) => o.backlogStatus !== 'normal').length;
 
   const toggleSidebar = () => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   AlertTriangle, 
@@ -16,9 +16,9 @@ import { OrderDetailModal } from '../components/OrderDetailModal';
 import { UserDetailModal } from '../components/UserDetailModal';
 import { 
   ADMIN_KPI_METRICS, 
-  ADMIN_MOCK_ORDERS, 
-  ADMIN_MOCK_USERS 
+  ADMIN_MOCK_ORDERS 
 } from '../data/adminMockData';
+import { userService } from '../../../services';
 import type { AdminOrderItem, AdminUserItem, OrderStatus } from '../types/admin';
 import { PATHS } from '../../../routes/paths';
 import './AdminDashboardPage.css';
@@ -28,16 +28,24 @@ export function AdminDashboardPage() {
 
   // State management
   const [orders, setOrders] = useState<AdminOrderItem[]>(ADMIN_MOCK_ORDERS);
-  const [users, setUsers] = useState<AdminUserItem[]>(ADMIN_MOCK_USERS);
+  const [users, setUsers] = useState<AdminUserItem[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrderItem | null>(null);
   const [selectedUser, setSelectedUser] = useState<AdminUserItem | null>(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [orderQuickFilter, setOrderQuickFilter] = useState<'all' | 'backlog'>('all');
 
-  // Filter pending providers for the approval widget
+  useEffect(() => {
+    userService.getUsers({ size: 10 }).then((res) => {
+      setUsers(res.content);
+    }).catch(() => {
+      // Backend not running or error, keep empty
+    });
+  }, []);
+
+  // Filter pending/disabled providers for the approval widget
   const pendingProviders = users.filter(
-    (u) => u.role === 'provider' && u.status === 'pending'
+    (u) => u.role === 'PROVIDER' && u.status === 'DISABLED'
   );
 
   // Filter backlogged orders
@@ -58,20 +66,23 @@ export function AdminDashboardPage() {
   };
 
   const handleApproveProvider = (userId: string) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, status: 'active' } : u))
-    );
-    if (selectedUser?.id === userId) {
-      setSelectedUser((prev) => (prev ? { ...prev, status: 'active' } : null));
-    }
+    userService.updateUserStatus(userId, { status: 'ACTIVE' }).then((updated) => {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+      if (selectedUser?.id === userId) {
+        setSelectedUser(updated);
+      }
+    }).catch(() => {});
   };
 
-  const handleToggleUserStatus = (userId: string, newStatus: AdminUserItem['status']) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, status: newStatus } : u))
-    );
-    if (selectedUser?.id === userId) {
-      setSelectedUser((prev) => (prev ? { ...prev, status: newStatus } : null));
+  const handleToggleUserStatus = async (userId: string, newStatus: AdminUserItem['status']) => {
+    try {
+      const updated = await userService.updateUserStatus(userId, { status: newStatus });
+      setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+      if (selectedUser?.id === userId) {
+        setSelectedUser(updated);
+      }
+    } catch {
+      // ignore
     }
   };
 
@@ -417,17 +428,17 @@ export function AdminDashboardPage() {
               ) : (
                 pendingProviders.map((prov) => (
                   <div key={prov.id} className="pending-provider-card">
-                    <img 
-                      src={prov.avatarUrl} 
-                      alt={prov.fullName} 
-                      className="pending-avatar" 
-                    />
+                    <div className="pending-avatar-placeholder">
+                      {prov.fullName ? prov.fullName.charAt(0).toUpperCase() : 'U'}
+                    </div>
                     <div className="pending-info">
                       <h4 className="pending-name">{prov.fullName}</h4>
                       <span className="pending-prof">
-                        <Wrench size={13} /> {prov.profession || 'Kỹ thuật viên'}
+                        <Wrench size={13} /> {prov.phone || prov.email}
                       </span>
-                      <span className="pending-date">Nộp ngày: {prov.joinedAt}</span>
+                      <span className="pending-date">
+                        Đăng ký: {new Date(prov.createdAt).toLocaleDateString('vi-VN')}
+                      </span>
                     </div>
                     <div className="pending-card-actions">
                       <button
