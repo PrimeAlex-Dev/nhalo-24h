@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import './ProviderProfilePage.css';
 import {
@@ -14,10 +14,14 @@ import {
   ShieldCheck,
   ArrowLeftRight,
   CheckCircle2,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { mockProviders } from '../data/customerMockData';
 import { PATHS } from '../../../routes/paths';
+import { providerProfileService, type PublicProviderItem } from '../../../services';
+import defaultAvatar from '../../../assets/provider_1.png';
+import type { ProviderItem } from '../types/customer';
 
 export function ProviderProfilePage() {
   const { providerId } = useParams<{ providerId: string }>();
@@ -26,13 +30,94 @@ export function ProviderProfilePage() {
   const [isBooked, setIsBooked] = useState(false);
   const [isCompared, setIsCompared] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [realProvider, setRealProvider] = useState<PublicProviderItem | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Find provider matching ID or fallback to provider-1
-  const provider = mockProviders.find((p) => p.id === providerId);
+  useEffect(() => {
+    let ignore = false;
+    async function loadProvider() {
+      if (!providerId) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const data = await providerProfileService.getPublicProviderById(providerId);
+        if (!ignore) {
+          setRealProvider(data);
+        }
+      } catch {
+        // Fallback to mock data if API fails or mock ID
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadProvider();
+    return () => {
+      ignore = true;
+    };
+  }, [providerId]);
+
+  // Derive provider: prioritize real data from database; fallback to mock data
+  const provider: ProviderItem | undefined = useMemo(() => {
+    if (realProvider) {
+      const skills = (realProvider.categories && realProvider.categories.length > 0)
+        ? realProvider.categories.map((c) => c.name)
+        : [realProvider.category || 'Dịch vụ chuyên nghiệp'];
+
+      return {
+        id: realProvider.id,
+        name: realProvider.name,
+        verified: realProvider.verified ?? true,
+        company: realProvider.headline || realProvider.company || 'Nhà Lo 24h Pro',
+        rating: realProvider.rating || 5.0,
+        reviewsCount: realProvider.reviewsCount || 0,
+        distance: realProvider.distance || '1.8 km',
+        pricePerHour: realProvider.pricePerHour || 150000,
+        category: realProvider.category || 'Dịch vụ chuyên nghiệp',
+        isTopRated: realProvider.isTopRated ?? true,
+        availability: (realProvider.availability === 'Available today' ? 'Available today' : 'Available soon') as 'Available today' | 'Available soon',
+        avatar: realProvider.avatar || defaultAvatar,
+        experienceYears: realProvider.experienceYears || 0,
+        completedJobsCount: realProvider.completedJobsCount || 'Mới tham gia',
+        responseTime: realProvider.responseTime || '~10 phút',
+        availabilityDetail: realProvider.isAvailable ? 'Sẵn sàng nhận việc hôm nay' : 'Tạm bận',
+        about: realProvider.about || 'Kỹ thuật viên đối tác tận tâm, uy tín, bảo hành dịch vụ chu đáo.',
+        skills,
+        aiInsight: 'AI Match: Tay nghề cao, phản hồi nhanh và mức giá phù hợp trong khu vực.',
+        reviews: [
+          {
+            id: 'rev-default-1',
+            author: 'Khách hàng ẩn danh',
+            avatarLetter: 'K',
+            service: realProvider.category || 'Dịch vụ kỹ thuật',
+            date: 'Gần đây',
+            rating: 5,
+            comment: 'Thợ làm việc nhanh nhẹn, tư vấn rõ ràng, rất hài lòng với chất lượng phục vụ!'
+          }
+        ]
+      };
+    }
+    return mockProviders.find((p) => p.id === providerId);
+  }, [realProvider, providerId]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [providerId]);
+
+  if (loading) {
+    return (
+      <div className="provider-not-found-container container" style={{ padding: '6rem 0' }}>
+        <div className="not-found-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+          <Loader2 size={36} className="spin-icon" style={{ color: '#1D6AE5' }} />
+          <p>Đang tải thông tin thợ từ hệ thống...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!provider) {
     return (
@@ -287,8 +372,8 @@ export function ProviderProfilePage() {
                 <div className="price-label-group">
                   <span className="starting-from-text">Starting from</span>
                   <div className="price-display">
-                    <span className="price-value">${provider.pricePerHour}</span>
-                    <span className="price-unit">/hr</span>
+                    <span className="price-value">{provider.pricePerHour > 1000 ? `${provider.pricePerHour.toLocaleString('vi-VN')} đ` : `$${provider.pricePerHour}`}</span>
+                    <span className="price-unit">{provider.pricePerHour > 1000 ? '/giờ' : '/hr'}</span>
                   </div>
                 </div>
 

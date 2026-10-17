@@ -7,10 +7,17 @@ import {
   Star, 
   MapPin, 
   Clock, 
-  ArrowLeftRight,
-  ChevronDown
+  ArrowLeftRight, 
+  ChevronDown,
+  Loader2
 } from 'lucide-react';
 import { mockProviders, providerCategoryFilters, mockCategories } from '../data/customerMockData';
+import { 
+  providerProfileService, 
+  categoryService,
+  type PublicProviderItem 
+} from '../../../services';
+import defaultAvatar from '../../../assets/provider_1.png';
 
 export function FindProviderPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,12 +25,65 @@ export function FindProviderPage() {
   const [availableTodayOnly, setAvailableTodayOnly] = useState(false);
   const [sortBy, setSortBy] = useState('Best match');
 
+  // Real data state
+  const [realProviders, setRealProviders] = useState<PublicProviderItem[]>([]);
+  const [dbCategories, setDbCategories] = useState<string[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
   const categoryParam = searchParams.get('category');
+
+  // Load real active categories and public providers from database
+  useEffect(() => {
+    let ignore = false;
+
+    async function fetchData() {
+      setLoading(true);
+      try {
+        const [providersRes, categoriesRes] = await Promise.allSettled([
+          providerProfileService.getPublicProviders(),
+          categoryService.getCategories({ status: 'ACTIVE', size: 50 }),
+        ]);
+
+        if (!ignore) {
+          if (providersRes.status === 'fulfilled' && providersRes.value) {
+            setRealProviders(providersRes.value);
+          }
+          if (categoriesRes.status === 'fulfilled' && categoriesRes.value?.content) {
+            const catNames = categoriesRes.value.content.map((c) => c.name);
+            setDbCategories(catNames);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching public providers:', err);
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchData();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  // Combined category filters (DB categories + fallback filters)
+  const categoryFilters = useMemo(() => {
+    const combined = ['All services'];
+    if (dbCategories.length > 0) {
+      combined.push(...dbCategories);
+    } else {
+      combined.push(...providerCategoryFilters.filter((c) => c !== 'All services'));
+    }
+    return Array.from(new Set(combined));
+  }, [dbCategories]);
 
   // Derive selected category from URL search params (or default to 'All services')
   const selectedCategory = useMemo(() => {
     if (!categoryParam) return 'All services';
-    const found = providerCategoryFilters.find(
+    const found = categoryFilters.find(
       (c) => c.toLowerCase() === categoryParam.trim().toLowerCase()
     );
     if (found) return found;
@@ -33,8 +93,8 @@ export function FindProviderPage() {
     );
     if (byId) return byId.title;
 
-    return 'All services';
-  }, [categoryParam]);
+    return categoryParam.trim();
+  }, [categoryParam, categoryFilters]);
 
   const handleCategorySelect = (category: string) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -50,13 +110,38 @@ export function FindProviderPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // Use real providers from database when available; fallback to mock data
+  const providersPool = useMemo(() => {
+    if (realProviders.length > 0) {
+      return realProviders.map((rp) => ({
+        id: rp.id,
+        name: rp.name,
+        verified: rp.verified ?? true,
+        company: rp.headline || rp.company || 'Nhà Lo 24h Pro',
+        rating: rp.rating || 5.0,
+        reviewsCount: rp.reviewsCount || 0,
+        distance: rp.distance || 'Gần bạn',
+        pricePerHour: rp.pricePerHour || 150000,
+        category: rp.category || (rp.categories && rp.categories.length > 0 ? rp.categories[0].name : 'Dịch vụ gia đình'),
+        isTopRated: rp.isTopRated ?? true,
+        availability: (rp.availability === 'Available today' ? 'Available today' : 'Available soon') as 'Available today' | 'Available soon',
+        avatar: rp.avatar || defaultAvatar,
+      }));
+    }
+    return mockProviders;
+  }, [realProviders]);
+
   // Filter and sort providers
   const filteredProviders = useMemo(() => {
-    return mockProviders
+    return providersPool
       .filter((provider) => {
         // Category filter
-        if (selectedCategory !== 'All services' && provider.category !== selectedCategory) {
-          return false;
+        if (selectedCategory !== 'All services') {
+          const catLower = selectedCategory.toLowerCase();
+          const pCatLower = provider.category.toLowerCase();
+          if (!pCatLower.includes(catLower) && !catLower.includes(pCatLower)) {
+            return false;
+          }
         }
 
         // Available today filter
@@ -87,16 +172,23 @@ export function FindProviderPage() {
         }
         return 0; // Default: Best match (keep order)
       });
-  }, [searchQuery, selectedCategory, availableTodayOnly, sortBy]);
+  }, [providersPool, searchQuery, selectedCategory, availableTodayOnly, sortBy]);
+
+  const formatPrice = (price: number) => {
+    if (price > 1000) {
+      return `${price.toLocaleString('vi-VN')} đ`;
+    }
+    return `$${price}`;
+  };
 
   return (
     <div className="find-provider-page">
       <div className="container">
         {/* Page Header */}
         <div className="find-provider-header">
-          <h1 className="find-provider-title">Find a provider</h1>
+          <h1 className="find-provider-title">Tìm kiếm thợ chuyên nghiệp</h1>
           <p className="find-provider-subtitle">
-            Browse verified professionals or filter by what you need.
+            Duyệt danh sách thợ đối tác thật đã xác minh và chọn người phù hợp nhất cho công việc của bạn.
           </p>
         </div>
 
@@ -106,7 +198,7 @@ export function FindProviderPage() {
           <input
             type="text"
             className="provider-search-input"
-            placeholder="Search by name, company, or service"
+            placeholder="Tìm theo tên thợ, chức danh, hoặc dịch vụ..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -114,11 +206,11 @@ export function FindProviderPage() {
 
         {/* Category Filter Pills */}
         <div className="provider-category-pills">
-          {providerCategoryFilters.map((category) => (
+          {categoryFilters.map((category) => (
             <button
               key={category}
               type="button"
-              className={`provider-pill ${selectedCategory === category ? 'active' : ''}`}
+              className={`provider-pill ${selectedCategory.toLowerCase() === category.toLowerCase() ? 'active' : ''}`}
               onClick={() => handleCategorySelect(category)}
             >
               {category}
@@ -135,26 +227,34 @@ export function FindProviderPage() {
               onChange={(e) => setAvailableTodayOnly(e.target.checked)}
               className="available-checkbox"
             />
-            <span className="available-label">Available today</span>
+            <span className="available-label">Đang sẵn sàng hôm nay</span>
           </label>
 
           <div className="provider-sort-container">
-            <span className="sort-by-text">Sort by</span>
+            <span className="sort-by-text">Sắp xếp theo</span>
             <div className="sort-select-wrapper">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className="sort-select"
               >
-                <option value="Best match">Best match</option>
-                <option value="Highest rating">Highest rating</option>
-                <option value="Price: Low to High">Price: Low to High</option>
-                <option value="Price: High to Low">Price: High to Low</option>
+                <option value="Best match">Phù hợp nhất</option>
+                <option value="Highest rating">Đánh giá cao nhất</option>
+                <option value="Price: Low to High">Giá: Thấp đến Cao</option>
+                <option value="Price: High to Low">Giá: Cao đến Thấp</option>
               </select>
               <ChevronDown size={14} className="sort-chevron-icon" />
             </div>
           </div>
         </div>
+
+        {/* Loading state indicator */}
+        {loading && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '1rem', color: '#64748B' }}>
+            <Loader2 size={20} className="spin-icon" />
+            <span>Đang tải danh sách thợ từ hệ thống...</span>
+          </div>
+        )}
 
         {/* Providers Grid */}
         <div className="providers-grid">
@@ -202,8 +302,8 @@ export function FindProviderPage() {
                 </div>
 
                 <div className="provider-price-box">
-                  <span className="price-prefix">from</span>
-                  <span className="price-rate">${provider.pricePerHour}<span className="price-unit">/hr</span></span>
+                  <span className="price-prefix">từ</span>
+                  <span className="price-rate">{formatPrice(provider.pricePerHour)}<span className="price-unit">/giờ</span></span>
                 </div>
               </div>
 
@@ -211,7 +311,7 @@ export function FindProviderPage() {
               <div className="provider-tags-row">
                 <span className="provider-tag service-tag">{provider.category}</span>
                 {provider.isTopRated && (
-                  <span className="provider-tag top-rated-tag">Top rated</span>
+                  <span className="provider-tag top-rated-tag">Đánh giá tốt</span>
                 )}
               </div>
 
@@ -220,12 +320,12 @@ export function FindProviderPage() {
                 {provider.availability === 'Available today' ? (
                   <div className="availability-pill available-today">
                     <Clock size={13} />
-                    <span>Available today</span>
+                    <span>Sẵn sàng hôm nay</span>
                   </div>
                 ) : (
                   <div className="availability-pill available-soon">
                     <Clock size={13} />
-                    <span>Available soon</span>
+                    <span>Sắp rảnh</span>
                   </div>
                 )}
               </div>
@@ -236,7 +336,7 @@ export function FindProviderPage() {
                   to={`/customer/providers/${provider.id}`}
                   className="provider-action-btn view-profile-btn"
                 >
-                  View Profile
+                  Xem hồ sơ
                 </Link>
                 <button
                   type="button"
@@ -244,7 +344,7 @@ export function FindProviderPage() {
                   onClick={(e) => e.preventDefault()}
                 >
                   <ArrowLeftRight size={15} />
-                  <span>Compare</span>
+                  <span>So sánh</span>
                 </button>
               </div>
             </div>
@@ -252,9 +352,9 @@ export function FindProviderPage() {
         </div>
 
         {/* Empty State */}
-        {filteredProviders.length === 0 && (
+        {!loading && filteredProviders.length === 0 && (
           <div className="no-providers-found">
-            <p>No providers found matching your criteria.</p>
+            <p>Không tìm thấy thợ nào phù hợp với tiêu chí tìm kiếm.</p>
             <button
               type="button"
               className="reset-filters-btn"
@@ -264,7 +364,7 @@ export function FindProviderPage() {
                 setAvailableTodayOnly(false);
               }}
             >
-              Reset filters
+              Đặt lại bộ lọc
             </button>
           </div>
         )}
