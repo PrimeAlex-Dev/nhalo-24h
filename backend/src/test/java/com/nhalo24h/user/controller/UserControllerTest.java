@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -26,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@WithMockUser(roles = "ADMIN")
 class UserControllerTest {
 
     @Autowired
@@ -49,7 +51,8 @@ class UserControllerTest {
             "Nguyễn Văn An",
             "An.Nguyen@Example.com",
             "0901234567",
-            null
+            null,
+            "Pass1234"
         );
 
         mockMvc.perform(post("/api/v1/users")
@@ -69,6 +72,64 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("UC-USER-01: Tạo user kèm mật khẩu thành công -> 201 Created và mật khẩu được mã hóa BCrypt")
+    void createUser_WithPassword_ShouldReturn201AndHashPassword() throws Exception {
+        CreateUserRequest request = new CreateUserRequest(
+            "Lê Văn Mật Khẩu",
+            "pass.user@example.com",
+            "0912345678",
+            UserRole.CUSTOMER,
+            "Secret123@"
+        );
+
+        mockMvc.perform(post("/api/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.email").value("pass.user@example.com"));
+
+        User savedUser = userRepository.findByEmailIgnoreCase("pass.user@example.com").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertTrue(savedUser.hasPassword());
+    }
+
+    @Test
+    @DisplayName("UC-USER-01: Tạo user với mật khẩu không đúng quy tắc (dưới 8 hoặc trên 12 ký tự, thiếu hoa/thường/số) -> 400 Bad Request")
+    void createUser_WithInvalidPassword_ShouldReturn400() throws Exception {
+        // Quá ngắn (< 8)
+        CreateUserRequest shortPass = new CreateUserRequest("Lê A", "a@example.com", "0912345678", UserRole.CUSTOMER, "Pass1");
+        mockMvc.perform(post("/api/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(shortPass)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errorCode").value("INVALID_INPUT"));
+
+        // Quá dài (> 12)
+        CreateUserRequest longPass = new CreateUserRequest("Lê B", "b@example.com", "0912345678", UserRole.CUSTOMER, "LongPass1234567");
+        mockMvc.perform(post("/api/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(longPass)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errorCode").value("INVALID_INPUT"));
+
+        // Thiếu chữ hoa
+        CreateUserRequest noUpper = new CreateUserRequest("Lê C", "c@example.com", "0912345678", UserRole.CUSTOMER, "password123");
+        mockMvc.perform(post("/api/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(noUpper)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errorCode").value("INVALID_INPUT"));
+
+        // Thiếu số
+        CreateUserRequest noDigit = new CreateUserRequest("Lê D", "d@example.com", "0912345678", UserRole.CUSTOMER, "PasswordAbc");
+        mockMvc.perform(post("/api/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(noDigit)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errorCode").value("INVALID_INPUT"));
+    }
+
+    @Test
     @DisplayName("UC-USER-01: Tạo user thất bại khi email đã tồn tại (không phân biệt hoa/thường) -> 409 Conflict")
     void createUser_WithDuplicateEmail_ShouldReturn409() throws Exception {
         User existing = new User("Trần Thị B", "tranthib@example.com", "0911222333", UserRole.CUSTOMER);
@@ -78,7 +139,8 @@ class UserControllerTest {
             "Trần B Mới",
             "TRANTHIB@EXAMPLE.COM",
             "0988777666",
-            UserRole.CUSTOMER
+            UserRole.CUSTOMER,
+            "Pass1234"
         );
 
         mockMvc.perform(post("/api/v1/users")
@@ -99,7 +161,8 @@ class UserControllerTest {
             "Người Mới",
             "nguoimoi@example.com",
             "0909999888",
-            UserRole.PROVIDER
+            UserRole.PROVIDER,
+            "Pass1234"
         );
 
         mockMvc.perform(post("/api/v1/users")
@@ -223,7 +286,7 @@ class UserControllerTest {
     @DisplayName("Tạo user thất bại khi số điện thoại không đúng 10 chữ số -> 400 Bad Request")
     void createUser_WithInvalidPhone_ShouldReturn400() throws Exception {
         // Test phone chỉ có 8 số
-        CreateUserRequest request1 = new CreateUserRequest("User Test", "testphone1@example.com", "09012345", null);
+        CreateUserRequest request1 = new CreateUserRequest("User Test", "testphone1@example.com", "09012345", null, "Pass1234");
         mockMvc.perform(post("/api/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request1)))
@@ -232,7 +295,7 @@ class UserControllerTest {
             .andExpect(jsonPath("$.details[0].field").value("phone"));
 
         // Test phone có chữ cái
-        CreateUserRequest request2 = new CreateUserRequest("User Test", "testphone2@example.com", "090123456a", null);
+        CreateUserRequest request2 = new CreateUserRequest("User Test", "testphone2@example.com", "090123456a", null, "Pass1234");
         mockMvc.perform(post("/api/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request2)))
@@ -242,13 +305,26 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("UC-USER-01: Tạo user thất bại khi thiếu mật khẩu -> 400 Bad Request")
+    void createUser_WithoutPassword_ShouldReturn400() throws Exception {
+        CreateUserRequest request = new CreateUserRequest("User No Pass", "nopass@example.com", null, null, null);
+        mockMvc.perform(post("/api/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errorCode").value("INVALID_INPUT"))
+            .andExpect(jsonPath("$.details[0].field").value("password"));
+    }
+
+    @Test
     @DisplayName("Tạo user thất bại khi role không hợp lệ -> 400 Bad Request thay vì 500")
     void createUser_WithInvalidRole_ShouldReturn400() throws Exception {
         String invalidJson = """
             {
                 "fullName": "User Role Sai",
                 "email": "rolesai@example.com",
-                "role": "SUPER_ADMIN"
+                "role": "SUPER_ADMIN",
+                "password": "Pass1234"
             }
             """;
 

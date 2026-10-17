@@ -32,6 +32,9 @@ public class User {
     @Column(name = "phone", length = 20)
     private String phone;
 
+    @Column(name = "password_hash")
+    private String passwordHash;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 20)
     private UserRole role;
@@ -154,6 +157,18 @@ public class User {
 
     public void setEmailVerified(boolean emailVerified) {
         isEmailVerified = emailVerified;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public boolean hasPassword() {
+        return passwordHash != null && !passwordHash.isBlank();
     }
 
     public Instant getCreatedAt() {

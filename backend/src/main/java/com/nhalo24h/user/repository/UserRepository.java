@@ -16,6 +16,8 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     boolean existsByPhoneAndIdNot(String phone, UUID id);
 
+    boolean existsByRole(com.nhalo24h.user.domain.UserRole role);
+
     Optional<User> findByEmailIgnoreCase(String email);
 
     Optional<User> findByPhone(String phone);

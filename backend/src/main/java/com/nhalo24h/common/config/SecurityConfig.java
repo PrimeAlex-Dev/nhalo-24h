@@ -41,10 +41,16 @@ public class SecurityConfig {
 
     private final CorsProperties corsProperties;
     private final ObjectMapper objectMapper;
+    private final com.nhalo24h.auth.jwt.JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    public SecurityConfig(CorsProperties corsProperties, ObjectMapper objectMapper) {
+    public SecurityConfig(
+        CorsProperties corsProperties,
+        ObjectMapper objectMapper,
+        com.nhalo24h.auth.jwt.JwtAuthenticationFilter jwtAuthenticationFilter
+    ) {
         this.corsProperties = corsProperties;
         this.objectMapper = objectMapper;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
     @Bean
@@ -68,14 +74,22 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/v1/health"
                 ).permitAll()
-                // Giai đoạn phát triển nội bộ: Công khai User & Category Management API
+                // Công khai các endpoint Authentication (Login, Logout)
                 .requestMatchers(
-                    "/api/v1/users/**",
-                    "/api/v1/service-categories/**"
+                    "/api/v1/auth/login",
+                    "/api/v1/auth/logout"
                 ).permitAll()
+                // Danh mục dịch vụ: Khách xem công khai (GET), thao tác tạo/sửa (POST, PATCH) chỉ dành cho ADMIN
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/service-categories", "/api/v1/service-categories/**").permitAll()
+                .requestMatchers("/api/v1/service-categories/**").hasRole("ADMIN")
+                // Quản lý người dùng: Toàn bộ API chỉ dành cho Quản trị viên (ADMIN)
+                .requestMatchers("/api/v1/users/**").hasRole("ADMIN")
+                // Xem thông tin cá nhân: Bất kỳ vai trò nào đã đăng nhập
+                .requestMatchers("/api/v1/auth/me").authenticated()
                 // Mọi API nghiệp vụ còn lại đều yêu cầu xác thực
                 .anyRequest().authenticated()
-            );
+            )
+            .addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

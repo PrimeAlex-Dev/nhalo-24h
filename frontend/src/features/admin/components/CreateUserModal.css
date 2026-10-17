@@ -120,6 +120,35 @@
   box-shadow: 0 0 0 3px rgba(29, 106, 229, 0.15);
 }
 
+.create-user-password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.create-user-password-wrap .create-user-input {
+  width: 100%;
+  padding-right: 2.5rem;
+}
+
+.btn-toggle-password {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.btn-toggle-password:hover {
+  color: #0f172a;
+}
+
 .create-user-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, UserPlus, AlertCircle } from 'lucide-react';
+import { X, UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import type { CreateUserPayload, UserRole } from '../types/admin';
 import './CreateUserModal.css';
 
@@ -12,6 +12,8 @@ interface CreateUserModalProps {
 export function CreateUserModal({ isOpen, onClose, onCreate }: CreateUserModalProps) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<UserRole>('CUSTOMER');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,6 +28,7 @@ export function CreateUserModal({ isOpen, onClose, onCreate }: CreateUserModalPr
     const trimmedName = fullName.trim();
     const trimmedEmail = email.trim();
     const trimmedPhone = phone.trim();
+    const trimmedPassword = password.trim();
 
     if (!trimmedName) {
       setErrorMsg('Vui lòng nhập họ và tên');
@@ -35,8 +38,20 @@ export function CreateUserModal({ isOpen, onClose, onCreate }: CreateUserModalPr
       setErrorMsg('Vui lòng nhập địa chỉ email');
       return;
     }
-    if (trimmedPhone && !/^0[0-9]{9}$/.test(trimmedPhone)) {
+    if (!trimmedPhone && !/^0[0-9]{9}$/.test(trimmedPhone)) {
+      // no phone
+    } else if (trimmedPhone && !/^0[0-9]{9}$/.test(trimmedPhone)) {
       setErrorMsg('Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0');
+      return;
+    }
+
+    if (!trimmedPassword) {
+      setErrorMsg('Vui lòng nhập mật khẩu cho tài khoản');
+      return;
+    }
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,12}$/;
+    if (!passwordRegex.test(trimmedPassword)) {
+      setErrorMsg('Mật khẩu phải từ 8 đến 12 ký tự, bao gồm ít nhất một chữ hoa, một chữ thường và một chữ số');
       return;
     }
 
@@ -47,6 +62,7 @@ export function CreateUserModal({ isOpen, onClose, onCreate }: CreateUserModalPr
         email: trimmedEmail,
         phone: trimmedPhone ? trimmedPhone : undefined,
         role,
+        password: trimmedPassword,
       });
       onClose();
     } catch (err) {
@@ -122,6 +138,33 @@ export function CreateUserModal({ isOpen, onClose, onCreate }: CreateUserModalPr
                 maxLength={255}
                 required
               />
+            </div>
+
+            <div className="create-user-field">
+              <label htmlFor="create-password" className="create-user-label">
+                Mật khẩu đăng nhập <span className="text-red-500">*</span>
+              </label>
+              <div className="create-user-password-wrap">
+                <input
+                  id="create-password"
+                  type={showPassword ? 'text' : 'password'}
+                  className="create-user-input"
+                  placeholder="8-12 ký tự, gồm chữ hoa, thường và số"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  maxLength={12}
+                  required
+                />
+                <button
+                  type="button"
+                  className="btn-toggle-password"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <span className="create-user-hint">Mật khẩu từ 8-12 ký tự, bắt buộc có chữ hoa, chữ thường và số</span>
             </div>
 
             <div className="create-user-grid-2">
