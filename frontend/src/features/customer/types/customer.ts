@@ -11,7 +11,41 @@ export interface UserAddress {
   id: string;
   label: string;
   fullAddress: string;
+  isDefault: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateCustomerAddressRequest {
+  label: string;
+  fullAddress: string;
   isDefault?: boolean;
+}
+
+export interface UpdateCustomerAddressRequest {
+  label: string;
+  fullAddress: string;
+  isDefault?: boolean;
+}
+
+export type GenderType = 'MALE' | 'FEMALE' | 'OTHER';
+
+export interface CustomerProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  gender?: GenderType | null;
+  address?: string | null;
+  role: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface UpdateCustomerProfileRequest {
+  fullName: string;
+  gender?: GenderType | null;
+  address?: string | null;
 }
 
 export interface UserProfile {

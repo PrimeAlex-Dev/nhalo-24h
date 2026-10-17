@@ -19,26 +19,43 @@ import {
   AdminServicesPage
 } from '../features/admin';
 import { PATHS } from './paths';
+import { ProtectedRoute, GuestRoute } from './AuthGuards';
 
 const router = createBrowserRouter([
-  // Authentication Routes (Standalone full-page experience)
+  // Authentication Routes (Standalone full-page experience, Guest only)
   {
     path: PATHS.AUTH.LOGIN,
-    element: <LoginPage />,
+    element: (
+      <GuestRoute>
+        <LoginPage />
+      </GuestRoute>
+    ),
   },
   {
     path: PATHS.AUTH.REGISTER,
-    element: <RegisterPage />,
+    element: (
+      <GuestRoute>
+        <RegisterPage />
+      </GuestRoute>
+    ),
   },
   {
     path: '/sign-in',
-    element: <LoginPage />,
+    element: (
+      <GuestRoute>
+        <LoginPage />
+      </GuestRoute>
+    ),
   },
   {
     path: '/sign-up',
-    element: <RegisterPage />,
+    element: (
+      <GuestRoute>
+        <RegisterPage />
+      </GuestRoute>
+    ),
   },
-  // Landing Page Route (Guest)
+  // Landing Page Route (Guest / Public)
   {
     path: PATHS.HOME,
     element: <LandingLayout />,
@@ -52,7 +69,11 @@ const router = createBrowserRouter([
 
   // Customer Module Routes (Authenticated Portal with CustomerLayout)
   {
-    element: <CustomerLayout />,
+    element: (
+      <ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN']}>
+        <CustomerLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         path: PATHS.CUSTOMER.ROOT,
@@ -105,7 +126,11 @@ const router = createBrowserRouter([
   // Provider Module Routes (Dedicated Partner Portal with ProviderLayout)
   {
     path: PATHS.PROVIDER.ROOT,
-    element: <ProviderLayout />,
+    element: (
+      <ProtectedRoute allowedRoles={['PROVIDER', 'ADMIN']}>
+        <ProviderLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
@@ -133,7 +158,11 @@ const router = createBrowserRouter([
   // Admin Module Routes (Dedicated Dashboard Portal with AdminLayout)
   {
     path: PATHS.ADMIN.ROOT,
-    element: <AdminLayout />,
+    element: (
+      <ProtectedRoute allowedRoles={['ADMIN']}>
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,

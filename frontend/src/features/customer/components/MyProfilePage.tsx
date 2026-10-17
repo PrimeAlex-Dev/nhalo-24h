@@ -15,32 +15,49 @@ import {
   Lock,
   Smartphone,
   Mail,
-  Phone
+  Phone,
+  AlertCircle,
+  Loader2,
+  Pencil
 } from 'lucide-react';
-import { mockCurrentUser } from '../data/customerMockData';
-import type { UserAddress } from '../types/customer';
+import type { UserAddress, GenderType, CustomerProfile } from '../types/customer';
+import { customerProfileService } from '../../../services/customerProfileService';
+import { customerAddressService } from '../../../services/customerAddressService';
+import { useAuth } from '../../auth/useAuth';
 import { PATHS } from '../../../routes/paths';
 
 type ModalTab = 'info' | 'address' | 'security' | 'notifications' | null;
 
 export function MyProfilePage() {
   const navigate = useNavigate();
+  const { user, refreshUser } = useAuth();
 
   // Active modal
   const [activeTab, setActiveTab] = useState<ModalTab>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Profile Form State
-  const [fullName, setFullName] = useState(mockCurrentUser.name);
-  const [phone, setPhone] = useState(mockCurrentUser.phone || '0912 345 678');
-  const [email, setEmail] = useState(mockCurrentUser.email || 'nguyenvana@gmail.com');
-  const [gender, setGender] = useState('male');
+  // Profile API State
+  const [, setProfile] = useState<CustomerProfile | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true);
+  const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Address State
-  const [addresses, setAddresses] = useState<UserAddress[]>(mockCurrentUser.addresses || []);
-  const [isAddingAddress, setIsAddingAddress] = useState(false);
-  const [newLabel, setNewLabel] = useState('');
-  const [newAddress, setNewAddress] = useState('');
+  // Profile Form State
+  const [fullName, setFullName] = useState<string>(user?.fullName || '');
+  const [phone, setPhone] = useState<string>(user?.phone || '');
+  const [email, setEmail] = useState<string>(user?.email || '');
+  const [gender, setGender] = useState<GenderType | null>(null);
+
+  // Address State (Real Address Book)
+  const [addresses, setAddresses] = useState<UserAddress[]>([]);
+  const [isLoadingAddresses, setIsLoadingAddresses] = useState<boolean>(false);
+  const [isAddingAddress, setIsAddingAddress] = useState<boolean>(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [newLabel, setNewLabel] = useState<string>('');
+  const [newAddress, setNewAddress] = useState<string>('');
+  const [newIsDefault, setNewIsDefault] = useState<boolean>(false);
+  const [isSavingAddress, setIsSavingAddress] = useState<boolean>(false);
+  const [addressFormError, setAddressFormError] = useState<string | null>(null);
 
   // Password State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -53,9 +70,60 @@ export function MyProfilePage() {
   const [notifyPromos, setNotifyPromos] = useState(false);
   const [notifyEmails, setNotifyEmails] = useState(true);
 
+  const fetchAddresses = async () => {
+    try {
+      setIsLoadingAddresses(true);
+      const data = await customerAddressService.getAddresses();
+      setAddresses(data);
+    } catch (error) {
+      console.error('Lỗi khi tải danh sách địa chỉ:', error);
+    } finally {
+      setIsLoadingAddresses(false);
+    }
+  };
+
+  // Fetch real profile & addresses from backend
   useEffect(() => {
+    let isMounted = true;
+
+    const fetchCustomerData = async () => {
+      try {
+        setIsLoadingProfile(true);
+        const [profileData, addressesData] = await Promise.all([
+          customerProfileService.getProfile(),
+          customerAddressService.getAddresses()
+        ]);
+        if (isMounted) {
+          setProfile(profileData);
+          setFullName(profileData.fullName || '');
+          setEmail(profileData.email || '');
+          setPhone(profileData.phone || '');
+          setGender(profileData.gender || null);
+          setAddresses(addressesData);
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.error('Lỗi khi tải dữ liệu người dùng:', error);
+          if (user) {
+            setFullName(user.fullName || '');
+            setEmail(user.email || '');
+            setPhone(user.phone || '');
+          }
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingProfile(false);
+        }
+      }
+    };
+
+    void fetchCustomerData();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -64,31 +132,128 @@ export function MyProfilePage() {
     }, 3500);
   };
 
-  const handleSaveInfo = (e: React.FormEvent) => {
+  const handleSaveInfo = async (e: React.FormEvent) => {
     e.preventDefault();
-    setActiveTab(null);
-    triggerToast('Đã lưu thông tin cá nhân thành công!');
+    if (!fullName.trim()) {
+      setFormError('Họ và tên không được để trống');
+      return;
+    }
+
+    try {
+      setIsSavingProfile(true);
+      setFormError(null);
+
+      const updated = await customerProfileService.updateProfile({
+        fullName: fullName.trim(),
+        gender: gender || null,
+      });
+
+      setProfile(updated);
+      setFullName(updated.fullName);
+      setGender(updated.gender || null);
+
+      // Đồng bộ lại tên với header và navbar thông qua AuthContext
+      await refreshUser();
+
+      setActiveTab(null);
+      triggerToast('Đã lưu thông tin cá nhân thành công!');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Không thể lưu thông tin cá nhân';
+      setFormError(msg);
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
-  const handleAddAddress = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAddress.trim()) return;
-    const item: UserAddress = {
-      id: `addr-${Date.now()}`,
-      label: newLabel.trim() || 'Địa chỉ khác',
-      fullAddress: newAddress.trim(),
-      isDefault: addresses.length === 0
-    };
-    setAddresses([...addresses, item]);
+  const handleStartAddAddress = () => {
+    setEditingAddressId(null);
     setNewLabel('');
     setNewAddress('');
-    setIsAddingAddress(false);
-    triggerToast('Đã thêm địa chỉ mới vào sổ địa chỉ!');
+    setNewIsDefault(addresses.length === 0);
+    setAddressFormError(null);
+    setIsAddingAddress(true);
   };
 
-  const handleDeleteAddress = (id: string) => {
-    setAddresses(addresses.filter((a) => a.id !== id));
-    triggerToast('Đã xóa địa chỉ thành công.');
+  const handleStartEditAddress = (item: UserAddress) => {
+    setEditingAddressId(item.id);
+    setNewLabel(item.label);
+    setNewAddress(item.fullAddress);
+    setNewIsDefault(item.isDefault);
+    setAddressFormError(null);
+    setIsAddingAddress(true);
+  };
+
+  const handleCancelAddressForm = () => {
+    setIsAddingAddress(false);
+    setEditingAddressId(null);
+    setAddressFormError(null);
+  };
+
+  const handleSaveAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLabel.trim()) {
+      setAddressFormError('Vui lòng nhập tên gợi nhớ cho địa chỉ');
+      return;
+    }
+    if (!newAddress.trim()) {
+      setAddressFormError('Vui lòng nhập địa chỉ chi tiết');
+      return;
+    }
+
+    try {
+      setIsSavingAddress(true);
+      setAddressFormError(null);
+
+      if (editingAddressId) {
+        await customerAddressService.updateAddress(editingAddressId, {
+          label: newLabel.trim(),
+          fullAddress: newAddress.trim(),
+          isDefault: newIsDefault,
+        });
+        triggerToast('Đã cập nhật địa chỉ thành công!');
+      } else {
+        await customerAddressService.createAddress({
+          label: newLabel.trim(),
+          fullAddress: newAddress.trim(),
+          isDefault: newIsDefault,
+        });
+        triggerToast('Đã thêm địa chỉ mới vào sổ địa chỉ!');
+      }
+
+      await fetchAddresses();
+      handleCancelAddressForm();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Không thể lưu địa chỉ';
+      setAddressFormError(msg);
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
+
+  const handleDeleteAddress = async (id: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa địa chỉ này khỏi sổ địa chỉ?')) {
+      return;
+    }
+
+    try {
+      await customerAddressService.deleteAddress(id);
+      await fetchAddresses();
+      triggerToast('Đã xóa địa chỉ thành công.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Không thể xóa địa chỉ';
+      triggerToast(`Lỗi: ${msg}`);
+    }
+  };
+
+  const handleSetDefaultAddress = async (id: string) => {
+    try {
+      await customerAddressService.setDefaultAddress(id);
+      await fetchAddresses();
+      triggerToast('Đã đặt làm địa chỉ mặc định thành công!');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Không thể đặt làm địa chỉ mặc định';
+      triggerToast(`Lỗi: ${msg}`);
+    }
   };
 
   const handleUpdatePassword = (e: React.FormEvent) => {
@@ -148,9 +313,11 @@ export function MyProfilePage() {
           </div>
 
           <div className="profile-user-meta">
-            <h1 className="profile-user-name">{fullName}</h1>
+            <h1 className="profile-user-name">
+              {isLoadingProfile ? 'Đang tải...' : (fullName || user?.fullName || 'Khách hàng')}
+            </h1>
             <p className="profile-user-role">
-              {mockCurrentUser.role || 'Tài khoản khách hàng'}
+              Tài khoản khách hàng {email ? `• ${email}` : ''}
             </p>
           </div>
         </div>
@@ -205,7 +372,9 @@ export function MyProfilePage() {
 
             <div className="action-card-body">
               <h3 className="action-card-title">Sổ địa chỉ</h3>
-              <p className="action-card-desc">Địa chỉ đã lưu</p>
+              <p className="action-card-desc">
+                {addresses.length > 0 ? `${addresses.length} địa chỉ đã lưu` : 'Thêm và quản lý địa chỉ'}
+              </p>
             </div>
           </div>
 
@@ -283,10 +452,17 @@ export function MyProfilePage() {
 
             <div className="modal-header">
               <h2 className="modal-title">Thông tin cá nhân</h2>
-              <p className="modal-subtitle">Quản lý họ tên, số điện thoại và email liên hệ</p>
+              <p className="modal-subtitle">Quản lý họ tên, giới tính và địa chỉ liên hệ</p>
             </div>
 
             <form onSubmit={handleSaveInfo} className="modal-form">
+              {formError && (
+                <div className="profile-error-alert" role="alert">
+                  <AlertCircle size={16} />
+                  <span>{formError}</span>
+                </div>
+              )}
+
               <div className="form-group">
                 <label className="form-label" htmlFor="fullNameInput">Họ và tên</label>
                 <input
@@ -295,6 +471,7 @@ export function MyProfilePage() {
                   className="form-input"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Nhập họ và tên đầy đủ"
                   required
                 />
               </div>
@@ -307,11 +484,15 @@ export function MyProfilePage() {
                     id="phoneInput"
                     type="tel"
                     className="form-input has-icon"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    required
+                    value={phone || ''}
+                    disabled
+                    aria-readonly="true"
                   />
+                  <span className="input-lock-tag">
+                    <Lock size={12} /> Cố định
+                  </span>
                 </div>
+                <span className="form-field-hint">Số điện thoại dùng để nhận tin SMS xác thực, không thể tự sửa.</span>
               </div>
 
               <div className="form-group">
@@ -323,10 +504,14 @@ export function MyProfilePage() {
                     type="email"
                     className="form-input has-icon"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
+                    disabled
+                    aria-readonly="true"
                   />
+                  <span className="input-lock-tag">
+                    <Lock size={12} /> Cố định
+                  </span>
                 </div>
+                <span className="form-field-hint">Email định danh tài khoản đăng nhập, không thể tự sửa.</span>
               </div>
 
               <div className="form-group">
@@ -336,9 +521,9 @@ export function MyProfilePage() {
                     <input
                       type="radio"
                       name="gender"
-                      value="male"
-                      checked={gender === 'male'}
-                      onChange={() => setGender('male')}
+                      value="MALE"
+                      checked={gender === 'MALE'}
+                      onChange={() => setGender('MALE')}
                     />
                     <span>Nam</span>
                   </label>
@@ -346,9 +531,9 @@ export function MyProfilePage() {
                     <input
                       type="radio"
                       name="gender"
-                      value="female"
-                      checked={gender === 'female'}
-                      onChange={() => setGender('female')}
+                      value="FEMALE"
+                      checked={gender === 'FEMALE'}
+                      onChange={() => setGender('FEMALE')}
                     />
                     <span>Nữ</span>
                   </label>
@@ -356,9 +541,9 @@ export function MyProfilePage() {
                     <input
                       type="radio"
                       name="gender"
-                      value="other"
-                      checked={gender === 'other'}
-                      onChange={() => setGender('other')}
+                      value="OTHER"
+                      checked={gender === 'OTHER'}
+                      onChange={() => setGender('OTHER')}
                     />
                     <span>Khác</span>
                   </label>
@@ -369,12 +554,22 @@ export function MyProfilePage() {
                 <button
                   type="button"
                   className="btn-cancel"
-                  onClick={() => setActiveTab(null)}
+                  onClick={() => {
+                    setFormError(null);
+                    setActiveTab(null);
+                  }}
+                  disabled={isSavingProfile}
                 >
                   Hủy
                 </button>
-                <button type="submit" className="btn-primary-action">
-                  Lưu thay đổi
+                <button type="submit" className="btn-primary-action" disabled={isSavingProfile}>
+                  {isSavingProfile ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <Loader2 size={15} className="animate-spin" /> Đang lưu...
+                    </span>
+                  ) : (
+                    'Lưu thay đổi'
+                  )}
                 </button>
               </div>
             </form>
@@ -402,84 +597,146 @@ export function MyProfilePage() {
 
             <div className="modal-header">
               <h2 className="modal-title">Sổ địa chỉ</h2>
-              <p className="modal-subtitle">Danh sách địa chỉ nhà để thợ tiện đến sửa chữa</p>
+              <p className="modal-subtitle">Danh sách địa chỉ để thợ tiện đến phục vụ và sửa chữa</p>
             </div>
 
             <div className="modal-body-scroll">
-              <div className="address-list">
-                {addresses.map((item) => (
-                  <div key={item.id} className="address-card-item">
-                    <div className="address-item-left">
-                      <div className="address-item-title-row">
-                        <MapPin size={16} className="address-pin-icon" />
-                        <span className="address-label">{item.label}</span>
-                        {item.isDefault && (
-                          <span className="default-badge">Mặc định</span>
-                        )}
-                      </div>
-                      <p className="address-full-text">{item.fullAddress}</p>
-                    </div>
+              {addressFormError && (
+                <div className="profile-error-alert" role="alert">
+                  <AlertCircle size={16} />
+                  <span>{addressFormError}</span>
+                </div>
+              )}
 
-                    <button
-                      type="button"
-                      className="btn-delete-addr"
-                      onClick={() => handleDeleteAddress(item.id)}
-                      title="Xóa địa chỉ"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {isAddingAddress ? (
-                <form onSubmit={handleAddAddress} className="add-address-form">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="newLabelInput">Tên gợi nhớ</label>
-                    <input
-                      id="newLabelInput"
-                      type="text"
-                      className="form-input"
-                      placeholder="Ví dụ: Nhà riêng, Căn hộ chung cư, Công ty..."
-                      value={newLabel}
-                      onChange={(e) => setNewLabel(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="newAddressInput">Địa chỉ chi tiết</label>
-                    <textarea
-                      id="newAddressInput"
-                      className="form-textarea"
-                      placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố"
-                      rows={2}
-                      value={newAddress}
-                      onChange={(e) => setNewAddress(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="form-actions-inline">
-                    <button
-                      type="button"
-                      className="btn-cancel-sm"
-                      onClick={() => setIsAddingAddress(false)}
-                    >
-                      Hủy
-                    </button>
-                    <button type="submit" className="btn-save-sm">
-                      Lưu địa chỉ
-                    </button>
-                  </div>
-                </form>
+              {isLoadingAddresses ? (
+                <div className="profile-loading-skeleton">
+                  <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
+                  <p>Đang tải danh sách địa chỉ...</p>
+                </div>
               ) : (
-                <button
-                  type="button"
-                  className="btn-add-address-trigger"
-                  onClick={() => setIsAddingAddress(true)}
-                >
-                  <Plus size={16} />
-                  <span>Thêm địa chỉ mới</span>
-                </button>
+                <>
+                  {addresses.length === 0 && !isAddingAddress && (
+                    <div className="address-empty-state">
+                      <MapPin size={28} style={{ margin: '0 auto 8px', color: '#94A3B8' }} />
+                      <p style={{ fontWeight: 600, color: '#334155', marginBottom: 4 }}>Chưa có địa chỉ nào được lưu</p>
+                      <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>
+                        Thêm địa chỉ ngay để tiện chọn nhanh khi đặt dịch vụ sửa chữa.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="address-list">
+                    {addresses.map((item) => (
+                      <div key={item.id} className="address-card-item">
+                        <div className="address-item-left">
+                          <div className="address-item-title-row">
+                            <MapPin size={16} className="address-pin-icon" />
+                            <span className="address-label">{item.label}</span>
+                            {item.isDefault && (
+                              <span className="default-badge">Mặc định</span>
+                            )}
+                          </div>
+                          <p className="address-full-text">{item.fullAddress}</p>
+                        </div>
+
+                        <div className="address-item-actions">
+                          {!item.isDefault && (
+                            <button
+                              type="button"
+                              className="btn-set-default"
+                              onClick={() => void handleSetDefaultAddress(item.id)}
+                              title="Đặt làm địa chỉ mặc định"
+                            >
+                              Đặt mặc định
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn-edit-addr"
+                            onClick={() => handleStartEditAddress(item)}
+                            title="Chỉnh sửa địa chỉ"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-delete-addr"
+                            onClick={() => void handleDeleteAddress(item.id)}
+                            title="Xóa địa chỉ"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {isAddingAddress ? (
+                    <form onSubmit={(e) => void handleSaveAddress(e)} className="add-address-form">
+                      <h4 style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>
+                        {editingAddressId ? 'Chỉnh sửa địa chỉ' : 'Thêm địa chỉ mới'}
+                      </h4>
+
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="newLabelInput">Tên gợi nhớ</label>
+                        <input
+                          id="newLabelInput"
+                          type="text"
+                          className="form-input"
+                          placeholder="Ví dụ: Nhà riêng, Căn hộ chung cư, Công ty..."
+                          value={newLabel}
+                          onChange={(e) => setNewLabel(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="newAddressInput">Địa chỉ chi tiết</label>
+                        <textarea
+                          id="newAddressInput"
+                          className="form-textarea"
+                          placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố..."
+                          rows={2}
+                          value={newAddress}
+                          onChange={(e) => setNewAddress(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="address-checkbox-label">
+                          <input
+                            type="checkbox"
+                            checked={newIsDefault}
+                            onChange={(e) => setNewIsDefault(e.target.checked)}
+                          />
+                          <span>Đặt làm địa chỉ mặc định khi đặt lịch</span>
+                        </label>
+                      </div>
+
+                      <div className="form-actions-inline">
+                        <button
+                          type="button"
+                          className="btn-cancel-sm"
+                          onClick={handleCancelAddressForm}
+                          disabled={isSavingAddress}
+                        >
+                          Hủy
+                        </button>
+                        <button type="submit" className="btn-save-sm" disabled={isSavingAddress}>
+                          {isSavingAddress ? 'Đang lưu...' : (editingAddressId ? 'Cập nhật' : 'Lưu địa chỉ')}
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-add-address-trigger"
+                      onClick={handleStartAddAddress}
+                    >
+                      <Plus size={16} />
+                      <span>Thêm địa chỉ mới</span>
+                    </button>
+                  )}
+                </>
               )}
             </div>
 
@@ -487,7 +744,10 @@ export function MyProfilePage() {
               <button
                 type="button"
                 className="btn-primary-action btn-full"
-                onClick={() => setActiveTab(null)}
+                onClick={() => {
+                  handleCancelAddressForm();
+                  setActiveTab(null);
+                }}
               >
                 Xong
               </button>

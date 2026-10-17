@@ -17,24 +17,27 @@ import { PATHS } from '../../routes/paths';
 import provider1Img from '../../assets/provider_1.png';
 import provider2Img from '../../assets/provider_2.png';
 import provider3Img from '../../assets/provider_3.png';
+import { useAuth } from './useAuth';
+import { ApiError } from '../../services/apiClient';
 import './Auth.css';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const [identifier, setIdentifier] = useState('nguyenvana@gmail.com');
-  const [password, setPassword] = useState('12345678');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
     if (!identifier.trim()) {
-      setErrorMessage('Vui lòng nhập email hoặc số điện thoại của bạn');
+      setErrorMessage('Vui lòng nhập địa chỉ email của bạn');
       return;
     }
 
@@ -45,19 +48,39 @@ export function LoginPage() {
 
     setIsLoading(true);
 
-    // Simulate pleasant mock login transition
-    setTimeout(() => {
+    try {
+      const user = await login({
+        email: identifier.trim(),
+        password,
+      });
+
+      // Điều hướng thông minh theo vai trò
+      if (user.role === 'ADMIN') {
+        navigate(PATHS.ADMIN.USERS);
+      } else if (user.role === 'PROVIDER') {
+        navigate(PATHS.PROVIDER.ROOT);
+      } else {
+        navigate(PATHS.CUSTOMER.ROOT);
+      }
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        if (err.details && err.details.length > 0) {
+          setErrorMessage(err.details.map((d) => d.message).join('. '));
+        } else {
+          setErrorMessage(err.message || 'Email hoặc mật khẩu không chính xác');
+        }
+      } else if (err instanceof Error) {
+        setErrorMessage(err.message);
+      } else {
+        setErrorMessage('Đăng nhập thất bại, vui lòng kiểm tra lại thông tin');
+      }
+    } finally {
       setIsLoading(false);
-      navigate(PATHS.CUSTOMER.ROOT);
-    }, 600);
+    }
   };
 
   const handleGoogleLogin = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate(PATHS.CUSTOMER.ROOT);
-    }, 500);
+    setErrorMessage('Chức năng đăng nhập Google đang được phát triển');
   };
 
   return (
@@ -151,17 +174,17 @@ export function LoginPage() {
           </div>
 
           {errorMessage && (
-            <div className="auth-alert auth-alert-error">
-              <AlertCircle size={16} />
+            <div className="auth-alert auth-alert-error" role="alert" aria-live="assertive">
+              <AlertCircle size={18} className="auth-alert-icon" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           <form className="auth-form" onSubmit={handleSubmit}>
-            {/* Identifier input (Email / Phone) */}
+            {/* Identifier input (Email) */}
             <div className="auth-field-group">
               <label htmlFor="login-identifier" className="auth-label">
-                Email hoặc Số điện thoại
+                Địa chỉ Email
               </label>
               <div className="auth-input-wrapper">
                 <div className="auth-field-icon">
@@ -169,11 +192,14 @@ export function LoginPage() {
                 </div>
                 <input
                   id="login-identifier"
-                  type="text"
+                  type="email"
                   className="auth-input"
-                  placeholder="name@example.com hoặc SĐT"
+                  placeholder="name@example.com"
                   value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
+                  onChange={(e) => {
+                    setIdentifier(e.target.value);
+                    if (errorMessage) setErrorMessage('');
+                  }}
                   autoComplete="username"
                   required
                 />
@@ -195,7 +221,10 @@ export function LoginPage() {
                   className="auth-input"
                   placeholder="Nhập mật khẩu của bạn"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errorMessage) setErrorMessage('');
+                  }}
                   autoComplete="current-password"
                   required
                 />
