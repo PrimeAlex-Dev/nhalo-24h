@@ -50,3 +50,14 @@ app:
       exposed-headers: Authorization
       allow-credentials: true
       max-age-seconds: 3600
+  jwt:
+    secret-key: ${JWT_SECRET_KEY:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    expiration-seconds: ${JWT_EXPIRATION_SECONDS:86400}
+  seed:
+    admin:
+      enabled: ${SEED_ADMIN_ENABLED:true}
+      email: ${SEED_ADMIN_EMAIL:admin@nhalo24h.com}
+      password: ${SEED_ADMIN_PASSWORD:Admin1234}
+      full-name: ${SEED_ADMIN_FULL_NAME:Quản Trị Viên Hệ Thống}
+      phone: ${SEED_ADMIN_PHONE:0900000000}
+

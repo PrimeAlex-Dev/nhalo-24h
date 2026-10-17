@@ -18,6 +18,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,6 +40,7 @@ public class ServiceCategoryController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Tạo danh mục dịch vụ mới", description = "Tạo một danh mục dịch vụ mới. Nếu không truyền slug, hệ thống sẽ tự động sinh slug từ tên.")
     public ResponseEntity<CategoryResponse> createCategory(@Valid @RequestBody CreateCategoryRequest request) {
         CategoryResponse response = serviceCategoryService.createCategory(request);
@@ -70,6 +72,7 @@ public class ServiceCategoryController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Cập nhật danh mục dịch vụ", description = "Cập nhật thông tin danh mục dịch vụ (tên, slug, mô tả, iconUrl, thứ tự hiển thị).")
     public ResponseEntity<CategoryResponse> updateCategory(
         @PathVariable UUID id,
@@ -80,6 +83,7 @@ public class ServiceCategoryController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Bật/tắt trạng thái danh mục dịch vụ", description = "Thay đổi trạng thái danh mục sang ACTIVE hoặc INACTIVE.")
     public ResponseEntity<CategoryResponse> updateCategoryStatus(
         @PathVariable UUID id,

@@ -28,10 +28,16 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, UserMapper userMapper) {
+    public UserService(
+        UserRepository userRepository,
+        UserMapper userMapper,
+        org.springframework.security.crypto.password.PasswordEncoder passwordEncoder
+    ) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -61,6 +67,15 @@ public class UserService {
 
         UserRole role = request.role() != null ? request.role() : UserRole.CUSTOMER;
         User user = new User(request.fullName().trim(), normalizedEmail, normalizedPhone, role);
+
+        if (request.password() == null || request.password().isBlank()) {
+            throw new AppException(ErrorCode.INVALID_INPUT, "Mật khẩu không được để trống");
+        }
+        String password = request.password().trim();
+        if (!password.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,12}$")) {
+            throw new AppException(ErrorCode.INVALID_INPUT, "Mật khẩu phải từ 8 đến 12 ký tự, bao gồm ít nhất một chữ hoa, một chữ thường và một chữ số");
+        }
+        user.setPasswordHash(passwordEncoder.encode(password));
 
         User savedUser = userRepository.save(user);
         log.info("Tạo mới người dùng thành công: ID = {}, Email = {}, Role = {}", savedUser.getId(), savedUser.getEmail(), savedUser.getRole());
