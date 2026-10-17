@@ -101,16 +101,39 @@ export interface AdminServiceItem {
   isActive: boolean;
 }
 
+export type CategoryStatus = 'ACTIVE' | 'INACTIVE';
+export type CategoryStatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE';
+
 export interface AdminCategoryItem {
-  id: string;
+  id: string; // UUID from backend
   name: string;
   slug: string;
-  description: string;
-  iconName: 'zap' | 'snowflake' | 'wrench' | 'key' | 'sparkles' | 'tv' | 'hammer';
-  colorTheme: string;
-  activeProviders: number;
-  minPrice: number;
-  isActive: boolean;
-  services: AdminServiceItem[];
+  description?: string | null;
+  iconUrl?: string | null;
+  status: CategoryStatus;
+  displayOrder: number;
+  createdAt: string;
   updatedAt: string;
 }
+
+export interface CreateCategoryPayload {
+  name: string;
+  slug?: string;
+  description?: string;
+  iconUrl?: string;
+  displayOrder?: number;
+  status?: CategoryStatus;
+}
+
+export interface UpdateCategoryPayload {
+  name?: string;
+  slug?: string;
+  description?: string;
+  iconUrl?: string;
+  displayOrder?: number;
+}
+
+export interface UpdateCategoryStatusPayload {
+  status: CategoryStatus;
+}
+

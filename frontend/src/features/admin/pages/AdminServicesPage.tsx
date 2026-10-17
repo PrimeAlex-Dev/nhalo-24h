@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Zap, 
   Snowflake, 
@@ -16,37 +16,138 @@ import {
   ChevronUp, 
   CheckCircle2, 
   Layers, 
-  Users, 
-  Tag
+  Tag, 
+  RefreshCw, 
+  AlertCircle, 
+  Clock, 
+  ChevronLeft, 
+  ChevronRight 
 } from 'lucide-react';
 import { CategoryEditModal } from '../components/CategoryEditModal';
-import { ADMIN_MOCK_CATEGORIES } from '../data/adminMockData';
-import type { AdminCategoryItem } from '../types/admin';
+import { categoryService } from '../../../services';
+import type { 
+  AdminCategoryItem, 
+  SpringPageResponse, 
+  CategoryStatusFilter 
+} from '../types/admin';
 import './AdminServicesPage.css';
 
+const PALETTE_COLORS = [
+  '#1d6ae5', 
+  '#0284c7', 
+  '#059669', 
+  '#f59e0b', 
+  '#dc2626', 
+  '#7c3aed', 
+  '#ea580c'
+];
+
 export function AdminServicesPage() {
-  const [categories, setCategories] = useState<AdminCategoryItem[]>(ADMIN_MOCK_CATEGORIES);
+  const [categories, setCategories] = useState<AdminCategoryItem[]>([]);
+  const [pageInfo, setPageInfo] = useState<SpringPageResponse<AdminCategoryItem>>({
+    content: [],
+    totalElements: 0,
+    totalPages: 0,
+    size: 10,
+    number: 0,
+    first: true,
+    last: true,
+    empty: true,
+  });
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  const [expandedCatId, setExpandedCatId] = useState<string | null>('cat-electrical');
+  const [statusFilter, setStatusFilter] = useState<CategoryStatusFilter>('ALL');
+  const [page, setPage] = useState(0);
+
+  const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<AdminCategoryItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // Statistics
-  const totalCategories = categories.length;
-  const totalServices = categories.reduce((acc, cat) => acc + cat.services.length, 0);
-  const totalProviders = categories.reduce((acc, cat) => acc + cat.activeProviders, 0);
-  const activeCategoriesCount = categories.filter((c) => c.isActive).length;
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const getCategoryIcon = (iconName: AdminCategoryItem['iconName'], colorTheme: string) => {
+  // Load categories from backend API
+  const loadCategories = useCallback(async (
+    status: CategoryStatusFilter,
+    search: string,
+    pageNum: number
+  ) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await categoryService.getCategories({
+        status: status === 'ALL' ? undefined : status,
+        search: search.trim() ? search.trim() : undefined,
+        page: pageNum,
+        size: 10,
+        sort: 'displayOrder,asc',
+      });
+      setCategories(res.content || []);
+      setPageInfo(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Lỗi kết nối máy chủ backend');
+      setCategories([]);
+      setPageInfo({
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        size: 10,
+        number: 0,
+        first: true,
+        last: true,
+        empty: true,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Debounced search and filter
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadCategories(statusFilter, searchQuery, page);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [statusFilter, searchQuery, page, loadCategories]);
+
+  // Reset page to 0 on new search or filter
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    setPage(0);
+  };
+
+  const handleStatusFilterChange = (val: CategoryStatusFilter) => {
+    setStatusFilter(val);
+    setPage(0);
+  };
+
+  // KPI statistics derived directly from backend responses
+  const totalCategoriesCount = pageInfo.totalElements;
+  const activeCategoriesCount = categories.filter((c) => c.status === 'ACTIVE').length;
+  const inactiveCategoriesCount = categories.filter((c) => c.status === 'INACTIVE').length;
+  const activeRate = categories.length > 0 
+    ? Math.round((activeCategoriesCount / categories.length) * 100) 
+    : 0;
+
+  // Icon and theme color helpers
+  const getCategoryThemeColor = (cat: AdminCategoryItem) => {
+    const order = typeof cat.displayOrder === 'number' ? Math.abs(cat.displayOrder) : 0;
+    return PALETTE_COLORS[order % PALETTE_COLORS.length];
+  };
+
+  const renderCategoryIcon = (iconUrl: string | null | undefined, colorTheme: string) => {
+    if (iconUrl && (iconUrl.startsWith('http://') || iconUrl.startsWith('https://') || iconUrl.startsWith('/'))) {
+      return <img src={iconUrl} alt="icon" className="cat-icon-img" />;
+    }
     const props = { size: 24, style: { color: colorTheme } };
-    switch (iconName) {
+    switch (iconUrl) {
       case 'zap':
         return <Zap {...props} />;
       case 'snowflake':
@@ -62,30 +163,25 @@ export function AdminServicesPage() {
       case 'hammer':
         return <Hammer {...props} />;
       default:
-        return <Wrench {...props} />;
+        return <Layers {...props} />;
     }
   };
 
-  // Filtered categories
-  const filteredCategories = useMemo(() => {
-    return categories.filter((cat) => {
-      if (statusFilter === 'active' && !cat.isActive) return false;
-      if (statusFilter === 'inactive' && cat.isActive) return false;
-
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const matchName = cat.name.toLowerCase().includes(query);
-        const matchDesc = cat.description.toLowerCase().includes(query);
-        const matchSlug = cat.slug.toLowerCase().includes(query);
-        const matchService = cat.services.some((s) => s.name.toLowerCase().includes(query));
-        if (!matchName && !matchDesc && !matchSlug && !matchService) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [categories, statusFilter, searchQuery]);
+  const formatDate = (isoString?: string) => {
+    if (!isoString) return '--';
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return isoString;
+    }
+  };
 
   // Actions
   const handleOpenCreate = () => {
@@ -99,45 +195,48 @@ export function AdminServicesPage() {
   };
 
   const handleSaveCategory = (saved: AdminCategoryItem) => {
-    setCategories((prev) => {
-      const exists = prev.some((c) => c.id === saved.id);
-      if (exists) {
-        return prev.map((c) => (c.id === saved.id ? saved : c));
-      }
-      return [saved, ...prev];
-    });
-    showToast(`Đã lưu danh mục "${saved.name}" thành công!`);
+    showToast(`Đã lưu thành công danh mục "${saved.name}"!`);
+    loadCategories(statusFilter, searchQuery, page);
   };
 
-  const handleToggleCategoryActive = (catId: string) => {
-    setCategories((prev) =>
-      prev.map((c) =>
-        c.id === catId ? { ...c, isActive: !c.isActive } : c
-      )
-    );
-    showToast('Đã cập nhật trạng thái hiển thị của danh mục!');
-  };
-
-  const handleDeleteCategory = (catId: string, name: string) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa danh mục "${name}" cùng toàn bộ dịch vụ liên quan?`)) {
-      setCategories((prev) => prev.filter((c) => c.id !== catId));
-      showToast(`Đã xóa danh mục "${name}".`);
+  const handleToggleCategoryStatus = async (cat: AdminCategoryItem) => {
+    const newStatus = cat.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    setActionLoadingId(cat.id);
+    try {
+      await categoryService.updateCategoryStatus(cat.id, { status: newStatus });
+      setCategories((prev) =>
+        prev.map((c) => (c.id === cat.id ? { ...c, status: newStatus } : c))
+      );
+      showToast(
+        newStatus === 'ACTIVE'
+          ? `Đã kích hoạt lại danh mục "${cat.name}"!`
+          : `Đã chuyển danh mục "${cat.name}" sang trạng thái Tạm ngưng!`
+      );
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Lỗi cập nhật trạng thái danh mục');
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
-  const handleToggleSubServiceActive = (catId: string, serviceId: string) => {
-    setCategories((prev) =>
-      prev.map((c) => {
-        if (c.id !== catId) return c;
-        return {
-          ...c,
-          services: c.services.map((s) =>
-            s.id === serviceId ? { ...s, isActive: !s.isActive } : s
-          ),
-        };
-      })
+  const handleDeleteCategory = async (cat: AdminCategoryItem) => {
+    const confirmed = window.confirm(
+      `Hệ thống backend quản lý danh mục theo chính sách bảo toàn: Thao tác này sẽ chuyển danh mục "${cat.name}" sang trạng thái "Tạm ngưng phục vụ" (INACTIVE). Bạn có muốn tiếp tục?`
     );
-    showToast('Đã cập nhật trạng thái dịch vụ con!');
+    if (!confirmed) return;
+
+    setActionLoadingId(cat.id);
+    try {
+      await categoryService.updateCategoryStatus(cat.id, { status: 'INACTIVE' });
+      setCategories((prev) =>
+        prev.map((c) => (c.id === cat.id ? { ...c, status: 'INACTIVE' } : c))
+      );
+      showToast(`Đã chuyển danh mục "${cat.name}" sang trạng thái Tạm ngưng.`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Lỗi xử lý danh mục');
+    } finally {
+      setActionLoadingId(null);
+    }
   };
 
   const toggleExpand = (catId: string) => {
@@ -160,7 +259,7 @@ export function AdminServicesPage() {
             04. Quản Lý Danh Mục & Dịch Vụ
           </h2>
           <p className="services-page-sub">
-            Cấu hình bảng giá dịch vụ tiêu chuẩn, định hình ngành nghề và mạng lưới thợ phụ trách
+            Cấu hình danh mục ngành nghề, thứ tự hiển thị và trạng thái hoạt động kết nối trực tiếp với backend
           </p>
         </div>
 
@@ -180,51 +279,51 @@ export function AdminServicesPage() {
             <Layers size={20} />
           </div>
           <div className="stat-card-info">
-            <span className="stat-card-label">Tổng Danh Mục Ngành Nghề</span>
+            <span className="stat-card-label">Tổng Danh Mục Hệ Thống</span>
             <div className="stat-card-val-row">
-              <strong className="stat-card-number">{totalCategories}</strong>
-              <span className="stat-card-unit">ngành chính</span>
+              <strong className="stat-card-number">{totalCategoriesCount}</strong>
+              <span className="stat-card-unit">danh mục</span>
             </div>
           </div>
         </div>
 
         <div className="service-stat-card">
           <div className="stat-card-icon-wrap icon-emerald">
-            <Tag size={20} />
+            <CheckCircle2 size={20} />
           </div>
           <div className="stat-card-info">
-            <span className="stat-card-label">Dịch Vụ Chuẩn Hóa</span>
+            <span className="stat-card-label">Đang Hoạt Động (ACTIVE)</span>
             <div className="stat-card-val-row">
-              <strong className="stat-card-number">{totalServices}</strong>
-              <span className="stat-card-unit">gói dịch vụ</span>
+              <strong className="stat-card-number">{activeCategoriesCount}</strong>
+              <span className="stat-card-unit">sẵn sàng</span>
             </div>
           </div>
         </div>
 
         <div className="service-stat-card">
           <div className="stat-card-icon-wrap icon-amber">
-            <Users size={20} />
+            <Clock size={20} />
           </div>
           <div className="stat-card-info">
-            <span className="stat-card-label">Đội Ngũ Thợ Phụ Trách</span>
+            <span className="stat-card-label">Tạm Ngưng (INACTIVE)</span>
             <div className="stat-card-val-row">
-              <strong className="stat-card-number">{totalProviders}</strong>
-              <span className="stat-card-unit">lượt thợ chuyên ngành</span>
+              <strong className="stat-card-number">{inactiveCategoriesCount}</strong>
+              <span className="stat-card-unit">tạm ẩn</span>
             </div>
           </div>
         </div>
 
         <div className="service-stat-card">
           <div className="stat-card-icon-wrap icon-purple">
-            <CheckCircle2 size={20} />
+            <Tag size={20} />
           </div>
           <div className="stat-card-info">
-            <span className="stat-card-label">Trạng Thái Sẵn Sàng</span>
+            <span className="stat-card-label">Tỷ Lệ Sẵn Sàng (Trang này)</span>
             <div className="stat-card-val-row">
               <strong className="stat-card-number">
-                {Math.round((activeCategoriesCount / totalCategories) * 100)}%
+                {activeRate}%
               </strong>
-              <span className="stat-card-unit">đang phục vụ</span>
+              <span className="stat-card-unit">hoạt động</span>
             </div>
           </div>
         </div>
@@ -237,9 +336,9 @@ export function AdminServicesPage() {
           <input
             type="text"
             className="services-search-input"
-            placeholder="Tìm theo tên danh mục, dịch vụ, mô tả..."
+            placeholder="Tìm theo tên danh mục hoặc slug..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
         </div>
 
@@ -248,50 +347,90 @@ export function AdminServicesPage() {
           <select
             className="services-filter-select"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
+            onChange={(e) => handleStatusFilterChange(e.target.value as CategoryStatusFilter)}
           >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="active">Đang kích hoạt</option>
-            <option value="inactive">Tạm ngưng phục vụ</option>
+            <option value="ALL">Tất cả trạng thái</option>
+            <option value="ACTIVE">Đang kích hoạt (ACTIVE)</option>
+            <option value="INACTIVE">Tạm ngưng phục vụ (INACTIVE)</option>
           </select>
         </div>
       </div>
 
+      {/* Error Banner with Retry */}
+      {error && (
+        <div className="services-error-banner">
+          <AlertCircle size={20} className="error-banner-icon" />
+          <div className="error-banner-text">
+            <strong>Không thể kết nối với dịch vụ backend</strong>
+            <p className="error-banner-hint">{error}</p>
+          </div>
+          <button
+            type="button"
+            className="btn-retry-fetch"
+            onClick={() => loadCategories(statusFilter, searchQuery, page)}
+          >
+            <RefreshCw size={14} /> Thử lại
+          </button>
+        </div>
+      )}
+
       {/* Categories Cards List */}
       <div className="categories-card-list">
-        {filteredCategories.length === 0 ? (
+        {loading ? (
+          <div className="categories-loading-panel">
+            <RefreshCw size={28} className="animate-spin text-primary mb-3" />
+            <p className="font-semibold text-slate-700 m-0">Đang nạp danh mục dịch vụ từ backend...</p>
+            <p className="text-xs text-slate-400 mt-1">Vui lòng chờ trong giây lát.</p>
+          </div>
+        ) : categories.length === 0 ? (
           <div className="categories-empty-panel">
             <Layers size={40} className="text-slate-300 mb-2" />
-            <p className="font-semibold text-slate-700">Không tìm thấy danh mục nào phù hợp</p>
-            <p className="text-xs text-slate-500">Hãy thử tìm kiếm với từ khóa khác hoặc xóa bộ lọc.</p>
+            <p className="font-semibold text-slate-700">Danh sách danh mục trống</p>
+            <p className="text-xs text-slate-500">
+              {searchQuery.trim() || statusFilter !== 'ALL'
+                ? 'Không tìm thấy danh mục nào phù hợp với bộ lọc tìm kiếm.'
+                : 'Chưa có danh mục nào trong cơ sở dữ liệu hệ thống.'}
+            </p>
+            <button
+              type="button"
+              className="btn-create-first-category"
+              onClick={handleOpenCreate}
+            >
+              <Plus size={14} /> Thêm danh mục mới ngay
+            </button>
           </div>
         ) : (
-          filteredCategories.map((cat) => {
+          categories.map((cat) => {
             const isExpanded = expandedCatId === cat.id;
+            const colorTheme = getCategoryThemeColor(cat);
+            const isInactive = cat.status === 'INACTIVE';
+            const isCurrentActionLoading = actionLoadingId === cat.id;
 
             return (
               <div 
                 key={cat.id} 
-                className={`category-item-card ${!cat.isActive ? 'is-inactive' : ''}`}
+                className={`category-item-card ${isInactive ? 'is-inactive' : ''}`}
               >
                 {/* Header row */}
                 <div className="cat-card-header">
                   <div className="cat-header-main">
                     <div 
                       className="cat-icon-container" 
-                      style={{ backgroundColor: `${cat.colorTheme}18` }}
+                      style={{ backgroundColor: `${colorTheme}18` }}
                     >
-                      {getCategoryIcon(cat.iconName, cat.colorTheme)}
+                      {renderCategoryIcon(cat.iconUrl, colorTheme)}
                     </div>
 
                     <div className="cat-title-block">
                       <div className="cat-title-row">
                         <h3 className="cat-name">{cat.name}</h3>
-                        <span className={`cat-status-badge ${cat.isActive ? 'badge-active' : 'badge-inactive'}`}>
-                          {cat.isActive ? 'Đang hoạt động' : 'Tạm ngưng'}
+                        <span className={`cat-status-badge ${!isInactive ? 'badge-active' : 'badge-inactive'}`}>
+                          {cat.status === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm ngưng'}
                         </span>
                       </div>
-                      <p className="cat-description">{cat.description}</p>
+                      <p className="cat-description">
+                        {cat.description || 'Chưa có mô tả cho danh mục dịch vụ này.'}
+                      </p>
                       <span className="cat-slug-text">/{cat.slug}</span>
                     </div>
                   </div>
@@ -299,19 +438,21 @@ export function AdminServicesPage() {
                   {/* Metadata counters */}
                   <div className="cat-header-meta">
                     <div className="cat-meta-col">
-                      <span className="meta-col-label">Dịch vụ trực thuộc</span>
-                      <strong className="meta-col-val">{cat.services.length} dịch vụ</strong>
+                      <span className="meta-col-label">Thứ tự ưu tiên</span>
+                      <strong className="meta-col-val">#{cat.displayOrder ?? 0}</strong>
                     </div>
 
                     <div className="cat-meta-col">
-                      <span className="meta-col-label">Thợ chuyên môn</span>
-                      <strong className="meta-col-val">{cat.activeProviders} đối tác</strong>
+                      <span className="meta-col-label">Ngày khởi tạo</span>
+                      <strong className="meta-col-val text-slate-600">
+                        {formatDate(cat.createdAt)}
+                      </strong>
                     </div>
 
                     <div className="cat-meta-col">
-                      <span className="meta-col-label">Giá sàn tham khảo</span>
-                      <strong className="meta-col-val text-emerald-600">
-                        từ {cat.minPrice.toLocaleString('vi-VN')} đ
+                      <span className="meta-col-label">Cập nhật gần nhất</span>
+                      <strong className="meta-col-val text-slate-600">
+                        {formatDate(cat.updatedAt)}
                       </strong>
                     </div>
 
@@ -321,25 +462,34 @@ export function AdminServicesPage() {
                         type="button"
                         className="btn-cat-action btn-cat-edit"
                         onClick={() => handleOpenEdit(cat)}
-                        title="Chỉnh sửa danh mục & bảng giá"
+                        title="Chỉnh sửa thông tin danh mục"
+                        disabled={isCurrentActionLoading}
                       >
                         <Edit size={14} /> Sửa
                       </button>
 
                       <button
                         type="button"
-                        className={`btn-cat-action ${cat.isActive ? 'btn-cat-deactivate' : 'btn-cat-activate'}`}
-                        onClick={() => handleToggleCategoryActive(cat.id)}
-                        title={cat.isActive ? 'Tạm ngưng cung cấp' : 'Kích hoạt lại'}
+                        className={`btn-cat-action ${cat.status === 'ACTIVE' ? 'btn-cat-deactivate' : 'btn-cat-activate'}`}
+                        onClick={() => handleToggleCategoryStatus(cat)}
+                        disabled={isCurrentActionLoading}
+                        title={cat.status === 'ACTIVE' ? 'Tạm ngưng cung cấp' : 'Kích hoạt lại'}
                       >
-                        {cat.isActive ? 'Tạm ẩn' : 'Bật lại'}
+                        {isCurrentActionLoading ? (
+                          <RefreshCw size={12} className="animate-spin" />
+                        ) : cat.status === 'ACTIVE' ? (
+                          'Tạm ẩn'
+                        ) : (
+                          'Bật lại'
+                        )}
                       </button>
 
                       <button
                         type="button"
                         className="btn-cat-action btn-cat-delete"
-                        onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                        title="Xóa danh mục"
+                        onClick={() => handleDeleteCategory(cat)}
+                        disabled={isCurrentActionLoading}
+                        title="Chuyển sang trạng thái Tạm ngưng"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -348,7 +498,7 @@ export function AdminServicesPage() {
                         type="button"
                         className="btn-cat-toggle-expand"
                         onClick={() => toggleExpand(cat.id)}
-                        title={isExpanded ? 'Thu gọn' : 'Xem các gói dịch vụ con'}
+                        title={isExpanded ? 'Thu gọn' : 'Xem thông số chi tiết'}
                       >
                         {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                       </button>
@@ -356,83 +506,49 @@ export function AdminServicesPage() {
                   </div>
                 </div>
 
-                {/* Sub-services breakdown when expanded */}
+                {/* Sub-details panel when expanded */}
                 {isExpanded && (
                   <div className="cat-subservices-panel">
                     <div className="subservices-panel-header">
                       <h4 className="subservices-panel-title">
-                        Các Gói Dịch Vụ Thuộc Danh Mục "{cat.name}"
+                        Thông Số Kỹ Thuật & Cấu Hình Danh Mục "{cat.name}"
                       </h4>
-                      <button
-                        type="button"
-                        className="btn-subservice-add"
-                        onClick={() => handleOpenEdit(cat)}
-                      >
-                        <Plus size={13} /> Thêm gói dịch vụ
-                      </button>
+                      <span className="text-xs text-slate-500">
+                        ID: <code className="text-xs font-mono">{cat.id}</code>
+                      </span>
                     </div>
 
-                    <div className="subservices-table-wrap">
-                      <table className="subservices-table">
-                        <thead>
-                          <tr>
-                            <th>Tên Dịch Vụ Chuẩn</th>
-                            <th>Đơn Vị Tính</th>
-                            <th>Thời Gian Ước Tính</th>
-                            <th>Giá Sàn Tiêu Chuẩn</th>
-                            <th>Trạng Thái</th>
-                            <th>Hành Động</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {cat.services.length === 0 ? (
-                            <tr>
-                              <td colSpan={6} className="text-center py-6 text-slate-400">
-                                Chưa có dịch vụ con nào được định cấu hình.
-                              </td>
-                            </tr>
-                          ) : (
-                            cat.services.map((srv) => (
-                              <tr key={srv.id}>
-                                <td>
-                                  <span className="font-semibold text-slate-800">
-                                    {srv.name}
-                                  </span>
-                                </td>
-                                <td>
-                                  <span className="text-slate-600 text-xs bg-slate-100 px-2 py-0.5 rounded">
-                                    {srv.unit}
-                                  </span>
-                                </td>
-                                <td>
-                                  <span className="text-slate-600 text-xs">
-                                    {srv.duration}
-                                  </span>
-                                </td>
-                                <td>
-                                  <span className="font-bold text-emerald-600">
-                                    {srv.basePrice.toLocaleString('vi-VN')} đ
-                                  </span>
-                                </td>
-                                <td>
-                                  <span className={`service-status-tag ${srv.isActive ? 'active' : 'inactive'}`}>
-                                    {srv.isActive ? 'Sẵn sàng' : 'Tạm ngưng'}
-                                  </span>
-                                </td>
-                                <td>
-                                  <button
-                                    type="button"
-                                    className="btn-toggle-service-status"
-                                    onClick={() => handleToggleSubServiceActive(cat.id, srv.id)}
-                                  >
-                                    {srv.isActive ? 'Tạm ẩn' : 'Kích hoạt'}
-                                  </button>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
+                    <div className="cat-details-grid">
+                      <div className="cat-detail-card">
+                        <span className="cat-detail-label">Tên danh mục</span>
+                        <strong>{cat.name}</strong>
+                      </div>
+                      <div className="cat-detail-card">
+                        <span className="cat-detail-label">Đường dẫn tĩnh (Slug)</span>
+                        <code className="text-primary font-mono font-semibold">/{cat.slug}</code>
+                      </div>
+                      <div className="cat-detail-card">
+                        <span className="cat-detail-label">Thứ tự hiển thị (displayOrder)</span>
+                        <strong>#{cat.displayOrder ?? 0}</strong>
+                      </div>
+                      <div className="cat-detail-card">
+                        <span className="cat-detail-label">Trạng thái hiện tại</span>
+                        <span className={`service-status-tag ${cat.status === 'ACTIVE' ? 'active' : 'inactive'}`}>
+                          {cat.status === 'ACTIVE' ? 'Hoạt động (ACTIVE)' : 'Tạm ngưng (INACTIVE)'}
+                        </span>
+                      </div>
+                      <div className="cat-detail-card col-span-full">
+                        <span className="cat-detail-label">Biểu tượng (Icon URL / Preset)</span>
+                        <span className="text-xs text-slate-600 break-all">
+                          {cat.iconUrl || 'Mặc định (Layers)'}
+                        </span>
+                      </div>
+                      <div className="cat-detail-card col-span-full">
+                        <span className="cat-detail-label">Mô tả đầy đủ</span>
+                        <span className="text-xs text-slate-600">
+                          {cat.description || 'Chưa thiết lập mô tả cho danh mục này.'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -441,6 +557,38 @@ export function AdminServicesPage() {
           })
         )}
       </div>
+
+      {/* Pagination Footer */}
+      {pageInfo.totalPages > 1 && (
+        <div className="services-pagination-footer">
+          <div className="pagination-info">
+            Đang hiển thị <strong>{categories.length}</strong> trên tổng số <strong>{pageInfo.totalElements}</strong> danh mục
+            {pageInfo.totalPages > 1 && ` (Trang ${page + 1} / ${pageInfo.totalPages})`}
+          </div>
+
+          <div className="pagination-controls">
+            <button
+              type="button"
+              className="btn-page-nav"
+              disabled={page <= 0 || loading}
+              onClick={() => setPage((prev) => Math.max(0, prev - 1))}
+            >
+              <ChevronLeft size={16} /> Trang trước
+            </button>
+            <span className="page-indicator">
+              {page + 1}
+            </span>
+            <button
+              type="button"
+              className="btn-page-nav"
+              disabled={page >= pageInfo.totalPages - 1 || loading}
+              onClick={() => setPage((prev) => prev + 1)}
+            >
+              Trang sau <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Category Modal */}
       <CategoryEditModal
