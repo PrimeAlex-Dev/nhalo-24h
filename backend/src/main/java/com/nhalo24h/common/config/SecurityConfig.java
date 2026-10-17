@@ -86,6 +86,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/users/**").hasRole("ADMIN")
                 // Xem thông tin cá nhân: Bất kỳ vai trò nào đã đăng nhập
                 .requestMatchers("/api/v1/auth/me").authenticated()
+                // Hồ sơ khách hàng: Chỉ dành cho người dùng có vai trò CUSTOMER
+                .requestMatchers("/api/v1/customer/**").hasRole("CUSTOMER")
                 // Mọi API nghiệp vụ còn lại đều yêu cầu xác thực
                 .anyRequest().authenticated()
             )

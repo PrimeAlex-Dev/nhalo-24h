@@ -12,12 +12,15 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { PATHS } from '../../../routes/paths';
 import { mockProviderProfile } from '../data/providerMockData';
+import { useAuth } from '../../auth';
 import './ProviderAccountPage.css';
 
 export function ProviderAccountPage() {
   const navigate = useNavigate();
+  const { logout, user } = useAuth();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     navigate(PATHS.AUTH.LOGIN);
   };
 
@@ -42,8 +45,8 @@ export function ProviderAccountPage() {
             </div>
 
             <div className="provider-profile-info">
-              <h2>{mockProviderProfile.name}</h2>
-              <p className="provider-profile-role">{mockProviderProfile.role}</p>
+              <h2>{user?.fullName || mockProviderProfile.name}</h2>
+              <p className="provider-profile-role">{user?.role || mockProviderProfile.role}</p>
               <div className="provider-profile-rating-pill">
                 <span>★ {mockProviderProfile.rating}</span>
                 <span>({mockProviderProfile.reviewsCount} đánh giá hài lòng)</span>

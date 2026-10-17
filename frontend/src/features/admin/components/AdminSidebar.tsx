@@ -9,6 +9,7 @@ import {
   X,
   ExternalLink
 } from 'lucide-react';
+import { useAuth } from '../../auth';
 import { PATHS } from '../../../routes/paths';
 import './AdminSidebar.css';
 
@@ -26,8 +27,10 @@ export function AdminSidebar({
   backlogOrdersCount = 2,
 }: AdminSidebarProps) {
   const navigate = useNavigate();
+  const { logout, user } = useAuth();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     navigate(PATHS.AUTH.LOGIN);
   };
 
@@ -147,8 +150,8 @@ export function AdminSidebar({
               className="admin-avatar-small" 
             />
             <div className="admin-profile-info">
-              <span className="admin-name">Hoàng Quốc Việt</span>
-              <span className="admin-role">Super Admin</span>
+              <span className="admin-name">{user?.fullName || 'Hoàng Quốc Việt'}</span>
+              <span className="admin-role">{user?.role || 'Super Admin'}</span>
             </div>
           </div>
 

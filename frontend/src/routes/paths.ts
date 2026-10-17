@@ -41,3 +41,16 @@ export const PATHS = {
     SERVICES: '/admin/services',
   },
 } as const;
+
+export function getRoleDashboardPath(role?: string): string {
+  switch (role) {
+    case 'ADMIN':
+      return PATHS.ADMIN.USERS;
+    case 'PROVIDER':
+      return PATHS.PROVIDER.ROOT;
+    case 'CUSTOMER':
+    default:
+      return PATHS.CUSTOMER.ROOT;
+  }
+}
+

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { mockCurrentUser } from '../data/customerMockData';
 import { PATHS } from '../../../routes/paths';
+import { useAuth } from '../../auth';
 
 interface CustomerNavbarProps {
   onLogout?: () => void;
@@ -21,6 +22,10 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { logout, user } = useAuth();
+
+  const displayName = user?.fullName || mockCurrentUser.name;
+  const avatarLetter = (displayName[0] || 'U').toUpperCase();
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -33,11 +38,12 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogoutClick = () => {
+  const handleLogoutClick = async () => {
     setIsUserMenuOpen(false);
     if (onLogout) {
       onLogout();
     } else {
+      await logout();
       navigate(PATHS.HOME);
     }
   };
@@ -92,7 +98,7 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
               aria-label="User menu"
             >
               <div className="customer-avatar-circle">
-                {mockCurrentUser.avatarLetter}
+                {avatarLetter}
               </div>
               <ChevronDown size={15} className={`chevron-icon ${isUserMenuOpen ? 'open' : ''}`} />
             </button>
@@ -101,11 +107,11 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
               <div className="customer-dropdown-menu">
                 <div className="dropdown-user-header">
                   <div className="dropdown-user-avatar">
-                    {mockCurrentUser.avatarLetter}
+                    {avatarLetter}
                   </div>
                   <div className="dropdown-user-info">
-                    <span className="dropdown-user-name">{mockCurrentUser.name}</span>
-                    <span className="dropdown-user-role">Customer</span>
+                    <span className="dropdown-user-name">{displayName}</span>
+                    <span className="dropdown-user-role">{user?.role || 'Customer'}</span>
                   </div>
                 </div>
                 <div className="dropdown-divider" />

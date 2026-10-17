@@ -454,6 +454,32 @@
   line-height: 1.45;
 }
 
+.address-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-set-default {
+  background: none;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-set-default:hover {
+  border-color: #1D6AE5;
+  color: #1D6AE5;
+  background-color: #EFF6FF;
+}
+
+.btn-edit-addr,
 .btn-delete-addr {
   background: none;
   border: none;
@@ -463,11 +489,36 @@
   border-radius: 6px;
   display: flex;
   align-items: center;
+  transition: all 0.15s ease;
+}
+
+.btn-edit-addr:hover {
+  color: #1D6AE5;
+  background-color: #EFF6FF;
 }
 
 .btn-delete-addr:hover {
   color: #EF4444;
   background-color: #FEF2F2;
+}
+
+.address-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.address-empty-state {
+  text-align: center;
+  padding: 24px 16px;
+  color: #64748B;
+  font-size: 13.5px;
+  background-color: #F8FAFC;
+  border-radius: 12px;
+  border: 1px dashed #E2E8F0;
 }
 
 .btn-add-address-trigger {
@@ -719,4 +770,59 @@
     padding: 20px 22px;
     min-height: auto;
   }
+}
+
+/* Locked & Read-only fields */
+.form-input:disabled {
+  background-color: #F1F5F9;
+  color: #64748B;
+  cursor: not-allowed;
+  border-color: #E2E8F0;
+}
+
+.input-lock-tag {
+  position: absolute;
+  right: 12px;
+  color: #94A3B8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  background-color: #E2E8F0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.form-field-hint {
+  font-size: 12px;
+  color: #64748B;
+  margin-top: 2px;
+}
+
+/* Error Banner */
+.profile-error-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  color: #991B1B;
+  font-size: 13.5px;
+}
+
+.btn-primary-action:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.profile-loading-skeleton {
+  padding: 2rem 0;
+  text-align: center;
+  color: #64748B;
+  font-size: 14px;
 }
