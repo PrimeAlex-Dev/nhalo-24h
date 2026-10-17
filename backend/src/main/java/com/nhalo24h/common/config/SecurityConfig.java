@@ -68,9 +68,10 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/v1/health"
                 ).permitAll()
-                // Giai đoạn phát triển nội bộ: Công khai User Management API
+                // Giai đoạn phát triển nội bộ: Công khai User & Category Management API
                 .requestMatchers(
-                    "/api/v1/users/**"
+                    "/api/v1/users/**",
+                    "/api/v1/service-categories/**"
                 ).permitAll()
                 // Mọi API nghiệp vụ còn lại đều yêu cầu xác thực
                 .anyRequest().authenticated()

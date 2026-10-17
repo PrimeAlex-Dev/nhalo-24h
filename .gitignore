@@ -1,31 +1,48 @@
-# Environment
+# Environment variables
 .env
 .env.*
+.env.local
 !.env.example
 
-# Node
+# Node / Frontend
 node_modules/
 dist/
 coverage/
+.oxlint-cache/
 
-# Java
+# Java / Maven Backend
 target/
+backend/target/
 *.class
+*.jar
+*.war
+*.ear
+*.nar
+!mvnw
+!mvnw.cmd
+!.mvn/wrapper/maven-wrapper.properties
 
-# IDE
+# Database & Storage
+*.h2.db
+postgres_data/
+
+# IDE & Editors
 .idea/
 *.iml
-
-# VS Code
 .vscode/
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# Logs
+# Logs & Temporary files
 *.log
-
-# Temporary
 tmp/
 temp/
+logs/

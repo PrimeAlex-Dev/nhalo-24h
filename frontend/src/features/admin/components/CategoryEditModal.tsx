@@ -1,6 +1,21 @@
-import { useState } from 'react';
-import { X, CheckCircle2, Plus, Trash2 } from 'lucide-react';
-import type { AdminCategoryItem, AdminServiceItem } from '../types/admin';
+import { useState, useEffect } from 'react';
+import { 
+  X, 
+  CheckCircle2, 
+  AlertCircle, 
+  Loader2, 
+  Zap, 
+  Snowflake, 
+  Wrench, 
+  Key, 
+  Sparkles, 
+  Tv, 
+  Hammer, 
+  Layers, 
+  Link as LinkIcon 
+} from 'lucide-react';
+import { categoryService } from '../../../services';
+import type { AdminCategoryItem, CategoryStatus } from '../types/admin';
 import './CategoryEditModal.css';
 
 interface CategoryEditModalProps {
@@ -16,21 +31,34 @@ interface CategoryFormContentProps {
   onSave: (savedCategory: AdminCategoryItem) => void;
 }
 
-function CategoryFormContent({ category, onClose, onSave }: CategoryFormContentProps) {
-  const [name, setName] = useState(category ? category.name : '');
-  const [slug, setSlug] = useState(category ? category.slug : '');
-  const [description, setDescription] = useState(category ? category.description : '');
-  const [iconName, setIconName] = useState<AdminCategoryItem['iconName']>(
-    category ? category.iconName : 'wrench'
-  );
-  const [colorTheme, setColorTheme] = useState(category ? category.colorTheme : '#1d6ae5');
-  const [isActive, setIsActive] = useState(category ? category.isActive : true);
-  const [services, setServices] = useState<AdminServiceItem[]>(category ? category.services : []);
-  const [newServiceName, setNewServiceName] = useState('');
-  const [newServicePrice, setNewServicePrice] = useState('200000');
-  const [newServiceUnit, setNewServiceUnit] = useState('lần');
-  const [newServiceDuration, setNewServiceDuration] = useState('45 phút');
+const PRESET_ICONS = [
+  { id: 'zap', label: 'Tia sét (Điện)', Icon: Zap },
+  { id: 'snowflake', label: 'Bông tuyết (Điện lạnh)', Icon: Snowflake },
+  { id: 'wrench', label: 'Cờ lê (Điện nước)', Icon: Wrench },
+  { id: 'key', label: 'Chìa khóa (Sửa khóa)', Icon: Key },
+  { id: 'sparkles', label: 'Lấp lánh (Vệ sinh)', Icon: Sparkles },
+  { id: 'tv', label: 'Gia dụng (Điện tử)', Icon: Tv },
+  { id: 'hammer', label: 'Búa (Cơ khí & Xây dựng)', Icon: Hammer },
+  { id: 'layers', label: 'Mặc định (Ngành nghề)', Icon: Layers },
+];
 
+function CategoryFormContent({ category, onClose, onSave }: CategoryFormContentProps) {
+  const [name, setName] = useState(category?.name ?? '');
+  const [slug, setSlug] = useState(category?.slug ?? '');
+  const [description, setDescription] = useState(category?.description ?? '');
+  const [displayOrder, setDisplayOrder] = useState<number>(category?.displayOrder ?? 0);
+  const [status, setStatus] = useState<CategoryStatus>(category?.status ?? 'ACTIVE');
+
+  // Icon handling: check if category.iconUrl matches one of PRESET_ICONS or is a custom URL
+  const initialIcon = category?.iconUrl ?? 'wrench';
+  const isInitialPreset = PRESET_ICONS.some((p) => p.id === initialIcon);
+  const [iconChoice, setIconChoice] = useState<string>(isInitialPreset ? initialIcon : 'custom');
+  const [customIconUrl, setCustomIconUrl] = useState<string>(isInitialPreset ? '' : (category?.iconUrl ?? ''));
+
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Helper to auto-generate slug from name in create mode
   const handleNameChange = (val: string) => {
     setName(val);
     if (!category) {
@@ -46,50 +74,61 @@ function CategoryFormContent({ category, onClose, onSave }: CategoryFormContentP
     }
   };
 
-  const handleAddService = () => {
-    if (!newServiceName.trim()) return;
-    const price = parseInt(newServicePrice.replace(/\D/g, ''), 10) || 100000;
-    const newService: AdminServiceItem = {
-      id: `srv-${Date.now()}`,
-      name: newServiceName.trim(),
-      basePrice: price,
-      unit: newServiceUnit,
-      duration: newServiceDuration,
-      isActive: true,
-    };
-    setServices((prev) => [...prev, newService]);
-    setNewServiceName('');
-    setNewServicePrice('200000');
-  };
-
-  const handleRemoveService = (serviceId: string) => {
-    setServices((prev) => prev.filter((s) => s.id !== serviceId));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setError('Tên danh mục không được để trống');
+      return;
+    }
 
-    const minPrice = services.length > 0 
-      ? Math.min(...services.map((s) => s.basePrice))
-      : 150000;
+    setSubmitting(true);
+    setError(null);
 
-    const updatedCat: AdminCategoryItem = {
-      id: category ? category.id : `cat-${Date.now()}`,
-      name: name.trim(),
-      slug: slug.trim() || 'danh-muc-moi',
-      description: description.trim(),
-      iconName,
-      colorTheme,
-      activeProviders: category ? category.activeProviders : 12,
-      minPrice,
-      isActive,
-      services,
-      updatedAt: 'Hôm nay',
-    };
+    try {
+      const finalSlug = slug.trim() ? slug.trim() : undefined;
+      const finalIconUrl = iconChoice === 'custom' 
+        ? (customIconUrl.trim() || undefined) 
+        : iconChoice;
+      const finalDescription = description.trim() ? description.trim() : undefined;
+      const order = Number(displayOrder);
+      const finalDisplayOrder = Number.isInteger(order) && order >= 0 ? order : 0;
 
-    onSave(updatedCat);
-    onClose();
+      if (category) {
+        // Edit mode
+        const updated = await categoryService.updateCategory(category.id, {
+          name: name.trim(),
+          slug: finalSlug,
+          description: finalDescription,
+          iconUrl: finalIconUrl,
+          displayOrder: finalDisplayOrder,
+        });
+
+        let finalResult = updated;
+        if (status !== category.status) {
+          finalResult = await categoryService.updateCategoryStatus(category.id, { status });
+        }
+
+        onSave(finalResult);
+        onClose();
+      } else {
+        // Create mode
+        const created = await categoryService.createCategory({
+          name: name.trim(),
+          slug: finalSlug,
+          description: finalDescription,
+          iconUrl: finalIconUrl,
+          displayOrder: finalDisplayOrder,
+          status,
+        });
+
+        onSave(created);
+        onClose();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Đã có lỗi xảy ra khi lưu danh mục');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -106,7 +145,7 @@ function CategoryFormContent({ category, onClose, onSave }: CategoryFormContentP
             {category ? 'Chỉnh Sửa Danh Mục Dịch Vụ' : 'Thêm Mới Danh Mục Dịch Vụ'}
           </h2>
           <p className="cat-modal-subtitle">
-            Cấu hình thông tin danh mục và danh sách dịch vụ chi tiết cho nền tảng
+            Cấu hình thông tin danh mục dịch vụ trực tiếp với cơ sở dữ liệu hệ thống
           </p>
         </div>
         <button 
@@ -114,6 +153,7 @@ function CategoryFormContent({ category, onClose, onSave }: CategoryFormContentP
           className="cat-modal-close" 
           onClick={onClose}
           aria-label="Đóng"
+          disabled={submitting}
         >
           <X size={20} />
         </button>
@@ -121,6 +161,14 @@ function CategoryFormContent({ category, onClose, onSave }: CategoryFormContentP
 
       <form onSubmit={handleSubmit} className="cat-modal-form">
         <div className="cat-modal-body">
+          {/* Error Notice */}
+          {error && (
+            <div className="cat-modal-error-banner">
+              <AlertCircle size={18} className="flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
           {/* General Info */}
           <div className="cat-form-group">
             <label htmlFor="cat-name-input" className="cat-label">
@@ -132,15 +180,18 @@ function CategoryFormContent({ category, onClose, onSave }: CategoryFormContentP
               className="cat-input"
               placeholder="VD: Sửa Chữa Điện & Chiếu Sáng"
               value={name}
+              maxLength={100}
               onChange={(e) => handleNameChange(e.target.value)}
               required
+              disabled={submitting}
             />
+            <span className="cat-field-hint">Tối đa 100 ký tự</span>
           </div>
 
           <div className="cat-grid-2">
             <div className="cat-form-group">
               <label htmlFor="cat-slug-input" className="cat-label">
-                Đường dẫn thân thiện (Slug)
+                Đường dẫn tĩnh (Slug)
               </label>
               <input
                 id="cat-slug-input"
@@ -148,72 +199,98 @@ function CategoryFormContent({ category, onClose, onSave }: CategoryFormContentP
                 className="cat-input"
                 placeholder="sua-chua-dien-chieu-sang"
                 value={slug}
+                maxLength={120}
                 onChange={(e) => setSlug(e.target.value)}
+                disabled={submitting}
               />
+              <span className="cat-field-hint">
+                Để trống hệ thống sẽ tự động tạo slug từ tên danh mục
+              </span>
             </div>
 
             <div className="cat-form-group">
-              <label htmlFor="cat-status-select" className="cat-label">
-                Trạng thái hiển thị
+              <label htmlFor="cat-order-input" className="cat-label">
+                Thứ tự hiển thị ưu tiên
               </label>
-              <select
-                id="cat-status-select"
-                className="cat-select"
-                value={isActive ? 'active' : 'inactive'}
-                onChange={(e) => setIsActive(e.target.value === 'active')}
-              >
-                <option value="active">Đang kích hoạt (Hiển thị cho khách & thợ)</option>
-                <option value="inactive">Tạm ẩn (Bảo trì / Ngưng cung cấp)</option>
-              </select>
+              <input
+                id="cat-order-input"
+                type="number"
+                min={0}
+                className="cat-input"
+                placeholder="0"
+                value={displayOrder}
+                onChange={(e) => setDisplayOrder(parseInt(e.target.value, 10) || 0)}
+                disabled={submitting}
+              />
+              <span className="cat-field-hint">Số nhỏ hơn sẽ hiển thị trước (0, 1, 2...)</span>
             </div>
           </div>
 
-          <div className="cat-grid-2">
-            <div className="cat-form-group">
-              <label htmlFor="cat-icon-select" className="cat-label">
-                Biểu tượng (Icon đại diện)
-              </label>
-              <select
-                id="cat-icon-select"
-                className="cat-select"
-                value={iconName}
-                onChange={(e) => setIconName(e.target.value as AdminCategoryItem['iconName'])}
+          <div className="cat-form-group">
+            <label htmlFor="cat-status-select" className="cat-label">
+              Trạng thái hoạt động
+            </label>
+            <select
+              id="cat-status-select"
+              className="cat-select"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as CategoryStatus)}
+              disabled={submitting}
+            >
+              <option value="ACTIVE">ACTIVE - Đang hoạt động (Hiển thị cho khách & thợ)</option>
+              <option value="INACTIVE">INACTIVE - Tạm ngưng phục vụ (Tạm ẩn)</option>
+            </select>
+          </div>
+
+          {/* Icon Selection */}
+          <div className="cat-form-group">
+            <label className="cat-label">
+              Biểu tượng đại diện (Icon)
+            </label>
+            <div className="cat-icon-choice-grid">
+              {PRESET_ICONS.map((preset) => {
+                const { Icon } = preset;
+                const isSelected = iconChoice === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    className={`cat-icon-choice-btn ${isSelected ? 'is-selected' : ''}`}
+                    onClick={() => setIconChoice(preset.id)}
+                    disabled={submitting}
+                    title={preset.label}
+                  >
+                    <Icon size={20} />
+                    <span className="choice-label">{preset.id}</span>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                className={`cat-icon-choice-btn ${iconChoice === 'custom' ? 'is-selected' : ''}`}
+                onClick={() => setIconChoice('custom')}
+                disabled={submitting}
+                title="Sử dụng URL biểu tượng tùy chỉnh"
               >
-                <option value="zap">Tia sét (Điện & Chiếu sáng)</option>
-                <option value="snowflake">Bông tuyết (Điện lạnh & Điều hòa)</option>
-                <option value="wrench">Cờ lê (Cấp thoát nước & Đường ống)</option>
-                <option value="key">Chìa khóa (Sửa khóa & Cửa cuốn)</option>
-                <option value="sparkles">Lấp lánh (Tổng vệ sinh & Giúp việc)</option>
-                <option value="tv">Màn hình (Điện tử & Gia dụng)</option>
-                <option value="hammer">Búa thợ (Cơ khí & Xây dựng)</option>
-              </select>
+                <LinkIcon size={20} />
+                <span className="choice-label">URL icon</span>
+              </button>
             </div>
 
-            <div className="cat-form-group">
-              <label className="cat-label">
-                Màu sắc chủ đạo
-              </label>
-              <div className="cat-color-picker-row">
-                {[
-                  { color: '#1d6ae5', label: 'Xanh dương' },
-                  { color: '#0284c7', label: 'Xanh ngọc' },
-                  { color: '#059669', label: 'Xanh lá' },
-                  { color: '#f59e0b', label: 'Vàng cam' },
-                  { color: '#dc2626', label: 'Đỏ' },
-                  { color: '#7c3aed', label: 'Tím' },
-                  { color: '#ea580c', label: 'Cam đậm' },
-                ].map((item) => (
-                  <button
-                    key={item.color}
-                    type="button"
-                    className={`cat-color-dot ${colorTheme === item.color ? 'is-selected' : ''}`}
-                    style={{ backgroundColor: item.color }}
-                    onClick={() => setColorTheme(item.color)}
-                    title={item.label}
-                  />
-                ))}
+            {iconChoice === 'custom' && (
+              <div className="mt-2">
+                <input
+                  type="text"
+                  className="cat-input"
+                  placeholder="https://example.com/icons/electrical.png"
+                  value={customIconUrl}
+                  maxLength={500}
+                  onChange={(e) => setCustomIconUrl(e.target.value)}
+                  disabled={submitting}
+                />
+                <span className="cat-field-hint">Nhập URL hình ảnh icon đại diện (tối đa 500 ký tự)</span>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="cat-form-group">
@@ -223,93 +300,14 @@ function CategoryFormContent({ category, onClose, onSave }: CategoryFormContentP
             <textarea
               id="cat-desc-input"
               className="cat-textarea"
-              rows={2}
-              placeholder="Mô tả các hạng mục công việc được phục vụ trong danh mục này..."
+              rows={3}
+              maxLength={500}
+              placeholder="Mô tả phạm vi các dịch vụ, bảo trì hoặc sửa chữa thuộc danh mục này..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              disabled={submitting}
             />
-          </div>
-
-          {/* Sub Services Management inside Category */}
-          <div className="cat-services-section">
-            <div className="cat-services-header">
-              <h3 className="cat-services-title">
-                Bảng Dịch Vụ Con Chuẩn Hóa ({services.length})
-              </h3>
-              <span className="cat-services-tip">
-                Dịch vụ định hình giá sàn và tiêu chuẩn cho thợ & khách
-              </span>
-            </div>
-
-            {/* Add service mini-form */}
-            <div className="cat-add-service-box">
-              <input
-                type="text"
-                className="service-input-name"
-                placeholder="Tên dịch vụ con (VD: Vệ sinh máy lạnh 1.5 HP)"
-                value={newServiceName}
-                onChange={(e) => setNewServiceName(e.target.value)}
-              />
-              <input
-                type="number"
-                className="service-input-price"
-                placeholder="Giá chuẩn (VNĐ)"
-                value={newServicePrice}
-                onChange={(e) => setNewServicePrice(e.target.value)}
-              />
-              <input
-                type="text"
-                className="service-input-unit"
-                placeholder="Đơn vị (máy, lần...)"
-                value={newServiceUnit}
-                onChange={(e) => setNewServiceUnit(e.target.value)}
-              />
-              <input
-                type="text"
-                className="service-input-duration"
-                placeholder="Thời lượng (45 phút)"
-                value={newServiceDuration}
-                onChange={(e) => setNewServiceDuration(e.target.value)}
-              />
-              <button
-                type="button"
-                className="btn-add-service-inline"
-                onClick={handleAddService}
-              >
-                <Plus size={16} /> Thêm
-              </button>
-            </div>
-
-            {/* Service list table */}
-            <div className="cat-services-list">
-              {services.length === 0 ? (
-                <p className="cat-services-empty">
-                  Chưa có dịch vụ nào trong danh mục này. Hãy thêm dịch vụ ở trên.
-                </p>
-              ) : (
-                services.map((srv, idx) => (
-                  <div key={srv.id || idx} className="cat-service-row">
-                    <div className="service-row-name">
-                      <strong>{srv.name}</strong>
-                      <span className="service-row-meta">
-                        {srv.duration} • Tính theo: {srv.unit}
-                      </span>
-                    </div>
-                    <div className="service-row-price">
-                      {srv.basePrice.toLocaleString('vi-VN')} đ
-                    </div>
-                    <button
-                      type="button"
-                      className="btn-remove-service"
-                      onClick={() => handleRemoveService(srv.id)}
-                      title="Xóa dịch vụ này"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
+            <span className="cat-field-hint">{description.length}/500 ký tự</span>
           </div>
         </div>
 
@@ -318,14 +316,24 @@ function CategoryFormContent({ category, onClose, onSave }: CategoryFormContentP
             type="button"
             className="btn-modal-cancel"
             onClick={onClose}
+            disabled={submitting}
           >
             Hủy bỏ
           </button>
           <button
             type="submit"
             className="btn-modal-save"
+            disabled={submitting}
           >
-            <CheckCircle2 size={16} /> Lưu danh mục
+            {submitting ? (
+              <>
+                <Loader2 size={16} className="animate-spin" /> Đang lưu...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={16} /> Lưu danh mục
+              </>
+            )}
           </button>
         </div>
       </form>
@@ -339,6 +347,16 @@ export function CategoryEditModal({
   onClose,
   onSave,
 }: CategoryEditModalProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (

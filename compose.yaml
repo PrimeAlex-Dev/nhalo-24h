@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:17.4-alpine
+    container_name: nhalo24h-postgres
+    restart: unless-stopped
+    ports:
+      # Chỉ mở trên loopback của máy phát triển để đảm bảo an toàn
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${DB_NAME:-nha_lo_24h}
+      POSTGRES_USER: ${POSTGRES_ROOT_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_ROOT_PASSWORD:-postgres_secret}
+      APP_DB_USER: ${DB_USERNAME:-nhalo_app}
+      APP_DB_PASSWORD: ${DB_PASSWORD:-nhalo_app_dev_secret}
+    volumes:
+      # Named volume lưu trữ dữ liệu PostgreSQL bền vững
+      - postgres_data:/var/lib/postgresql/data
+      # Script khởi tạo tài khoản ứng dụng riêng biệt
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_ROOT_USER:-postgres} -d ${DB_NAME:-nha_lo_24h}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
+    name: nhalo24h_postgres_data
