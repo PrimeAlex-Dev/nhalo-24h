@@ -429,21 +429,61 @@
 /* No providers */
 .no-providers-found {
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 3.5rem 1.5rem;
   color: #64748B;
+  background-color: #FFFFFF;
+  border: 1px dashed #CBD5E1;
+  border-radius: 16px;
+  margin: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.no-providers-icon-wrap {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  color: #94A3B8;
+}
+
+.no-providers-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0 0 0.5rem 0;
+}
+
+.no-providers-desc {
+  font-size: 14px;
+  color: #64748B;
+  max-width: 460px;
+  margin: 0 0 1.25rem 0;
+  line-height: 1.5;
 }
 
 .reset-filters-btn {
-  margin-top: 1rem;
   background-color: #1D6AE5;
   color: #FFFFFF;
   border: none;
   border-radius: 8px;
-  padding: 8px 16px;
+  padding: 9px 20px;
   font-family: inherit;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.reset-filters-btn:hover {
+  background-color: #1557B0;
 }
 
 /* Responsive */

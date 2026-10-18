@@ -9,9 +9,10 @@ import {
   Clock, 
   ArrowLeftRight, 
   ChevronDown,
-  Loader2
+  Loader2,
+  UserX
 } from 'lucide-react';
-import { mockProviders, providerCategoryFilters, mockCategories } from '../data/customerMockData';
+import { providerCategoryFilters, mockCategories } from '../data/customerMockData';
 import { 
   providerProfileService, 
   categoryService,
@@ -110,25 +111,22 @@ export function FindProviderPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // Use real providers from database when available; fallback to mock data
+  // Map real providers from database (no fake mock data fallback)
   const providersPool = useMemo(() => {
-    if (realProviders.length > 0) {
-      return realProviders.map((rp) => ({
-        id: rp.id,
-        name: rp.name,
-        verified: rp.verified ?? true,
-        company: rp.headline || rp.company || 'Nhà Lo 24h Pro',
-        rating: rp.rating || 5.0,
-        reviewsCount: rp.reviewsCount || 0,
-        distance: rp.distance || 'Gần bạn',
-        pricePerHour: rp.pricePerHour || 150000,
-        category: rp.category || (rp.categories && rp.categories.length > 0 ? rp.categories[0].name : 'Dịch vụ gia đình'),
-        isTopRated: rp.isTopRated ?? true,
-        availability: (rp.availability === 'Available today' ? 'Available today' : 'Available soon') as 'Available today' | 'Available soon',
-        avatar: rp.avatar || defaultAvatar,
-      }));
-    }
-    return mockProviders;
+    return realProviders.map((rp) => ({
+      id: rp.id,
+      name: rp.name,
+      verified: rp.verified ?? true,
+      company: rp.headline || rp.company || 'Thợ Kỹ Thuật Độc Lập',
+      rating: rp.rating || 5.0,
+      reviewsCount: rp.reviewsCount || 0,
+      distance: rp.distance || rp.serviceArea || 'Gần bạn',
+      pricePerHour: rp.pricePerHour || 0,
+      category: rp.category || (rp.categories && rp.categories.length > 0 ? rp.categories[0].name : 'Dịch vụ gia đình'),
+      isTopRated: rp.isTopRated ?? true,
+      availability: (rp.availability === 'Available today' ? 'Available today' : 'Available soon') as 'Available today' | 'Available soon',
+      avatar: rp.avatar || defaultAvatar,
+    }));
   }, [realProviders]);
 
   // Filter and sort providers
@@ -354,18 +352,32 @@ export function FindProviderPage() {
         {/* Empty State */}
         {!loading && filteredProviders.length === 0 && (
           <div className="no-providers-found">
-            <p>Không tìm thấy thợ nào phù hợp với tiêu chí tìm kiếm.</p>
-            <button
-              type="button"
-              className="reset-filters-btn"
-              onClick={() => {
-                setSearchQuery('');
-                handleCategorySelect('All services');
-                setAvailableTodayOnly(false);
-              }}
-            >
-              Đặt lại bộ lọc
-            </button>
+            <div className="no-providers-icon-wrap">
+              <UserX size={36} className="no-providers-icon" />
+            </div>
+            <h3 className="no-providers-title">
+              {realProviders.length === 0 
+                ? 'Hiện chưa có thợ khả thi' 
+                : 'Không tìm thấy thợ phù hợp'}
+            </h3>
+            <p className="no-providers-desc">
+              {realProviders.length === 0
+                ? 'Hệ thống hiện tại chưa có thợ đối tác nào đăng ký hoặc sẵn sàng nhận việc. Vui lòng quay lại sau!'
+                : 'Không có thợ nào khớp với từ khóa tìm kiếm hoặc bộ lọc danh mục đã chọn.'}
+            </p>
+            {realProviders.length > 0 && (
+              <button
+                type="button"
+                className="reset-filters-btn"
+                onClick={() => {
+                  setSearchQuery('');
+                  handleCategorySelect('All services');
+                  setAvailableTodayOnly(false);
+                }}
+              >
+                Đặt lại bộ lọc
+              </button>
+            )}
           </div>
         )}
       </div>

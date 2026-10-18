@@ -17,7 +17,6 @@ import {
   X,
   Loader2
 } from 'lucide-react';
-import { mockProviders } from '../data/customerMockData';
 import { PATHS } from '../../../routes/paths';
 import { providerProfileService, type PublicProviderItem } from '../../../services';
 import defaultAvatar from '../../../assets/provider_1.png';
@@ -101,8 +100,8 @@ export function ProviderProfilePage() {
         ]
       };
     }
-    return mockProviders.find((p) => p.id === providerId);
-  }, [realProvider, providerId]);
+    return undefined;
+  }, [realProvider]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -123,11 +122,11 @@ export function ProviderProfilePage() {
     return (
       <div className="provider-not-found-container container">
         <div className="not-found-card">
-          <h2>Provider not found</h2>
-          <p>We couldn't locate the provider you were looking for.</p>
+          <h2>Không tìm thấy thông tin thợ</h2>
+          <p>Hồ sơ đối tác thợ này không tồn tại hoặc đã tạm ẩn.</p>
           <Link to={PATHS.CUSTOMER.PROVIDERS} className="btn-return-providers">
             <ArrowLeft size={16} />
-            <span>Back to all providers</span>
+            <span>Quay lại danh sách thợ</span>
           </Link>
         </div>
       </div>
