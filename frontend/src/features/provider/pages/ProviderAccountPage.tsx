@@ -41,8 +41,8 @@ export function ProviderAccountPage() {
   // Form edit state
   const [headline, setHeadline] = useState<string>('');
   const [bio, setBio] = useState<string>('');
-  const [experienceYears, setExperienceYears] = useState<number>(0);
-  const [pricePerHour, setPricePerHour] = useState<number>(0);
+  const [experienceYears, setExperienceYears] = useState<string>('');
+  const [pricePerHour, setPricePerHour] = useState<string>('');
   const [serviceArea, setServiceArea] = useState<string>('');
   const [isAvailable, setIsAvailable] = useState<boolean>(true);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -66,8 +66,16 @@ export function ProviderAccountPage() {
           // Sync initial form values
           setHeadline(profData.headline || '');
           setBio(profData.bio || '');
-          setExperienceYears(profData.experienceYears || 0);
-          setPricePerHour(profData.pricePerHour || 0);
+          setExperienceYears(
+            profData.experienceYears !== null && profData.experienceYears !== undefined && profData.experienceYears > 0
+              ? String(profData.experienceYears)
+              : ''
+          );
+          setPricePerHour(
+            profData.pricePerHour !== null && profData.pricePerHour !== undefined && profData.pricePerHour > 0
+              ? String(profData.pricePerHour)
+              : ''
+          );
           setServiceArea(profData.serviceArea || '');
           setIsAvailable(profData.isAvailable ?? true);
           setSelectedCategoryIds(profData.categories?.map((c) => c.id) || []);
@@ -97,12 +105,47 @@ export function ProviderAccountPage() {
     );
   };
 
+  const handleNumberChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (val: string) => void,
+    max?: number
+  ) => {
+    const raw = e.target.value;
+    if (raw === '') {
+      setter('');
+      return;
+    }
+    // Remove non-digit characters if any
+    const digits = raw.replace(/\D/g, '');
+    if (digits === '') {
+      setter('');
+      return;
+    }
+    // Remove leading zeros if followed by other digits (e.g. "01000" -> "1000")
+    const sanitized = digits.replace(/^0+(?=\d)/, '');
+    if (max !== undefined && Number(sanitized) > max) {
+      e.target.value = String(max);
+      setter(String(max));
+      return;
+    }
+    e.target.value = sanitized;
+    setter(sanitized);
+  };
+
   const handleResetForm = () => {
     if (!profile) return;
     setHeadline(profile.headline || '');
     setBio(profile.bio || '');
-    setExperienceYears(profile.experienceYears || 0);
-    setPricePerHour(profile.pricePerHour || 0);
+    setExperienceYears(
+      profile.experienceYears !== null && profile.experienceYears !== undefined && profile.experienceYears > 0
+        ? String(profile.experienceYears)
+        : ''
+    );
+    setPricePerHour(
+      profile.pricePerHour !== null && profile.pricePerHour !== undefined && profile.pricePerHour > 0
+        ? String(profile.pricePerHour)
+        : ''
+    );
     setServiceArea(profile.serviceArea || '');
     setIsAvailable(profile.isAvailable ?? true);
     setSelectedCategoryIds(profile.categories?.map((c) => c.id) || []);
@@ -120,8 +163,8 @@ export function ProviderAccountPage() {
       const updated = await providerProfileService.updateMyProfile({
         headline,
         bio,
-        experienceYears,
-        pricePerHour,
+        experienceYears: experienceYears === '' ? 0 : parseInt(experienceYears, 10) || 0,
+        pricePerHour: pricePerHour === '' ? 0 : parseFloat(pricePerHour) || 0,
         serviceArea,
         isAvailable,
         categoryIds: selectedCategoryIds,
@@ -304,10 +347,16 @@ export function ProviderAccountPage() {
                     min="0"
                     max="50"
                     className="form-input"
+                    placeholder="0"
                     value={experienceYears}
-                    onChange={(e) => setExperienceYears(Number(e.target.value))}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => handleNumberChange(e, setExperienceYears, 50)}
                   />
-                  <span className="form-help">Số năm làm nghề (năm).</span>
+                  <span className="form-help">
+                    {experienceYears !== '' && Number(experienceYears) > 0
+                      ? `${experienceYears} năm kinh nghiệm làm nghề.`
+                      : 'Số năm làm nghề (năm).'}
+                  </span>
                 </div>
 
                 <div className="form-group">
@@ -321,10 +370,16 @@ export function ProviderAccountPage() {
                     min="0"
                     step="10000"
                     className="form-input"
+                    placeholder="Ví dụ: 150000"
                     value={pricePerHour}
-                    onChange={(e) => setPricePerHour(Number(e.target.value))}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => handleNumberChange(e, setPricePerHour)}
                   />
-                  <span className="form-help">Mức giá tham khảo cho khách hàng.</span>
+                  <span className="form-help">
+                    {pricePerHour !== '' && Number(pricePerHour) > 0
+                      ? `Tương đương: ${Number(pricePerHour).toLocaleString('vi-VN')} đ/giờ`
+                      : 'Mức giá tham khảo cho khách hàng.'}
+                  </span>
                 </div>
               </div>
 
