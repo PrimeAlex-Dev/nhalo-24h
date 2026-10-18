@@ -8,6 +8,8 @@ import type {
   UpdateCategoryStatusPayload,
 } from '../features/admin/types/admin';
 
+export type { AdminCategoryItem, CategoryStatus };
+
 export interface GetCategoriesParams {
   status?: CategoryStatus;
   search?: string;

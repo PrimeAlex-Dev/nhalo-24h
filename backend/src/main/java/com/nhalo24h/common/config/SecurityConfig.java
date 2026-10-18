@@ -88,6 +88,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/me").authenticated()
                 // Hồ sơ khách hàng: Chỉ dành cho người dùng có vai trò CUSTOMER
                 .requestMatchers("/api/v1/customer/**").hasRole("CUSTOMER")
+                // Thông tin thợ công khai: Khách hàng và người dùng vãng lai được xem
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/providers", "/api/v1/providers/**").permitAll()
+                // Hồ sơ thợ: Chỉ dành cho người dùng có vai trò PROVIDER
+                .requestMatchers("/api/v1/provider/**").hasRole("PROVIDER")
                 // Mọi API nghiệp vụ còn lại đều yêu cầu xác thực
                 .anyRequest().authenticated()
             )
