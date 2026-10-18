@@ -21,7 +21,6 @@ import {
   categoryService,
   type PublicProviderItem 
 } from '../../../services';
-import defaultAvatar from '../../../assets/provider_1.png';
 
 export function FindProviderPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -128,7 +127,7 @@ export function FindProviderPage() {
       category: rp.category || (rp.categories && rp.categories.length > 0 ? rp.categories[0].name : 'Dịch vụ gia đình'),
       isTopRated: rp.isTopRated ?? true,
       availability: (rp.availability === 'Available today' ? 'Available today' : 'Available soon') as 'Available today' | 'Available soon',
-      avatar: rp.avatar || defaultAvatar,
+      avatar: rp.avatar || '',
     }));
   }, [realProviders]);
 
@@ -276,11 +275,17 @@ export function FindProviderPage() {
                   to={`/customer/providers/${provider.id}`}
                   className="provider-avatar-link"
                 >
-                  <img
-                    src={provider.avatar}
-                    alt={provider.name}
-                    className="provider-avatar"
-                  />
+                  {provider.avatar ? (
+                    <img
+                      src={provider.avatar}
+                      alt={provider.name}
+                      className="provider-avatar"
+                    />
+                  ) : (
+                    <div className="provider-avatar-letter-placeholder">
+                      {provider.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                 </Link>
 
                 <div className="provider-primary-info">

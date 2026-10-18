@@ -278,6 +278,27 @@
   transform: scale(1.04);
 }
 
+.provider-avatar-letter-placeholder {
+  width: 62px;
+  height: 62px;
+  border-radius: 14px;
+  background-color: #EFF6FF;
+  color: #1D6AE5;
+  font-size: 24px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #BFDBFE;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  transition: transform 0.2s ease;
+}
+
+.provider-avatar-link:hover .provider-avatar-letter-placeholder {
+  transform: scale(1.04);
+}
+
 .provider-primary-info {
   flex: 1;
   min-width: 0;

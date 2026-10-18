@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { PATHS } from '../../../routes/paths';
 import { providerProfileService, type PublicProviderItem } from '../../../services';
-import defaultAvatar from '../../../assets/provider_1.png';
 import type { ProviderItem } from '../types/customer';
 
 export function ProviderProfilePage() {
@@ -79,7 +78,7 @@ export function ProviderProfilePage() {
         category: realProvider.category || 'Dịch vụ chuyên nghiệp',
         isTopRated: realProvider.isTopRated ?? true,
         availability: (realProvider.availability === 'Available today' ? 'Available today' : 'Available soon') as 'Available today' | 'Available soon',
-        avatar: realProvider.avatar || defaultAvatar,
+        avatar: realProvider.avatar || '',
         experienceYears: realProvider.experienceYears || 0,
         completedJobsCount: realProvider.completedJobsCount || 'Mới tham gia',
         responseTime: realProvider.responseTime || '~10 phút',
@@ -186,11 +185,17 @@ export function ProviderProfilePage() {
           <div className="profile-main-column">
             {/* Header Card */}
             <div className="profile-header-card">
-              <img
-                src={provider.avatar}
-                alt={provider.name}
-                className="profile-avatar-img"
-              />
+              {provider.avatar ? (
+                <img
+                  src={provider.avatar}
+                  alt={provider.name}
+                  className="profile-avatar-img"
+                />
+              ) : (
+                <div className="profile-avatar-letter-placeholder">
+                  {provider.name.charAt(0).toUpperCase()}
+                </div>
+              )}
 
               <div className="profile-header-info">
                 <div className="profile-name-row">
