@@ -17,10 +17,8 @@ import {
   X,
   Loader2
 } from 'lucide-react';
-import { mockProviders } from '../data/customerMockData';
 import { PATHS } from '../../../routes/paths';
 import { providerProfileService, type PublicProviderItem } from '../../../services';
-import defaultAvatar from '../../../assets/provider_1.png';
 import type { ProviderItem } from '../types/customer';
 
 export function ProviderProfilePage() {
@@ -80,7 +78,7 @@ export function ProviderProfilePage() {
         category: realProvider.category || 'Dịch vụ chuyên nghiệp',
         isTopRated: realProvider.isTopRated ?? true,
         availability: (realProvider.availability === 'Available today' ? 'Available today' : 'Available soon') as 'Available today' | 'Available soon',
-        avatar: realProvider.avatar || defaultAvatar,
+        avatar: realProvider.avatar || '',
         experienceYears: realProvider.experienceYears || 0,
         completedJobsCount: realProvider.completedJobsCount || 'Mới tham gia',
         responseTime: realProvider.responseTime || '~10 phút',
@@ -101,8 +99,8 @@ export function ProviderProfilePage() {
         ]
       };
     }
-    return mockProviders.find((p) => p.id === providerId);
-  }, [realProvider, providerId]);
+    return undefined;
+  }, [realProvider]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -123,11 +121,11 @@ export function ProviderProfilePage() {
     return (
       <div className="provider-not-found-container container">
         <div className="not-found-card">
-          <h2>Provider not found</h2>
-          <p>We couldn't locate the provider you were looking for.</p>
+          <h2>Không tìm thấy thông tin thợ</h2>
+          <p>Hồ sơ đối tác thợ này không tồn tại hoặc đã tạm ẩn.</p>
           <Link to={PATHS.CUSTOMER.PROVIDERS} className="btn-return-providers">
             <ArrowLeft size={16} />
-            <span>Back to all providers</span>
+            <span>Quay lại danh sách thợ</span>
           </Link>
         </div>
       </div>
@@ -187,11 +185,17 @@ export function ProviderProfilePage() {
           <div className="profile-main-column">
             {/* Header Card */}
             <div className="profile-header-card">
-              <img
-                src={provider.avatar}
-                alt={provider.name}
-                className="profile-avatar-img"
-              />
+              {provider.avatar ? (
+                <img
+                  src={provider.avatar}
+                  alt={provider.name}
+                  className="profile-avatar-img"
+                />
+              ) : (
+                <div className="profile-avatar-letter-placeholder">
+                  {provider.name.charAt(0).toUpperCase()}
+                </div>
+              )}
 
               <div className="profile-header-info">
                 <div className="profile-name-row">

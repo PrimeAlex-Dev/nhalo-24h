@@ -117,6 +117,22 @@
   border: 1px solid #F1F5F9;
 }
 
+.profile-avatar-letter-placeholder {
+  width: 92px;
+  height: 92px;
+  border-radius: 18px;
+  background-color: #EFF6FF;
+  color: #1D6AE5;
+  font-size: 38px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #BFDBFE;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
 .profile-header-info {
   flex: 1;
   min-width: 0;
