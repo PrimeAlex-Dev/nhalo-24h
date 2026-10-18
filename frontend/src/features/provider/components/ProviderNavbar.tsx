@@ -10,21 +10,31 @@ import {
   Power
 } from 'lucide-react';
 import { PATHS } from '../../../routes/paths';
-import { mockProviderProfile } from '../data/providerMockData';
+import { useAuth } from '../../auth';
+import type { ProviderProfileData } from '../../../services';
 import './ProviderNavbar.css';
 
 interface ProviderNavbarProps {
   isOnline: boolean;
   onToggleOnline: () => void;
   unreadNotifications?: number;
+  profile?: ProviderProfileData | null;
 }
 
 export function ProviderNavbar({
   isOnline,
   onToggleOnline,
-  unreadNotifications = 2
+  unreadNotifications = 2,
+  profile
 }: ProviderNavbarProps) {
   const location = useLocation();
+  const { user } = useAuth();
+
+  const displayName = profile?.fullName || user?.fullName || 'Thợ đối tác';
+  const displayAvatar = profile?.avatarUrl || '';
+  const initialLetter = displayName.trim().charAt(0).toUpperCase() || 'T';
+  const shortName = displayName.trim().split(' ').slice(-1)[0] || 'Thợ';
+  const ratingText = '★ 5.0';
 
   const isCurrentPath = (path: string) => {
     if (path === PATHS.PROVIDER.ROOT) {
@@ -131,15 +141,21 @@ export function ProviderNavbar({
             </Link>
 
             {/* Provider Mini Profile */}
-            <Link to={PATHS.PROVIDER.ACCOUNT} className="provider-avatar-pill" title="Hồ sơ thợ đối tác">
-              <img 
-                src={mockProviderProfile.avatar} 
-                alt={mockProviderProfile.name} 
-                className="provider-avatar-img" 
-              />
+            <Link to={PATHS.PROVIDER.ACCOUNT} className="provider-avatar-pill" title={`Hồ sơ ${displayName}`}>
+              {displayAvatar ? (
+                <img 
+                  src={displayAvatar} 
+                  alt={displayName} 
+                  className="provider-avatar-img" 
+                />
+              ) : (
+                <div className="provider-avatar-placeholder">
+                  {initialLetter}
+                </div>
+              )}
               <div className="provider-avatar-texts">
-                <span className="provider-avatar-name">{mockProviderProfile.name.split(' ').slice(-1)[0]}</span>
-                <span className="provider-avatar-rating">★ {mockProviderProfile.rating}</span>
+                <span className="provider-avatar-name">{shortName}</span>
+                <span className="provider-avatar-rating">{ratingText}</span>
               </div>
             </Link>
           </div>

@@ -33,6 +33,7 @@ export function ProviderAccountPage() {
   const outletCtx = useOutletContext<ProviderContextType | null>();
   const isAvailable = outletCtx?.isOnline ?? true;
   const toggleAvailable = outletCtx?.toggleOnline;
+  const setParentProfile = outletCtx?.setProfile;
 
   // Profile data state
   const [profile, setProfile] = useState<ProviderProfileData | null>(null);
@@ -64,6 +65,9 @@ export function ProviderAccountPage() {
 
         if (!ignore) {
           setProfile(profData);
+          if (setParentProfile) {
+            setParentProfile(profData);
+          }
           setAvailableCategories(catData.content || []);
 
           // Sync initial form values
@@ -99,7 +103,7 @@ export function ProviderAccountPage() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [setParentProfile]);
 
   const handleCategoryToggle = (catId: string) => {
     setSelectedCategoryIds((prev) => 
@@ -172,6 +176,9 @@ export function ProviderAccountPage() {
       });
 
       setProfile(updated);
+      if (setParentProfile) {
+        setParentProfile(updated);
+      }
       setSuccessNotice('Hồ sơ nghề nghiệp đã được cập nhật thành công!');
       setTimeout(() => setSuccessNotice(null), 4000);
     } catch (err) {

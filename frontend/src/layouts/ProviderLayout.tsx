@@ -1,27 +1,33 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import { ProviderNavbar } from '../features/provider/components/ProviderNavbar';
-import { providerProfileService } from '../services';
+import { providerProfileService, type ProviderProfileData } from '../services';
 import './ProviderLayout.css';
 
 export interface ProviderContextType {
   isOnline: boolean;
   setIsOnline: (val: boolean) => void;
   toggleOnline: () => Promise<void> | void;
+  profile: ProviderProfileData | null;
+  setProfile: React.Dispatch<React.SetStateAction<ProviderProfileData | null>>;
 }
 
 export function ProviderLayout() {
   const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [profile, setProfile] = useState<ProviderProfileData | null>(null);
 
-  // Sync initial online/available status with real provider profile in database
+  // Sync initial online/available status and profile data from database
   useEffect(() => {
     let ignore = false;
 
     providerProfileService
       .getMyProfile()
       .then((prof) => {
-        if (!ignore && prof.isAvailable !== undefined && prof.isAvailable !== null) {
-          setIsOnline(prof.isAvailable);
+        if (!ignore) {
+          setProfile(prof);
+          if (prof.isAvailable !== undefined && prof.isAvailable !== null) {
+            setIsOnline(prof.isAvailable);
+          }
         }
       })
       .catch((err) => {
@@ -50,11 +56,12 @@ export function ProviderLayout() {
       <ProviderNavbar 
         isOnline={isOnline} 
         onToggleOnline={toggleOnline} 
+        profile={profile}
       />
 
       {/* Main Page Area */}
       <main className="provider-main-wrapper">
-        <Outlet context={{ isOnline, setIsOnline, toggleOnline } satisfies ProviderContextType} />
+        <Outlet context={{ isOnline, setIsOnline, toggleOnline, profile, setProfile } satisfies ProviderContextType} />
       </main>
     </div>
   );

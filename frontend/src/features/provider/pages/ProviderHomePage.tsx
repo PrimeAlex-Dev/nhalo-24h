@@ -11,13 +11,18 @@ import {
 import { PATHS } from '../../../routes/paths';
 import { mockProviderJobs, mockProviderProfile } from '../data/providerMockData';
 import { JobDetailModal } from '../components/JobDetailModal';
+import { useAuth } from '../../auth';
 import type { ProviderJob } from '../types/provider';
 import type { ProviderContextType } from '../../../layouts/ProviderLayout';
 import './ProviderHomePage.css';
 
 export function ProviderHomePage() {
-  const { isOnline, toggleOnline } = useOutletContext<ProviderContextType>();
+  const { isOnline, toggleOnline, profile } = useOutletContext<ProviderContextType>();
+  const { user } = useAuth();
   const navigate = useNavigate();
+
+  const displayName = profile?.fullName || user?.fullName || mockProviderProfile.name;
+  const shortName = displayName.trim().split(' ').slice(-1)[0] || 'Thợ';
 
   // Highlight job matching wireframe: 'job-101' (Sửa vòi nước bị rò rỉ)
   const featuredJob = mockProviderJobs.find((j) => j.id === 'job-101') || mockProviderJobs[0];
@@ -52,7 +57,7 @@ export function ProviderHomePage() {
       {/* 1. Greeting Row */}
       <div className="provider-greeting-row">
         <div>
-          <p className="provider-greeting-sub">Xin chào, {mockProviderProfile.name.split(' ').slice(-1)[0]}!</p>
+          <p className="provider-greeting-sub">Xin chào, {shortName}!</p>
           <h1 className="provider-greeting-title">Sẵn sàng nhận việc?</h1>
         </div>
 
