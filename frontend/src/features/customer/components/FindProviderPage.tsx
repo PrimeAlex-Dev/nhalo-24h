@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { PATHS } from '../../../routes/paths';
 import './FindProviderPage.css';
 import { 
   Search, 
@@ -10,7 +11,9 @@ import {
   ArrowLeftRight, 
   ChevronDown,
   Loader2,
-  UserX
+  UserX,
+  ArrowLeft,
+  Home
 } from 'lucide-react';
 import { providerCategoryFilters, mockCategories } from '../data/customerMockData';
 import { 
@@ -182,6 +185,15 @@ export function FindProviderPage() {
   return (
     <div className="find-provider-page">
       <div className="container">
+        {/* Quick Back to Home Navigation Pill */}
+        <div className="find-provider-breadcrumb-box">
+          <Link to={PATHS.CUSTOMER.ROOT} className="back-to-home-pill" title="Quay về Trang chủ Nhà Lo 24h">
+            <ArrowLeft size={15} />
+            <Home size={15} />
+            <span>Quay về Trang chủ</span>
+          </Link>
+        </div>
+
         {/* Page Header */}
         <div className="find-provider-header">
           <h1 className="find-provider-title">Tìm kiếm thợ chuyên nghiệp</h1>
@@ -365,19 +377,25 @@ export function FindProviderPage() {
                 ? 'Hệ thống hiện tại chưa có thợ đối tác nào đăng ký hoặc sẵn sàng nhận việc. Vui lòng quay lại sau!'
                 : 'Không có thợ nào khớp với từ khóa tìm kiếm hoặc bộ lọc danh mục đã chọn.'}
             </p>
-            {realProviders.length > 0 && (
-              <button
-                type="button"
-                className="reset-filters-btn"
-                onClick={() => {
-                  setSearchQuery('');
-                  handleCategorySelect('All services');
-                  setAvailableTodayOnly(false);
-                }}
-              >
-                Đặt lại bộ lọc
-              </button>
-            )}
+            <div className="no-providers-actions">
+              {realProviders.length > 0 && (
+                <button
+                  type="button"
+                  className="reset-filters-btn"
+                  onClick={() => {
+                    setSearchQuery('');
+                    handleCategorySelect('All services');
+                    setAvailableTodayOnly(false);
+                  }}
+                >
+                  Đặt lại bộ lọc
+                </button>
+              )}
+              <Link to={PATHS.CUSTOMER.ROOT} className="back-home-btn">
+                <Home size={15} />
+                <span>Về trang chủ</span>
+              </Link>
+            </div>
           </div>
         )}
       </div>

@@ -99,12 +99,12 @@ export function ProviderNavbar({
               {isOnline ? (
                 <>
                   <span className="provider-status-pulse-dot" />
-                  <span>Online</span>
+                  <span>Sẵn sàng</span>
                 </>
               ) : (
                 <>
                   <Power size={13} />
-                  <span>Tạm nghỉ</span>
+                  <span>Tạm ngưng</span>
                 </>
               )}
             </button>

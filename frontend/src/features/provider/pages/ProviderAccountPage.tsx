@@ -15,9 +15,10 @@ import {
   Save,
   RotateCcw
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { PATHS } from '../../../routes/paths';
 import { useAuth } from '../../auth';
+import type { ProviderContextType } from '../../../layouts/ProviderLayout';
 import { 
   providerProfileService, 
   categoryService,
@@ -29,6 +30,9 @@ import './ProviderAccountPage.css';
 export function ProviderAccountPage() {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+  const outletCtx = useOutletContext<ProviderContextType | null>();
+  const isAvailable = outletCtx?.isOnline ?? true;
+  const toggleAvailable = outletCtx?.toggleOnline;
 
   // Profile data state
   const [profile, setProfile] = useState<ProviderProfileData | null>(null);
@@ -44,7 +48,6 @@ export function ProviderAccountPage() {
   const [experienceYears, setExperienceYears] = useState<string>('');
   const [pricePerHour, setPricePerHour] = useState<string>('');
   const [serviceArea, setServiceArea] = useState<string>('');
-  const [isAvailable, setIsAvailable] = useState<boolean>(true);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -77,7 +80,6 @@ export function ProviderAccountPage() {
               : ''
           );
           setServiceArea(profData.serviceArea || '');
-          setIsAvailable(profData.isAvailable ?? true);
           setSelectedCategoryIds(profData.categories?.map((c) => c.id) || []);
         }
       } catch (err) {
@@ -147,7 +149,6 @@ export function ProviderAccountPage() {
         : ''
     );
     setServiceArea(profile.serviceArea || '');
-    setIsAvailable(profile.isAvailable ?? true);
     setSelectedCategoryIds(profile.categories?.map((c) => c.id) || []);
     setSuccessNotice(null);
     setError(null);
@@ -454,7 +455,11 @@ export function ProviderAccountPage() {
                   <input
                     type="checkbox"
                     checked={isAvailable}
-                    onChange={(e) => setIsAvailable(e.target.checked)}
+                    onChange={() => {
+                      if (toggleAvailable) {
+                        toggleAvailable();
+                      }
+                    }}
                     className="toggle-switch-input"
                   />
                   <span className="toggle-switch-slider" />

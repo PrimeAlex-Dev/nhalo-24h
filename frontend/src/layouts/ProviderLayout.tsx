@@ -1,20 +1,48 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import { ProviderNavbar } from '../features/provider/components/ProviderNavbar';
+import { providerProfileService } from '../services';
 import './ProviderLayout.css';
 
 export interface ProviderContextType {
   isOnline: boolean;
   setIsOnline: (val: boolean) => void;
-  toggleOnline: () => void;
+  toggleOnline: () => Promise<void> | void;
 }
 
 export function ProviderLayout() {
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState<boolean>(true);
 
-  const toggleOnline = () => {
-    setIsOnline((prev) => !prev);
-  };
+  // Sync initial online/available status with real provider profile in database
+  useEffect(() => {
+    let ignore = false;
+
+    providerProfileService
+      .getMyProfile()
+      .then((prof) => {
+        if (!ignore && prof.isAvailable !== undefined && prof.isAvailable !== null) {
+          setIsOnline(prof.isAvailable);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load provider profile availability:', err);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const toggleOnline = useCallback(async () => {
+    setIsOnline((prev) => {
+      const nextVal = !prev;
+      providerProfileService.updateMyProfile({ isAvailable: nextVal }).catch((err) => {
+        console.error('Failed to sync availability status to backend:', err);
+        setIsOnline(prev);
+      });
+      return nextVal;
+    });
+  }, []);
 
   return (
     <div className="provider-layout">

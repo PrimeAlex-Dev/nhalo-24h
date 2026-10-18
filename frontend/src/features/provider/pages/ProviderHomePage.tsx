@@ -82,20 +82,20 @@ export function ProviderHomePage() {
               <div>
                 <h2 className="provider-status-title">Trạng thái nhận việc</h2>
                 <p className={`provider-status-desc ${isOnline ? 'online' : 'offline'}`}>
-                  {isOnline ? 'Đang hoạt động' : 'Tạm dừng nhận việc'}
+                  {isOnline ? 'Đang sẵn sàng nhận việc' : 'Tạm ngưng nhận việc'}
                 </p>
               </div>
             </div>
 
             <div className={`provider-status-pill ${isOnline ? 'online' : 'offline'}`}>
-              {isOnline ? 'Online' : 'Offline'}
+              {isOnline ? 'Sẵn sàng' : 'Tạm ngưng'}
             </div>
           </div>
 
           {!isOnline && (
             <div className="provider-offline-alert">
               <AlertCircle size={18} />
-              <span>Bạn đang ở chế độ Tạm nghỉ. Bật Online để nhận đơn hàng mới.</span>
+              <span>Bạn đang ở chế độ Tạm ngưng nhận việc. Bật Sẵn sàng để nhận đơn hàng mới.</span>
             </div>
           )}
 
