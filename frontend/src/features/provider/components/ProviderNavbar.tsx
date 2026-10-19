@@ -19,13 +19,15 @@ interface ProviderNavbarProps {
   onToggleOnline: () => void;
   unreadNotifications?: number;
   profile?: ProviderProfileData | null;
+  incomingRequestsCount?: number;
 }
 
 export function ProviderNavbar({
   isOnline,
   onToggleOnline,
   unreadNotifications = 2,
-  profile
+  profile,
+  incomingRequestsCount
 }: ProviderNavbarProps) {
   const location = useLocation();
   const { user } = useAuth();
@@ -77,7 +79,9 @@ export function ProviderNavbar({
             >
               <Briefcase size={18} />
               <span>Công việc</span>
-              <span className="provider-nav-badge">3</span>
+              {incomingRequestsCount !== undefined && incomingRequestsCount > 0 && (
+                <span className="provider-nav-badge">{incomingRequestsCount}</span>
+              )}
             </Link>
 
             <Link 
@@ -185,7 +189,9 @@ export function ProviderNavbar({
           >
             <div className="provider-bottom-nav-icon-box">
               <Briefcase size={22} strokeWidth={isCurrentPath(PATHS.PROVIDER.JOBS) ? 2.5 : 2} />
-              <span className="provider-bottom-badge">3</span>
+              {incomingRequestsCount !== undefined && incomingRequestsCount > 0 && (
+                <span className="provider-bottom-badge">{incomingRequestsCount}</span>
+              )}
             </div>
             <span className="provider-bottom-nav-label">Công việc</span>
           </Link>

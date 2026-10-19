@@ -376,7 +376,7 @@ export function ProviderAccountPage() {
                     id="pricePerHour"
                     type="number"
                     min="0"
-                    step="10000"
+                    step="any"
                     className="form-input"
                     placeholder="Ví dụ: 150000"
                     value={pricePerHour}

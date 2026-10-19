@@ -1,271 +1,401 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { 
   MapPin, 
   Clock, 
   Phone, 
-  Navigation, 
   CheckCircle2, 
   Wrench, 
-  Inbox,
-  Check
+  Inbox, 
+  Loader2, 
+  AlertCircle,
+  DollarSign,
+  MessageSquare
 } from 'lucide-react';
-import { mockProviderJobs } from '../data/providerMockData';
+import { providerJobService } from '../../../services';
+import type { ProviderJobItem } from '../../../types/order';
+import type { ProviderContextType } from '../../../layouts/ProviderLayout';
 import { JobDetailModal } from '../components/JobDetailModal';
-import type { ProviderJob } from '../types/provider';
+import { SubmitQuotationModal } from '../components/SubmitQuotationModal';
+import { CompleteJobModal } from '../components/CompleteJobModal';
+import { RejectRequestModal } from '../components/RejectRequestModal';
+import { OrderChatDrawer } from '../../order/components/OrderChatDrawer';
 import './ProviderJobsPage.css';
 
-type JobTabFilter = 'available' | 'in_progress' | 'scheduled' | 'completed';
+type ProviderTab = 'requests' | 'in_progress' | 'completed';
 
 export function ProviderJobsPage() {
-  const [jobs, setJobs] = useState<ProviderJob[]>(mockProviderJobs);
-  const [activeTab, setActiveTab] = useState<JobTabFilter>('available');
-  const [selectedJob, setSelectedJob] = useState<ProviderJob | null>(null);
+  const { refreshIncomingRequestsCount } = useOutletContext<ProviderContextType>() || {};
+  const [activeTab, setActiveTab] = useState<ProviderTab>('requests');
+  const [jobs, setJobs] = useState<ProviderJobItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
-  // Filter jobs by active tab
-  const filteredJobs = jobs.filter((j) => {
-    if (activeTab === 'available') return j.status === 'available';
-    if (activeTab === 'in_progress') return j.status === 'in_progress';
-    if (activeTab === 'scheduled') return j.urgency === 'scheduled' || j.status === 'accepted';
-    if (activeTab === 'completed') return j.status === 'completed';
-    return true;
-  });
+  // Modals state
+  const [selectedJob, setSelectedJob] = useState<ProviderJobItem | null>(null);
+  const [quotingJob, setQuotingJob] = useState<ProviderJobItem | null>(null);
+  const [completingJob, setCompletingJob] = useState<ProviderJobItem | null>(null);
+  const [rejectingJob, setRejectingJob] = useState<ProviderJobItem | null>(null);
+  const [chatJob, setChatJob] = useState<ProviderJobItem | null>(null);
 
-  const availableCount = jobs.filter((j) => j.status === 'available').length;
-  const inProgressCount = jobs.filter((j) => j.status === 'in_progress').length;
-  const scheduledCount = jobs.filter((j) => j.urgency === 'scheduled' || j.status === 'accepted').length;
-  const completedCount = jobs.filter((j) => j.status === 'completed').length;
+  useEffect(() => {
+    loadJobs(false);
 
-  const handleAcceptJob = (jobId: string) => {
-    setJobs((prev) =>
-      prev.map((job) =>
-        job.id === jobId ? { ...job, status: 'in_progress' as const } : job
-      )
-    );
-    setSelectedJob(null);
-    setActiveTab('in_progress');
-    showNotice('Đã nhận việc! Đơn đã được chuyển vào mục Đang làm.');
-  };
+    // Auto-poll jobs every 12 seconds
+    const intervalTimer = setInterval(() => {
+      loadJobs(true);
+    }, 12000);
 
-  const handleFinishJob = (jobId: string) => {
-    setJobs((prev) =>
-      prev.map((job) =>
-        job.id === jobId ? { ...job, status: 'completed' as const } : job
-      )
-    );
-    showNotice('Chúc mừng bạn đã hoàn thành công việc và thu tiền thành công!');
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadJobs(true);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      clearInterval(intervalTimer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [activeTab]);
+
+  const loadJobs = async (silent = false) => {
+    try {
+      if (!silent) {
+        setLoading(true);
+      }
+      setErrorMsg(null);
+
+      if (activeTab === 'requests') {
+        const data = await providerJobService.getIncomingRequests();
+        setJobs(data);
+      } else if (activeTab === 'in_progress') {
+        const data = await providerJobService.getAssignedOrders('IN_PROGRESS');
+        setJobs(data);
+      } else {
+        const data = await providerJobService.getAssignedOrders('COMPLETED');
+        setJobs(data);
+      }
+      if (refreshIncomingRequestsCount) {
+        refreshIncomingRequestsCount();
+      }
+    } catch (err: any) {
+      if (!silent) {
+        setErrorMsg(err.message || 'Không thể tải danh sách công việc.');
+      }
+    } finally {
+      if (!silent) {
+        setLoading(false);
+      }
+    }
   };
 
   const showNotice = (msg: string) => {
     setActionNotice(msg);
-    setTimeout(() => setActionNotice(null), 3000);
+    setTimeout(() => setActionNotice(null), 3500);
   };
 
-  const handleCall = (phone: string) => {
-    window.open(`tel:${phone}`);
+  const handleOpenRejectModal = (job: ProviderJobItem) => {
+    setSelectedJob(null);
+    setRejectingJob(job);
   };
 
-  const handleOpenMap = (address: string) => {
-    const encoded = encodeURIComponent(address);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, '_blank');
+  const handleConfirmRejectRequest = async (job: ProviderJobItem, reason: string) => {
+    await providerJobService.rejectRequest(job.requestId, { rejectReason: reason });
+    showNotice('Đã từ chối yêu cầu nhận việc.');
+    setRejectingJob(null);
+    loadJobs();
+    if (refreshIncomingRequestsCount) {
+      refreshIncomingRequestsCount();
+    }
+  };
+
+  const handleOpenCompleteModal = (job: ProviderJobItem) => {
+    setSelectedJob(null);
+    setCompletingJob(job);
+  };
+
+  const handleConfirmCompleteOrder = async (orderId: string) => {
+    await providerJobService.completeOrder(orderId);
+    showNotice('Chúc mừng bạn đã hoàn thành công việc và thu tiền thành công!');
+    setCompletingJob(null);
+    loadJobs();
   };
 
   return (
     <div className="provider-jobs-page">
       {/* Toast Alert */}
       {actionNotice && (
-        <div style={{
-          background: '#059669',
-          color: '#FFFFFF',
-          padding: '12px 18px',
-          borderRadius: '14px',
-          fontWeight: 700,
-          fontSize: '0.9rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          boxShadow: '0 8px 20px rgba(5, 150, 105, 0.3)'
-        }}>
+        <div className="action-notice-toast">
           <CheckCircle2 size={18} />
           <span>{actionNotice}</span>
         </div>
       )}
 
-      {/* Header */}
-      <div className="provider-jobs-header">
-        <h1 className="provider-jobs-page-title">Quản lý công việc</h1>
-        <span className="provider-jobs-count-tag">{jobs.length} công việc</span>
-      </div>
+      {/* Main Container */}
+      <div className="container" style={{ padding: '2rem 1rem 4rem' }}>
+        {/* Header */}
+        <div className="provider-jobs-header">
+          <div className="header-info">
+            <h1 className="header-title">Quản lý Công việc</h1>
+            <p className="header-sub">
+              Nhận các yêu cầu báo giá mới, theo dõi công việc đang làm và xem lịch sử thu nhập.
+            </p>
+          </div>
+        </div>
 
-      {/* Tabs */}
-      <div className="provider-jobs-tabs">
-        <button
-          type="button"
-          className={`provider-job-tab-btn ${activeTab === 'available' ? 'active' : ''}`}
-          onClick={() => setActiveTab('available')}
-        >
-          <span>Việc mới</span>
-          <span className="provider-tab-pill-badge">{availableCount}</span>
-        </button>
+        {/* Status Tab Navigation */}
+        <div className="jobs-tab-nav">
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'requests' ? 'active' : ''}`}
+            onClick={() => setActiveTab('requests')}
+          >
+            <span>Yêu cầu mới / Báo giá</span>
+          </button>
 
-        <button
-          type="button"
-          className={`provider-job-tab-btn ${activeTab === 'in_progress' ? 'active' : ''}`}
-          onClick={() => setActiveTab('in_progress')}
-        >
-          <span>Đang làm</span>
-          <span className="provider-tab-pill-badge">{inProgressCount}</span>
-        </button>
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'in_progress' ? 'active' : ''}`}
+            onClick={() => setActiveTab('in_progress')}
+          >
+            <span>Việc đang làm</span>
+          </button>
 
-        <button
-          type="button"
-          className={`provider-job-tab-btn ${activeTab === 'scheduled' ? 'active' : ''}`}
-          onClick={() => setActiveTab('scheduled')}
-        >
-          <span>Lịch hẹn</span>
-          <span className="provider-tab-pill-badge">{scheduledCount}</span>
-        </button>
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'completed' ? 'active' : ''}`}
+            onClick={() => setActiveTab('completed')}
+          >
+            <span>Đã hoàn thành</span>
+          </button>
+        </div>
 
-        <button
-          type="button"
-          className={`provider-job-tab-btn ${activeTab === 'completed' ? 'active' : ''}`}
-          onClick={() => setActiveTab('completed')}
-        >
-          <span>Đã xong</span>
-          <span className="provider-tab-pill-badge">{completedCount}</span>
-        </button>
-      </div>
+        {/* Error message */}
+        {errorMsg && (
+          <div className="jobs-error-alert">
+            <AlertCircle size={16} />
+            <span>{errorMsg}</span>
+          </div>
+        )}
 
-      {/* Job List */}
-      <div className="provider-jobs-list">
-        {filteredJobs.length === 0 ? (
-          <div className="provider-empty-jobs">
-            <div className="provider-empty-icon">
-              <Inbox size={28} />
+        {/* Jobs Feed List */}
+        {loading ? (
+          <div className="jobs-loading-container">
+            <Loader2 size={36} className="spin-icon text-blue" />
+            <p>Đang tải danh sách công việc...</p>
+          </div>
+        ) : jobs.length === 0 ? (
+          <div className="empty-state-card">
+            <div className="empty-icon-wrapper">
+              <Inbox size={42} strokeWidth={1.5} />
             </div>
-            <h3 className="provider-empty-title">Không có công việc nào</h3>
-            <p className="provider-empty-desc">
-              Chưa có đơn hàng trong mục này. Khi khách hàng đặt lịch mới, hệ thống sẽ tự động thông báo ngay.
+            <h3 className="empty-title">Không có công việc nào</h3>
+            <p className="empty-desc">
+              {activeTab === 'requests'
+                ? 'Hiện tại chưa có yêu cầu báo giá mới nào được gửi tới bạn.'
+                : activeTab === 'in_progress'
+                ? 'Bạn không có công việc nào đang thực hiện.'
+                : 'Bạn chưa hoàn thành công việc nào.'}
             </p>
           </div>
         ) : (
-          filteredJobs.map((job) => (
-            <div 
-              key={job.id} 
-              className={`provider-job-card ${job.status === 'in_progress' ? 'active-working' : ''}`}
-            >
-              {/* Card Top */}
-              <div className="provider-card-top">
-                <div>
-                  <div className="provider-card-service-chip">
-                    <Wrench size={13} />
-                    <span>{job.category}</span>
+          <div className="jobs-list">
+            {jobs.map((job) => {
+              const isPending = job.requestStatus === 'PENDING_RESPONSE';
+              const isQuoted = job.requestStatus === 'QUOTED';
+              const isInProgress = job.orderStatus === 'IN_PROGRESS';
+              const isCompleted = job.orderStatus === 'COMPLETED';
+
+              return (
+                <div key={job.requestId || job.orderId} className="job-feed-card">
+                  {/* Card Top: Category + Status Badge */}
+                  <div className="card-top-row">
+                    <div className="category-chip">
+                      <Wrench size={13} />
+                      <span>{job.categoryName || 'Sửa chữa'}</span>
+                      <span className="job-code-chip">· {job.orderCode}</span>
+                    </div>
+
+                    {isInProgress ? (
+                      <span className="urgency-badge in-progress">Đang làm</span>
+                    ) : isQuoted ? (
+                      <span className="urgency-badge quoted">Đã báo giá: {job.quotedPrice?.toLocaleString('vi-VN')} đ</span>
+                    ) : isCompleted ? (
+                      <span className="urgency-badge completed">Đã xong</span>
+                    ) : (
+                      <span className="urgency-badge pending">Chờ bạn báo giá</span>
+                    )}
                   </div>
-                  <h2 className="provider-card-title">{job.title}</h2>
-                </div>
-                <div className="provider-card-price">{job.priceEstimate}</div>
-              </div>
 
-              {/* Details Box */}
-              <div className="provider-card-details-box">
-                <div className="provider-card-detail-item">
-                  <Clock size={16} className="provider-card-detail-icon" />
-                  <span>{job.scheduledTime} · Cách {job.distance} ({job.travelTime})</span>
-                </div>
+                  {/* Job Title & Description */}
+                  <h3 className="card-job-title" onClick={() => setSelectedJob(job)}>
+                    {job.title}
+                  </h3>
+                  <p className="card-desc-snippet">{job.description}</p>
 
-                <div className="provider-card-detail-item">
-                  <MapPin size={16} className="provider-card-detail-icon" />
-                  <span>{job.address}</span>
-                </div>
+                  {/* Customer & Address snippet */}
+                  <div className="card-info-grid">
+                    <div className="info-item">
+                      <MapPin size={15} className="info-icon" />
+                      <span className="info-text">{job.addressSnapshot}</span>
+                    </div>
 
-                <div className="provider-card-detail-item">
-                  <Phone size={16} className="provider-card-detail-icon" />
-                  <span>Khách: <strong>{job.customerName}</strong> ({job.customerPhone})</span>
-                </div>
-              </div>
+                    <div className="info-item">
+                      <Clock size={15} className="info-icon" />
+                      <span className="info-text">
+                        {new Date(job.expectedScheduleTime).toLocaleDateString('vi-VN')} {new Date(job.expectedScheduleTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
 
-              {/* Actions based on Job Status */}
-              {job.status === 'available' && (
-                <div className="provider-card-actions">
-                  <button
-                    type="button"
-                    className="provider-btn-outline"
-                    onClick={() => handleCall(job.customerPhone)}
-                  >
-                    <Phone size={15} />
-                    <span>Gọi</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="provider-btn-outline"
-                    onClick={() => handleOpenMap(job.address)}
-                  >
-                    <Navigation size={15} />
-                    <span>Chỉ đường</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="provider-btn-primary"
-                    onClick={() => setSelectedJob(job)}
-                  >
-                    Xem yêu cầu
-                  </button>
-                </div>
-              )}
-
-              {job.status === 'in_progress' && (
-                <div className="provider-card-actions">
-                  <button
-                    type="button"
-                    className="provider-btn-outline"
-                    onClick={() => handleCall(job.customerPhone)}
-                  >
-                    <Phone size={15} />
-                    <span>Gọi khách</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="provider-btn-outline"
-                    onClick={() => handleOpenMap(job.address)}
-                  >
-                    <Navigation size={15} />
-                    <span>Chỉ đường</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="provider-btn-primary"
-                    onClick={() => handleFinishJob(job.id)}
-                  >
-                    <Check size={16} />
-                    <span>Hoàn thành & Thu tiền</span>
-                  </button>
-                </div>
-              )}
-
-              {job.status === 'completed' && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div className="provider-completed-badge">
-                    <CheckCircle2 size={16} />
-                    <span>Đã hoàn thành và thu tiền</span>
+                    <div className="info-item">
+                      <Phone size={15} className="info-icon" />
+                      <span className="info-text">Khách: {job.customerName} ({job.customerPhone || '***-***'})</span>
+                    </div>
                   </div>
-                  <span style={{ fontSize: '0.8rem', color: '#64748B' }}>{job.createdAt}</span>
+
+                  {/* Images preview if any */}
+                  {job.images && job.images.length > 0 && (
+                    <div className="card-images-strip">
+                      {job.images.slice(0, 3).map((imgUrl, i) => (
+                        <img key={i} src={imgUrl} alt="Ảnh sự cố" className="card-thumb" />
+                      ))}
+                      {job.images.length > 3 && (
+                        <span className="card-thumb-more">+{job.images.length - 3}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Card Bottom: Earnings + Action buttons */}
+                  <div className="card-bottom-row">
+                    <div className="price-estimate-block">
+                      <span className="price-label">
+                        {isInProgress || isCompleted ? 'Giá chốt:' : isQuoted ? 'Giá đã báo:' : 'Báo giá:'}
+                      </span>
+                      <span className="price-number">
+                        {job.quotedPrice ? `${job.quotedPrice.toLocaleString('vi-VN')} đ` : 'Chưa báo giá'}
+                      </span>
+                    </div>
+
+                    <div className="action-buttons-group">
+                      <button
+                        type="button"
+                        className="btn-chat-feed"
+                        onClick={() => setChatJob(job)}
+                        title="Chat với khách"
+                      >
+                        <MessageSquare size={16} />
+                        <span>Chat</span>
+                      </button>
+
+                      {isPending && (
+                        <button
+                          type="button"
+                          className="btn-quote-feed"
+                          onClick={() => setQuotingJob(job)}
+                        >
+                          <DollarSign size={16} />
+                          <span>Báo giá</span>
+                        </button>
+                      )}
+
+                      {isInProgress && (
+                        <button
+                          type="button"
+                          className="btn-finish-feed"
+                          onClick={() => handleOpenCompleteModal(job)}
+                        >
+                          <CheckCircle2 size={16} />
+                          <span>Hoàn thành</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        className="btn-detail-feed"
+                        onClick={() => setSelectedJob(job)}
+                      >
+                        Xem chi tiết
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
-          ))
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* Modal */}
-      <JobDetailModal 
-        job={selectedJob}
-        onClose={() => setSelectedJob(null)}
-        onAccept={handleAcceptJob}
+      {/* Modal Chi tiết công việc */}
+      {selectedJob && (
+        <JobDetailModal
+          job={selectedJob}
+          onClose={() => setSelectedJob(null)}
+          onOpenQuoteModal={(job) => {
+            setSelectedJob(null);
+            setQuotingJob(job);
+          }}
+          onRejectRequest={handleOpenRejectModal}
+          onOpenChat={(job) => {
+            setChatJob(job);
+          }}
+          onCompleteOrder={handleOpenCompleteModal}
+        />
+      )}
+
+      {/* Modal Hoàn thành công việc */}
+      {completingJob && (
+        <CompleteJobModal
+          isOpen={!!completingJob}
+          onClose={() => setCompletingJob(null)}
+          job={completingJob}
+          onConfirmComplete={handleConfirmCompleteOrder}
+        />
+      )}
+
+      {/* Modal Từ chối yêu cầu nhận việc */}
+      {rejectingJob && (
+        <RejectRequestModal
+          isOpen={!!rejectingJob}
+          onClose={() => setRejectingJob(null)}
+          job={rejectingJob}
+          onConfirmReject={handleConfirmRejectRequest}
+        />
+      )}
+
+      {/* Modal Gửi báo giá */}
+      {quotingJob && (
+        <SubmitQuotationModal
+          isOpen={!!quotingJob}
+          onClose={() => setQuotingJob(null)}
+          requestId={quotingJob?.requestId || null}
+          orderTitle={quotingJob?.title}
+          onSuccess={() => {
+            showNotice('Đã gửi báo giá thành công tới khách hàng!');
+            loadJobs();
+            if (refreshIncomingRequestsCount) {
+              refreshIncomingRequestsCount();
+            }
+          }}
+        />
+      )}
+
+      {/* Khung Chat với khách hàng */}
+      <OrderChatDrawer
+        isOpen={!!chatJob}
+        onClose={() => setChatJob(null)}
+        requestId={chatJob?.requestId || null}
+        partnerName={chatJob?.customerName || 'Khách hàng'}
+        orderTitle={chatJob?.title}
+        quotedPrice={chatJob?.quotedPrice}
+        currentUserRole="PROVIDER"
       />
     </div>
   );
 }
+
+export default ProviderJobsPage;

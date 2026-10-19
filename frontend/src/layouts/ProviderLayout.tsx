@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import { ProviderNavbar } from '../features/provider/components/ProviderNavbar';
-import { providerProfileService, type ProviderProfileData } from '../services';
+import { providerProfileService, providerJobService, type ProviderProfileData } from '../services';
 import './ProviderLayout.css';
 
 export interface ProviderContextType {
@@ -10,11 +10,24 @@ export interface ProviderContextType {
   toggleOnline: () => Promise<void> | void;
   profile: ProviderProfileData | null;
   setProfile: React.Dispatch<React.SetStateAction<ProviderProfileData | null>>;
+  incomingRequestsCount: number;
+  refreshIncomingRequestsCount: () => Promise<void>;
 }
 
 export function ProviderLayout() {
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [profile, setProfile] = useState<ProviderProfileData | null>(null);
+  const [incomingRequestsCount, setIncomingRequestsCount] = useState<number>(0);
+
+  const refreshIncomingRequestsCount = useCallback(async () => {
+    try {
+      const reqs = await providerJobService.getIncomingRequests();
+      const pending = reqs.filter((r) => r.requestStatus === 'PENDING_RESPONSE');
+      setIncomingRequestsCount(pending.length > 0 ? pending.length : reqs.length);
+    } catch {
+      setIncomingRequestsCount(0);
+    }
+  }, []);
 
   // Sync initial online/available status and profile data from database
   useEffect(() => {
@@ -34,10 +47,30 @@ export function ProviderLayout() {
         console.warn('Could not load provider profile availability:', err);
       });
 
+    refreshIncomingRequestsCount();
+
+    // Auto-poll incoming request count every 12 seconds
+    const pollTimer = setInterval(() => {
+      refreshIncomingRequestsCount();
+    }, 12000);
+
+    // Immediate sync when provider switches back to tab
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        refreshIncomingRequestsCount();
+      }
+    };
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
     return () => {
       ignore = true;
+      clearInterval(pollTimer);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
     };
-  }, []);
+  }, [refreshIncomingRequestsCount]);
 
   const toggleOnline = useCallback(async () => {
     setIsOnline((prev) => {
@@ -57,11 +90,22 @@ export function ProviderLayout() {
         isOnline={isOnline} 
         onToggleOnline={toggleOnline} 
         profile={profile}
+        incomingRequestsCount={incomingRequestsCount}
       />
 
       {/* Main Page Area */}
       <main className="provider-main-wrapper">
-        <Outlet context={{ isOnline, setIsOnline, toggleOnline, profile, setProfile } satisfies ProviderContextType} />
+        <Outlet 
+          context={{ 
+            isOnline, 
+            setIsOnline, 
+            toggleOnline, 
+            profile, 
+            setProfile,
+            incomingRequestsCount,
+            refreshIncomingRequestsCount
+          } satisfies ProviderContextType} 
+        />
       </main>
     </div>
   );

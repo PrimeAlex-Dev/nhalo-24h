@@ -1,59 +1,109 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useOutletContext, useNavigate } from 'react-router-dom';
 import { 
   Power, 
   ClipboardList, 
   CalendarCheck, 
   ArrowRight, 
-  CheckCircle2, 
-  AlertCircle 
+  AlertCircle,
+  MapPin,
+  Briefcase,
+  Loader2
 } from 'lucide-react';
 import { PATHS } from '../../../routes/paths';
-import { mockProviderJobs, mockProviderProfile } from '../data/providerMockData';
-import { JobDetailModal } from '../components/JobDetailModal';
+import { providerJobService } from '../../../services';
+import type { ProviderJobItem } from '../../../types/order';
 import { useAuth } from '../../auth';
-import type { ProviderJob } from '../types/provider';
 import type { ProviderContextType } from '../../../layouts/ProviderLayout';
 import './ProviderHomePage.css';
 
 export function ProviderHomePage() {
-  const { isOnline, toggleOnline, profile } = useOutletContext<ProviderContextType>();
+  const { isOnline, toggleOnline, profile, refreshIncomingRequestsCount } = useOutletContext<ProviderContextType>();
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const displayName = profile?.fullName || user?.fullName || mockProviderProfile.name;
+  const displayName = profile?.fullName || user?.fullName || 'Thợ đối tác';
   const shortName = displayName.trim().split(' ').slice(-1)[0] || 'Thợ';
 
-  // Highlight job matching wireframe: 'job-101' (Sửa vòi nước bị rò rỉ)
-  const featuredJob = mockProviderJobs.find((j) => j.id === 'job-101') || mockProviderJobs[0];
-  const secondaryJob = mockProviderJobs.find((j) => j.id === 'job-102');
+  const [loading, setLoading] = useState(true);
+  const [incomingRequests, setIncomingRequests] = useState<ProviderJobItem[]>([]);
+  const [inProgressOrders, setInProgressOrders] = useState<ProviderJobItem[]>([]);
+  const [completedOrders, setCompletedOrders] = useState<ProviderJobItem[]>([]);
 
-  const [selectedJob, setSelectedJob] = useState<ProviderJob | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  useEffect(() => {
+    let ignore = false;
 
-  const handleOpenJobDetail = (job: ProviderJob) => {
-    setSelectedJob(job);
-  };
+    async function loadDashboardData(silent = false) {
+      try {
+        if (!silent) {
+          setLoading(true);
+        }
+        const [requests, inProgress, completed] = await Promise.all([
+          providerJobService.getIncomingRequests(),
+          providerJobService.getAssignedOrders('IN_PROGRESS'),
+          providerJobService.getAssignedOrders('COMPLETED'),
+        ]);
 
-  const handleAcceptJob = (_jobId: string) => {
-    setSelectedJob(null);
-    setToastMessage('Đã nhận việc thành công! Đang chuyển đến đơn hàng...');
-    setTimeout(() => {
-      setToastMessage(null);
-      navigate(PATHS.PROVIDER.JOBS);
-    }, 1200);
-  };
+        if (!ignore) {
+          setIncomingRequests(requests);
+          setInProgressOrders(inProgress);
+          setCompletedOrders(completed);
+        }
+      } catch (err) {
+        console.warn('Could not load provider dashboard data:', err);
+      } finally {
+        if (!ignore && !silent) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadDashboardData(false);
+    if (refreshIncomingRequestsCount) {
+      refreshIncomingRequestsCount();
+    }
+
+    // Auto-scan new jobs every 12 seconds
+    const intervalTimer = setInterval(() => {
+      loadDashboardData(true);
+      if (refreshIncomingRequestsCount) {
+        refreshIncomingRequestsCount();
+      }
+    }, 12000);
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadDashboardData(true);
+        if (refreshIncomingRequestsCount) {
+          refreshIncomingRequestsCount();
+        }
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      ignore = true;
+      clearInterval(intervalTimer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [refreshIncomingRequestsCount]);
+
+  // Compute real counts
+  const pendingRequests = incomingRequests.filter((r) => r.requestStatus === 'PENDING_RESPONSE');
+  const newJobsCount = pendingRequests.length > 0 ? pendingRequests.length : incomingRequests.length;
+  const todayJobsCount = inProgressOrders.length;
+  const completedCount = completedOrders.length;
+  const todayEarnings = completedOrders.reduce((sum, ord) => sum + (ord.quotedPrice || 0), 0);
+
+  // Real matching jobs from incoming requests
+  const featuredJob = incomingRequests[0] || null;
+  const secondaryJob = incomingRequests[1] || null;
 
   return (
     <div className="provider-home-container">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="provider-toast">
-          <CheckCircle2 size={18} />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
       {/* 1. Greeting Row */}
       <div className="provider-greeting-row">
         <div>
@@ -63,7 +113,7 @@ export function ProviderHomePage() {
 
         <div className="provider-desktop-live-status">
           <span className="live-radar-dot" />
-          <span>Đang quét đơn tự động tại <strong>Cần Thơ</strong></span>
+          <span>Đang quét đơn tự động tại <strong>{profile?.serviceArea || 'Khu vực hoạt động'}</strong></span>
         </div>
       </div>
 
@@ -71,7 +121,7 @@ export function ProviderHomePage() {
       <div className="provider-home-main-grid">
         {/* Left Column (Command Cockpit) */}
         <div className="provider-home-left-col">
-          {/* 2. Work Status Card (Matches Wireframe) */}
+          {/* 2. Work Status Card */}
           <div 
             className="provider-status-card"
             onClick={toggleOnline}
@@ -104,14 +154,16 @@ export function ProviderHomePage() {
             </div>
           )}
 
-          {/* 3. Quick Stats Row (2 Cards - Matches Wireframe) */}
+          {/* 3. Quick Stats Row (2 Cards) */}
           <div className="provider-stats-grid">
             {/* Card A: Việc mới */}
             <Link to={PATHS.PROVIDER.JOBS} className="provider-stat-card">
               <div className="provider-stat-icon-wrapper">
                 <ClipboardList size={26} strokeWidth={2.2} />
               </div>
-              <div className="provider-stat-number">{mockProviderProfile.newJobsCount}</div>
+              <div className="provider-stat-number">
+                {loading ? '...' : newJobsCount}
+              </div>
               <div className="provider-stat-label">Việc mới</div>
             </Link>
 
@@ -120,7 +172,9 @@ export function ProviderHomePage() {
               <div className="provider-stat-icon-wrapper">
                 <CalendarCheck size={26} strokeWidth={2.2} />
               </div>
-              <div className="provider-stat-number">{mockProviderProfile.todayJobsCount}</div>
+              <div className="provider-stat-number">
+                {loading ? '...' : todayJobsCount}
+              </div>
               <div className="provider-stat-label">Lịch hôm nay</div>
             </Link>
           </div>
@@ -128,9 +182,11 @@ export function ProviderHomePage() {
           {/* 4. Quick Today Earnings Banner */}
           <Link to={PATHS.PROVIDER.EARNINGS} className="provider-quick-earning-banner">
             <div>
-              <div className="provider-earning-left-sub">Thu nhập hôm nay (2 đơn hoàn thành)</div>
+              <div className="provider-earning-left-sub">
+                {completedCount > 0 ? `Thu nhập (${completedCount} đơn hoàn thành)` : 'Thu nhập hôm nay'}
+              </div>
               <div className="provider-earning-left-val">
-                {mockProviderProfile.todayEarnings.toLocaleString('vi-VN')} đ
+                {loading ? '...' : `${todayEarnings.toLocaleString('vi-VN')} đ`}
               </div>
             </div>
             <div className="provider-earning-right-btn">
@@ -142,7 +198,7 @@ export function ProviderHomePage() {
 
         {/* Right Column (Job Feed) */}
         <div className="provider-home-right-col">
-          {/* 5. Matching Job Card (Matches Wireframe) */}
+          {/* 5. Matching Job Card */}
           <section className="provider-jobs-section-card">
             <div className="provider-section-header">
               <h2 className="provider-section-title">Công việc phù hợp</h2>
@@ -151,28 +207,58 @@ export function ProviderHomePage() {
               </Link>
             </div>
 
-            {featuredJob && (
+            {loading ? (
+              <div className="provider-no-job-card">
+                <Loader2 size={30} className="spin-icon text-blue" />
+                <p>Đang tìm kiếm đơn việc phù hợp...</p>
+              </div>
+            ) : featuredJob ? (
               <div className="provider-job-item">
                 <div className="provider-job-title-row">
                   <h3 className="provider-job-main-title">{featuredJob.title}</h3>
-                  <span className="provider-job-price-chip">{featuredJob.priceEstimate}</span>
+                  <span className="provider-job-price-chip">
+                    {featuredJob.quotedPrice && featuredJob.quotedPrice > 0
+                      ? `${featuredJob.quotedPrice.toLocaleString('vi-VN')} đ`
+                      : profile?.pricePerHour && profile.pricePerHour > 0
+                      ? `${profile.pricePerHour.toLocaleString('vi-VN')} đ/giờ`
+                      : featuredJob.categoryName || 'Chờ báo giá'}
+                  </span>
                 </div>
 
                 <p className="provider-job-meta-line">
-                  Cách {featuredJob.distance} · {featuredJob.scheduledTime}
+                  Khách hàng: <strong>{featuredJob.customerName}</strong>
+                  {featuredJob.expectedScheduleTime && ` · Hẹn: ${featuredJob.expectedScheduleTime}`}
                 </p>
 
                 <p className="provider-job-location-line">
-                  Khu vực: {featuredJob.area} ({featuredJob.category})
+                  <MapPin size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }} />
+                  {featuredJob.addressSnapshot} {featuredJob.categoryName ? `(${featuredJob.categoryName})` : ''}
                 </p>
 
                 {/* Big prominent CTA button */}
                 <button 
                   type="button" 
                   className="provider-cta-btn"
-                  onClick={() => handleOpenJobDetail(featuredJob)}
+                  onClick={() => navigate(PATHS.PROVIDER.JOBS)}
                 >
-                  Xem yêu cầu
+                  Xem yêu cầu &amp; báo giá
+                </button>
+              </div>
+            ) : (
+              <div className="provider-no-job-card">
+                <div className="provider-no-job-icon">
+                  <Briefcase size={28} />
+                </div>
+                <h3 className="provider-no-job-title">Chưa có yêu cầu mới</h3>
+                <p className="provider-no-job-desc">
+                  Hiện tại chưa có khách hàng nào gửi yêu cầu sửa chữa. Khi có đơn mới gửi đến, công việc sẽ xuất hiện tại đây ngay lập tức!
+                </p>
+                <button
+                  type="button"
+                  className="provider-cta-btn secondary"
+                  onClick={() => navigate(PATHS.PROVIDER.JOBS)}
+                >
+                  Xem tất cả công việc
                 </button>
               </div>
             )}
@@ -183,29 +269,39 @@ export function ProviderHomePage() {
             <section className="provider-jobs-section-card desktop-secondary-job">
               <div className="provider-section-header">
                 <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1D6AE5' }}>
-                  ⚡ Yêu cầu khẩn cấp khác
+                  ⚡ Yêu cầu khác
                 </span>
-                <span style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>{secondaryJob.createdAt}</span>
+                <span style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>
+                  {secondaryJob.createdAt || 'Mới nhận'}
+                </span>
               </div>
 
               <div className="provider-job-item">
                 <div className="provider-job-title-row">
                   <h3 className="provider-job-main-title">{secondaryJob.title}</h3>
-                  <span className="provider-job-price-chip">{secondaryJob.priceEstimate}</span>
+                  <span className="provider-job-price-chip">
+                    {secondaryJob.quotedPrice && secondaryJob.quotedPrice > 0
+                      ? `${secondaryJob.quotedPrice.toLocaleString('vi-VN')} đ`
+                      : profile?.pricePerHour && profile.pricePerHour > 0
+                      ? `${profile.pricePerHour.toLocaleString('vi-VN')} đ/giờ`
+                      : secondaryJob.categoryName || 'Chờ báo giá'}
+                  </span>
                 </div>
 
                 <p className="provider-job-meta-line">
-                  Cách {secondaryJob.distance} · {secondaryJob.scheduledTime}
+                  Khách hàng: <strong>{secondaryJob.customerName}</strong>
+                  {secondaryJob.expectedScheduleTime && ` · Hẹn: ${secondaryJob.expectedScheduleTime}`}
                 </p>
 
                 <p className="provider-job-location-line">
-                  Khu vực: {secondaryJob.area} ({secondaryJob.category})
+                  <MapPin size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }} />
+                  {secondaryJob.addressSnapshot} {secondaryJob.categoryName ? `(${secondaryJob.categoryName})` : ''}
                 </p>
 
                 <button 
                   type="button" 
                   className="provider-cta-btn secondary"
-                  onClick={() => handleOpenJobDetail(secondaryJob)}
+                  onClick={() => navigate(PATHS.PROVIDER.JOBS)}
                 >
                   Xem yêu cầu
                 </button>
@@ -214,13 +310,6 @@ export function ProviderHomePage() {
           )}
         </div>
       </div>
-
-      {/* Job Detail Modal */}
-      <JobDetailModal 
-        job={selectedJob}
-        onClose={() => setSelectedJob(null)}
-        onAccept={handleAcceptJob}
-      />
     </div>
   );
 }
