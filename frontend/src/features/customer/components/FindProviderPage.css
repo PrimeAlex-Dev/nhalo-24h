@@ -486,6 +486,22 @@
   border-color: #CBD5E1;
 }
 
+.provider-action-btn.book-btn {
+  background-color: #1D6AE5;
+  color: #FFFFFF;
+  border-color: #1D6AE5;
+}
+
+.provider-action-btn.book-btn:hover:not(:disabled) {
+  background-color: #1555ba;
+  border-color: #1555ba;
+}
+
+.provider-action-btn.book-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* No providers */
 .no-providers-found {
   text-align: center;

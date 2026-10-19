@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import type { CreateUserPayload, UserRole } from '../types/admin';
 import './CreateUserModal.css';
@@ -18,6 +18,23 @@ export function CreateUserModal({ isOpen, onClose, onCreate }: CreateUserModalPr
   const [role, setRole] = useState<UserRole>('CUSTOMER');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setFullName('');
+    setEmail('');
+    setPassword('');
+    setShowPassword(false);
+    setPhone('');
+    setRole('CUSTOMER');
+    setIsSubmitting(false);
+    setErrorMsg(null);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      resetForm();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

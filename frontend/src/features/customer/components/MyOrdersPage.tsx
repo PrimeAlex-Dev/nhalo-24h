@@ -1,230 +1,329 @@
 import { useState, useEffect } from 'react';
 import './MyOrdersPage.css';
-import { Link } from 'react-router-dom';
 import { 
   Calendar, 
-  Star, 
-  ChevronRight, 
-  X, 
   MapPin, 
-  Clock, 
-  ArrowRight,
-  CheckCircle2
+  ChevronRight, 
+  Plus, 
+  Loader2, 
+  AlertCircle, 
+  Wrench, 
+  Inbox,
+  Bell
 } from 'lucide-react';
-import { mockCustomerOrders } from '../data/customerMockData';
-import type { CustomerOrder } from '../types/customer';
+import { customerOrderService } from '../../../services';
+import type { CustomerOrderSummary, OrderStatus } from '../../../types/order';
+import { CreateOrderModal } from './CreateOrderModal';
+import { CustomerOrderDetailModal } from './CustomerOrderDetailModal';
+import { OrderChatDrawer } from '../../order/components/OrderChatDrawer';
+
+type OrderTabFilter = 'ALL' | OrderStatus;
 
 export function MyOrdersPage() {
-  const [selectedOrder, setSelectedOrder] = useState<CustomerOrder | null>(null);
-  const [reviewSubmitted, setReviewSubmitted] = useState<string | null>(null);
+  const [orders, setOrders] = useState<CustomerOrderSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<OrderTabFilter>('ALL');
+
+  // Modals
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+
+  // Chat Drawer State
+  const [chatRequestId, setChatRequestId] = useState<string | null>(null);
+  const [chatPartnerName, setChatPartnerName] = useState('');
+  const [chatPartnerAvatar, setChatPartnerAvatar] = useState<string | undefined>();
+  const [chatPartnerHeadline, setChatPartnerHeadline] = useState<string | undefined>();
+  const [chatQuotedPrice, setChatQuotedPrice] = useState<number | undefined>();
+  const [chatOrderTitle, setChatOrderTitle] = useState<string | undefined>();
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+    loadOrders(false);
 
-  const handleOrderClick = (order: CustomerOrder) => {
-    setSelectedOrder(order);
+    // Auto-poll orders every 12 seconds
+    const intervalTimer = setInterval(() => {
+      loadOrders(true);
+    }, 12000);
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadOrders(true);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      clearInterval(intervalTimer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [activeTab]);
+
+  const loadOrders = async (silent = false) => {
+    try {
+      if (!silent) {
+        setLoading(true);
+      }
+      setErrorMsg(null);
+      const statusParam = activeTab === 'ALL' ? undefined : activeTab;
+      const data = await customerOrderService.getMyOrders(statusParam);
+      setOrders(data);
+    } catch (err: any) {
+      if (!silent) {
+        setErrorMsg(err.message || 'Không thể tải danh sách đơn hàng.');
+      }
+    } finally {
+      if (!silent) {
+        setLoading(false);
+      }
+    }
   };
 
-  const handleCloseModal = () => {
-    setSelectedOrder(null);
+  const handleOpenChat = (
+    requestId: string,
+    partnerName: string,
+    partnerAvatar?: string,
+    partnerHeadline?: string,
+    quotedPrice?: number,
+    orderTitle?: string
+  ) => {
+    setChatRequestId(requestId);
+    setChatPartnerName(partnerName);
+    setChatPartnerAvatar(partnerAvatar);
+    setChatPartnerHeadline(partnerHeadline);
+    setChatQuotedPrice(quotedPrice);
+    setChatOrderTitle(orderTitle);
   };
 
-  const handleLeaveReview = (orderId: string) => {
-    setReviewSubmitted(orderId);
+  const getStatusBadge = (status: OrderStatus) => {
+    switch (status) {
+      case 'PENDING_PROVIDER':
+        return <span className="order-status-badge status-pending">Chờ thợ báo giá</span>;
+      case 'IN_PROGRESS':
+        return <span className="order-status-badge status-in-progress">Đang thực hiện</span>;
+      case 'COMPLETED':
+        return <span className="order-status-badge status-completed">Hoàn thành</span>;
+      case 'CANCELED':
+        return <span className="order-status-badge status-canceled">Đã hủy</span>;
+      default:
+        return <span className="order-status-badge">{status}</span>;
+    }
   };
 
   return (
     <div className="my-orders-page">
       <div className="container orders-container">
         {/* Page Header */}
-        <div className="orders-header">
-          <h1 className="orders-page-title">My orders</h1>
-          <p className="orders-page-subtitle">Track active jobs and review past services.</p>
+        <div className="orders-header-row">
+          <div>
+            <h1 className="orders-page-title">Đơn hàng của tôi</h1>
+            <p className="orders-page-subtitle">Theo dõi các đơn sửa chữa, xem báo giá của thợ và lịch sử hoàn tất.</p>
+          </div>
+          <button 
+            type="button" 
+            className="btn-create-order-action"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <Plus size={18} />
+            <span>Đặt thợ mới</span>
+          </button>
         </div>
 
+        {/* Tab Filters */}
+        <div className="orders-filter-tabs">
+          <button 
+            type="button" 
+            className={`filter-tab-btn ${activeTab === 'ALL' ? 'active' : ''}`}
+            onClick={() => setActiveTab('ALL')}
+          >
+            Tất cả
+          </button>
+          <button 
+            type="button" 
+            className={`filter-tab-btn ${activeTab === 'PENDING_PROVIDER' ? 'active' : ''}`}
+            onClick={() => setActiveTab('PENDING_PROVIDER')}
+          >
+            Chờ báo giá
+          </button>
+          <button 
+            type="button" 
+            className={`filter-tab-btn ${activeTab === 'IN_PROGRESS' ? 'active' : ''}`}
+            onClick={() => setActiveTab('IN_PROGRESS')}
+          >
+            Đang làm
+          </button>
+          <button 
+            type="button" 
+            className={`filter-tab-btn ${activeTab === 'COMPLETED' ? 'active' : ''}`}
+            onClick={() => setActiveTab('COMPLETED')}
+          >
+            Đã hoàn thành
+          </button>
+          <button 
+            type="button" 
+            className={`filter-tab-btn ${activeTab === 'CANCELED' ? 'active' : ''}`}
+            onClick={() => setActiveTab('CANCELED')}
+          >
+            Đã hủy
+          </button>
+        </div>
+
+        {/* Error Alert */}
+        {errorMsg && (
+          <div className="orders-error-box">
+            <AlertCircle size={16} />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
         {/* Orders List */}
-        <div className="orders-list">
-          {mockCustomerOrders.map((order) => {
-            const statusClass = 
-              order.status === 'In progress' 
-                ? 'status-in-progress' 
-                : order.status === 'Scheduled' 
-                ? 'status-scheduled' 
-                : 'status-completed';
+        {loading ? (
+          <div className="orders-loading-state">
+            <Loader2 size={36} className="spin-icon text-blue" />
+            <p>Đang tải danh sách đơn hàng...</p>
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="orders-empty-state">
+            <Inbox size={48} className="empty-icon" />
+            <h3>Chưa có đơn hàng nào</h3>
+            <p>Bạn chưa có đơn sửa chữa nào trong mục này. Bấm nút dưới để tạo đơn và nhận báo giá từ thợ nhé!</p>
+            <button 
+              type="button" 
+              className="btn-empty-create"
+              onClick={() => setShowCreateModal(true)}
+            >
+              <Plus size={16} />
+              <span>Đặt lịch sửa chữa ngay</span>
+            </button>
+          </div>
+        ) : (
+          <div className="orders-list">
+            {orders.map((order) => {
+              return (
+                <div
+                  key={order.id}
+                  className="order-card"
+                  onClick={() => setSelectedOrderId(order.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedOrderId(order.id);
+                    }
+                  }}
+                >
+                  {/* Left section: Avatar + Details */}
+                  <div className="order-card-left">
+                    {order.assignedProviderAvatar ? (
+                      <img
+                        src={order.assignedProviderAvatar}
+                        alt={order.assignedProviderName}
+                        className="order-provider-avatar"
+                      />
+                    ) : order.assignedProviderName ? (
+                      <div className="order-provider-avatar-fallback">
+                        {order.assignedProviderName.charAt(0).toUpperCase()}
+                      </div>
+                    ) : (
+                      <div className="order-provider-avatar-fallback pending">
+                        <Wrench size={20} />
+                      </div>
+                    )}
 
-            return (
-              <div
-                key={order.id}
-                className="order-card"
-                onClick={() => handleOrderClick(order)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleOrderClick(order);
-                  }
-                }}
-              >
-                {/* Left section: Avatar + Details */}
-                <div className="order-card-left">
-                  <img
-                    src={order.providerAvatar}
-                    alt={order.providerName}
-                    className="order-provider-avatar"
-                  />
-
-                  <div className="order-details-stack">
-                    {/* Title + Status Badge */}
-                    <div className="order-title-row">
-                      <h3 className="order-service-title">
-                        {order.serviceCategory} — {order.serviceDetail}
-                      </h3>
-                      <span className={`order-status-badge ${statusClass}`}>
-                        {order.status}
-                      </span>
-                    </div>
-
-                    {/* Provider Name + Order Code */}
-                    <p className="order-provider-meta">
-                      {order.providerName} · {order.orderCode}
-                    </p>
-
-                    {/* Schedule + Review pending */}
-                    <div className="order-schedule-row">
-                      <div className="order-time-group">
-                        <Calendar size={14} className="order-calendar-icon" />
-                        <span>{order.scheduledTime}</span>
+                    <div className="order-details-stack">
+                      {/* Title + Status Badge */}
+                      <div className="order-title-row">
+                        <h3 className="order-service-title">{order.title}</h3>
+                        {getStatusBadge(order.status)}
                       </div>
 
-                      {order.reviewPending && (
-                        <div className="review-pending-badge">
-                          <Star size={13} fill="#F59E0B" stroke="#F59E0B" />
+                      {/* Provider Name + Order Code */}
+                      <p className="order-provider-meta">
+                        {order.categoryName ? `${order.categoryName} · ` : ''}
+                        Mã đơn: <strong>{order.orderCode}</strong>
+                        {order.assignedProviderName ? ` · Thợ: ${order.assignedProviderName}` : ''}
+                      </p>
+
+                      {/* Location & Time */}
+                      <div className="order-meta-info-row">
+                        <div className="meta-info-item">
+                          <Calendar size={13} />
                           <span>
-                            {reviewSubmitted === order.id ? 'Review submitted' : 'Review pending'}
+                            {new Date(order.expectedScheduleTime).toLocaleDateString('vi-VN')} {new Date(order.expectedScheduleTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
+                        </div>
+                        <div className="meta-info-item address-truncate">
+                          <MapPin size={13} />
+                          <span>{order.addressSnapshot}</span>
+                        </div>
+                      </div>
+
+                      {/* Quotations Alert Badge if pending provider */}
+                      {order.status === 'PENDING_PROVIDER' && order.quotationCount > 0 && (
+                        <div className="quotation-received-pill">
+                          <Bell size={12} />
+                          <span>Đã nhận {order.quotationCount} báo giá từ các thợ — Bấm để so sánh</span>
                         </div>
                       )}
                     </div>
                   </div>
-                </div>
 
-                {/* Right section: Price + Chevron */}
-                <div className="order-card-right">
-                  <span className="order-price">${order.price}</span>
-                  <ChevronRight size={18} className="order-chevron-icon" />
+                  {/* Right section: Price + Chevron */}
+                  <div className="order-card-right">
+                    <div className="order-price-group">
+                      <span className="price-title">Giá dịch vụ:</span>
+                      <span className="order-price-value">
+                        {order.finalPrice ? `${order.finalPrice.toLocaleString('vi-VN')} đ` : 'Chờ báo giá'}
+                      </span>
+                    </div>
+                    <ChevronRight size={20} className="order-chevron-icon" />
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Order Detail Modal */}
-      {selectedOrder && (
-        <div className="order-modal-overlay" onClick={handleCloseModal}>
-          <div
-            className="order-modal-dialog"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
-            <button
-              type="button"
-              className="order-modal-close"
-              onClick={handleCloseModal}
-              aria-label="Close modal"
-            >
-              <X size={18} />
-            </button>
+      {/* Modal Tạo đơn mới */}
+      {showCreateModal && (
+        <CreateOrderModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={() => {
+            loadOrders();
+          }}
+        />
+      )}
 
-            <div className="order-modal-header">
-              <span className="modal-order-code">{selectedOrder.orderCode}</span>
-              <h3 className="modal-order-title">
-                {selectedOrder.serviceCategory} — {selectedOrder.serviceDetail}
-              </h3>
-              <p className="modal-provider-sub">
-                With <strong>{selectedOrder.providerName}</strong>
-              </p>
-            </div>
+      {/* Modal Chi tiết đơn & Báo giá */}
+      {selectedOrderId && (
+        <CustomerOrderDetailModal
+          orderId={selectedOrderId}
+          isOpen={!!selectedOrderId}
+          onClose={() => setSelectedOrderId(null)}
+          onOrderUpdated={loadOrders}
+          onOpenChat={handleOpenChat}
+        />
+      )}
 
-            <div className="order-modal-body">
-              {/* Status Banner */}
-              <div className="modal-status-banner">
-                <div className="status-banner-left">
-                  <Clock size={16} />
-                  <span>Status: <strong>{selectedOrder.status}</strong></span>
-                </div>
-                <span className="modal-price-tag">${selectedOrder.price}</span>
-              </div>
-
-              {/* Service Schedule & Location */}
-              <div className="modal-info-group">
-                <div className="modal-info-row">
-                  <Calendar size={16} className="modal-info-icon" />
-                  <div>
-                    <span className="info-label">Scheduled Time</span>
-                    <span className="info-value">{selectedOrder.scheduledTime}</span>
-                  </div>
-                </div>
-
-                {selectedOrder.address && (
-                  <div className="modal-info-row">
-                    <MapPin size={16} className="modal-info-icon" />
-                    <div>
-                      <span className="info-label">Service Address</span>
-                      <span className="info-value">{selectedOrder.address}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Notes */}
-              {selectedOrder.notes && (
-                <div className="modal-notes-box">
-                  <span className="notes-label">Service Description / Notes:</span>
-                  <p className="notes-text">{selectedOrder.notes}</p>
-                </div>
-              )}
-
-              {/* Review Prompt if applicable */}
-              {selectedOrder.reviewPending && reviewSubmitted !== selectedOrder.id && (
-                <div className="modal-review-prompt">
-                  <div className="review-prompt-text">
-                    <Star size={16} fill="#F59E0B" stroke="#F59E0B" />
-                    <span>How was your experience with {selectedOrder.providerName}?</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn-leave-review"
-                    onClick={() => handleLeaveReview(selectedOrder.id)}
-                  >
-                    Leave 5-Star Review
-                  </button>
-                </div>
-              )}
-
-              {reviewSubmitted === selectedOrder.id && (
-                <div className="modal-review-done">
-                  <CheckCircle2 size={16} className="text-green" />
-                  <span>Thank you! Your review for {selectedOrder.providerName} has been recorded.</span>
-                </div>
-              )}
-            </div>
-
-            <div className="order-modal-footer">
-              <Link
-                to={`/customer/providers/${selectedOrder.providerId}`}
-                className="btn-view-pro-profile"
-                onClick={handleCloseModal}
-              >
-                <span>View Provider Profile</span>
-                <ArrowRight size={15} />
-              </Link>
-            </div>
-          </div>
-        </div>
+      {/* Khung Chat trao đổi báo giá */}
+      {chatRequestId && (
+        <OrderChatDrawer
+          isOpen={!!chatRequestId}
+          onClose={() => setChatRequestId(null)}
+          requestId={chatRequestId}
+          partnerName={chatPartnerName}
+          partnerAvatar={chatPartnerAvatar}
+          partnerHeadline={chatPartnerHeadline}
+          quotedPrice={chatQuotedPrice}
+          orderTitle={chatOrderTitle}
+          currentUserRole="CUSTOMER"
+        />
       )}
     </div>
   );

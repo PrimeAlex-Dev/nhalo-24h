@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { PATHS } from '../../../routes/paths';
 import './FindProviderPage.css';
 import { 
@@ -8,22 +8,27 @@ import {
   Star, 
   MapPin, 
   Clock, 
-  ArrowLeftRight, 
   ChevronDown,
   Loader2,
   UserX,
   ArrowLeft,
-  Home
+  Home,
+  Send
 } from 'lucide-react';
 import { providerCategoryFilters, mockCategories } from '../data/customerMockData';
 import { 
   providerProfileService, 
   categoryService,
+  customerOrderService,
   type PublicProviderItem 
 } from '../../../services';
+import type { CustomerOrderSummary } from '../../../types/order';
+import { CreateOrderModal } from './CreateOrderModal';
+import { SelectOrderForProviderModal } from './SelectOrderForProviderModal';
 
 export function FindProviderPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [availableTodayOnly, setAvailableTodayOnly] = useState(false);
   const [sortBy, setSortBy] = useState('Best match');
@@ -32,6 +37,13 @@ export function FindProviderPage() {
   const [realProviders, setRealProviders] = useState<PublicProviderItem[]>([]);
   const [dbCategories, setDbCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Booking & Dispatch state
+  const [selectedProviderForBooking, setSelectedProviderForBooking] = useState<PublicProviderItem | null>(null);
+  const [showSelectOrderModal, setShowSelectOrderModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [pendingOrders, setPendingOrders] = useState<CustomerOrderSummary[]>([]);
+  const [checkingOrders, setCheckingOrders] = useState(false);
 
   const categoryParam = searchParams.get('category');
 
@@ -179,6 +191,33 @@ export function FindProviderPage() {
       return `${price.toLocaleString('vi-VN')} đ`;
     }
     return `$${price}`;
+  };
+
+  const handleQuickBook = async (provider: any) => {
+    setSelectedProviderForBooking(provider);
+    try {
+      setCheckingOrders(true);
+      const orders = await customerOrderService.getMyOrders('PENDING_PROVIDER');
+      if (orders && orders.length > 0) {
+        setPendingOrders(orders);
+        setShowSelectOrderModal(true);
+      } else {
+        setShowCreateModal(true);
+      }
+    } catch {
+      setShowCreateModal(true);
+    } finally {
+      setCheckingOrders(false);
+    }
+  };
+
+  const handleSelectExistingOrder = async (orderId: string) => {
+    if (!selectedProviderForBooking) return;
+    await customerOrderService.dispatchRequests(orderId, {
+      providerIds: [selectedProviderForBooking.id],
+    });
+    setShowSelectOrderModal(false);
+    navigate(PATHS.CUSTOMER.ORDERS);
   };
 
   return (
@@ -355,11 +394,12 @@ export function FindProviderPage() {
                 </Link>
                 <button
                   type="button"
-                  className="provider-action-btn compare-btn"
-                  onClick={(e) => e.preventDefault()}
+                  className="provider-action-btn book-btn"
+                  onClick={() => handleQuickBook(provider)}
+                  disabled={checkingOrders}
                 >
-                  <ArrowLeftRight size={15} />
-                  <span>So sánh</span>
+                  <Send size={13} />
+                  <span>Đặt thợ</span>
                 </button>
               </div>
             </div>
@@ -404,6 +444,35 @@ export function FindProviderPage() {
           </div>
         )}
       </div>
+
+      {/* Smart Select Order Modal */}
+      {showSelectOrderModal && selectedProviderForBooking && (
+        <SelectOrderForProviderModal
+          isOpen={showSelectOrderModal}
+          onClose={() => setShowSelectOrderModal(false)}
+          provider={selectedProviderForBooking}
+          pendingOrders={pendingOrders}
+          onSelectExistingOrder={handleSelectExistingOrder}
+          onCreateNewOrder={() => {
+            setShowSelectOrderModal(false);
+            setShowCreateModal(true);
+          }}
+        />
+      )}
+
+      {/* Direct Create Order Modal */}
+      {showCreateModal && selectedProviderForBooking && (
+        <CreateOrderModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          initialProviderId={selectedProviderForBooking.id}
+          initialProviderName={selectedProviderForBooking.name}
+          onSuccess={() => {
+            setShowCreateModal(false);
+            navigate(PATHS.CUSTOMER.ORDERS);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -6,28 +6,48 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   Wrench, 
-  Navigation
+  Navigation,
+  MessageSquare,
+  DollarSign,
+  Ban
 } from 'lucide-react';
-import type { ProviderJob } from '../types/provider';
+import type { ProviderJobItem } from '../../../types/order';
 import './JobDetailModal.css';
 
 interface JobDetailModalProps {
-  job: ProviderJob | null;
+  job: ProviderJobItem | null;
   onClose: () => void;
-  onAccept: (jobId: string) => void;
+  onOpenQuoteModal: (job: ProviderJobItem) => void;
+  onRejectRequest: (job: ProviderJobItem) => void;
+  onOpenChat: (job: ProviderJobItem) => void;
+  onCompleteOrder: (job: ProviderJobItem) => void;
 }
 
-export function JobDetailModal({ job, onClose, onAccept }: JobDetailModalProps) {
+export function JobDetailModal({
+  job,
+  onClose,
+  onOpenQuoteModal,
+  onRejectRequest,
+  onOpenChat,
+  onCompleteOrder,
+}: JobDetailModalProps) {
   if (!job) return null;
 
   const handleCall = () => {
-    window.open(`tel:${job.customerPhone}`);
+    if (job.customerPhone && !job.customerPhone.includes('*')) {
+      window.open(`tel:${job.customerPhone}`);
+    }
   };
 
   const handleOpenMap = () => {
-    const encodedAddress = encodeURIComponent(job.address);
+    const encodedAddress = encodeURIComponent(job.addressSnapshot);
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
   };
+
+  const isPending = job.requestStatus === 'PENDING_RESPONSE';
+  const isQuoted = job.requestStatus === 'QUOTED';
+  const isInProgress = job.orderStatus === 'IN_PROGRESS';
+  const isCompleted = job.orderStatus === 'COMPLETED';
 
   return (
     <div className="job-modal-backdrop" onClick={onClose}>
@@ -40,7 +60,8 @@ export function JobDetailModal({ job, onClose, onAccept }: JobDetailModalProps) 
           <div>
             <div className="job-modal-category-chip">
               <Wrench size={13} />
-              <span>{job.category}</span>
+              <span>{job.categoryName || 'Sửa chữa'}</span>
+              <span className="order-code-tag">· {job.orderCode}</span>
             </div>
             <h3 className="job-modal-title">{job.title}</h3>
           </div>
@@ -56,16 +77,48 @@ export function JobDetailModal({ job, onClose, onAccept }: JobDetailModalProps) 
 
         {/* Modal Body */}
         <div className="job-modal-body">
-          {/* Price & Earnings box */}
-          <div className="job-modal-price-box">
-            <div>
-              <div className="job-modal-price-label">Thu nhập ước tính</div>
-              <div className="job-modal-price-value">{job.priceEstimate}</div>
+          {/* Status / Earnings banner */}
+          {isInProgress ? (
+            <div className="job-modal-price-box in-progress">
+              <div>
+                <div className="job-modal-price-label">Giá chốt công việc</div>
+                <div className="job-modal-price-value">
+                  {job.quotedPrice ? `${job.quotedPrice.toLocaleString('vi-VN')} đ` : 'Chờ xác nhận'}
+                </div>
+              </div>
+              <div className="job-modal-price-tag in-progress">Đang thực hiện</div>
             </div>
-            <div className="job-modal-price-tag">Báo giá minh bạch</div>
-          </div>
+          ) : isQuoted ? (
+            <div className="job-modal-price-box quoted">
+              <div>
+                <div className="job-modal-price-label">Giá bạn đã báo cho khách</div>
+                <div className="job-modal-price-value">
+                  {job.quotedPrice?.toLocaleString('vi-VN')} đ
+                </div>
+              </div>
+              <div className="job-modal-price-tag quoted">Đang chờ khách duyệt</div>
+            </div>
+          ) : isCompleted ? (
+            <div className="job-modal-price-box completed">
+              <div>
+                <div className="job-modal-price-label">Đã hoàn tất & Thu tiền</div>
+                <div className="job-modal-price-value">
+                  {job.quotedPrice?.toLocaleString('vi-VN')} đ
+                </div>
+              </div>
+              <div className="job-modal-price-tag completed">Hoàn thành</div>
+            </div>
+          ) : (
+            <div className="job-modal-price-box pending">
+              <div>
+                <div className="job-modal-price-label">Trạng thái yêu cầu</div>
+                <div className="job-modal-price-value text-blue">Chờ bạn báo giá</div>
+              </div>
+              <div className="job-modal-price-tag pending">Yêu cầu mới</div>
+            </div>
+          )}
 
-          {/* Location & Time info card */}
+          {/* Location & Customer info card */}
           <div className="job-modal-info-card">
             {/* Customer & Phone */}
             <div className="job-modal-info-row">
@@ -74,24 +127,22 @@ export function JobDetailModal({ job, onClose, onAccept }: JobDetailModalProps) 
               </div>
               <div style={{ flex: 1 }}>
                 <div className="job-modal-info-label">Khách hàng</div>
-                <div className="job-modal-info-val">{job.customerName} · {job.customerPhone}</div>
+                <div className="job-modal-info-val">
+                  {job.customerName} · <strong>{job.customerPhone || '***-***'}</strong>
+                </div>
+                {!isInProgress && !isCompleted && (
+                  <span className="phone-privacy-hint">SĐT được bảo mật và hiển thị khi khách chốt việc.</span>
+                )}
               </div>
-              <button 
-                type="button" 
-                onClick={handleCall}
-                style={{
-                  background: '#EFF6FF',
-                  border: '1px solid #BFDBFE',
-                  color: '#1D6AE5',
-                  padding: '6px 12px',
-                  borderRadius: '10px',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                Gọi điện
-              </button>
+              {isInProgress && (
+                <button 
+                  type="button" 
+                  onClick={handleCall}
+                  className="btn-call-customer"
+                >
+                  Gọi điện
+                </button>
+              )}
             </div>
 
             {/* Address */}
@@ -100,26 +151,14 @@ export function JobDetailModal({ job, onClose, onAccept }: JobDetailModalProps) 
                 <MapPin size={18} />
               </div>
               <div style={{ flex: 1 }}>
-                <div className="job-modal-info-label">Địa chỉ ({job.distance} · {job.travelTime})</div>
-                <div className="job-modal-info-val">{job.address}</div>
+                <div className="job-modal-info-label">Địa chỉ thực hiện</div>
+                <div className="job-modal-info-val">{job.addressSnapshot}</div>
               </div>
               <button 
                 type="button" 
                 onClick={handleOpenMap}
                 title="Mở chỉ đường Google Maps"
-                style={{
-                  background: '#F1F5F9',
-                  border: '1px solid #CBD5E1',
-                  color: '#334155',
-                  padding: '6px 10px',
-                  borderRadius: '10px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
+                className="btn-open-maps"
               >
                 <Navigation size={13} />
                 <span>Bản đồ</span>
@@ -132,53 +171,98 @@ export function JobDetailModal({ job, onClose, onAccept }: JobDetailModalProps) 
                 <Clock size={18} />
               </div>
               <div>
-                <div className="job-modal-info-label">Thời gian hẹn</div>
-                <div className="job-modal-info-val">{job.scheduledTime}</div>
+                <div className="job-modal-info-label">Thời gian khách mong muốn</div>
+                <div className="job-modal-info-val">
+                  {new Date(job.expectedScheduleTime).toLocaleString('vi-VN', {
+                    dateStyle: 'full',
+                    timeStyle: 'short',
+                  })}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Customer notes */}
+          {/* Customer problem description */}
           <div className="job-modal-note-box">
             <div className="job-modal-note-title">
               <AlertTriangle size={15} />
-              <span>Ghi chú từ khách hàng:</span>
+              <span>Mô tả sự cố từ khách hàng:</span>
             </div>
-            <p className="job-modal-note-text">{job.note}</p>
+            <p className="job-modal-note-text">{job.description}</p>
           </div>
 
-          {/* Materials needed */}
-          {job.materialsNeeded && job.materialsNeeded.length > 0 && (
-            <div>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
-                Vật tư / dụng cụ gợi ý:
-              </div>
-              <div className="job-modal-materials">
-                {job.materialsNeeded.map((mat, idx) => (
-                  <span key={idx} className="job-modal-mat-pill">{mat}</span>
+          {/* Photos */}
+          {job.images && job.images.length > 0 && (
+            <div className="job-images-container">
+              <div className="job-images-label">Ảnh sự cố khách cung cấp ({job.images.length})</div>
+              <div className="job-images-grid">
+                {job.images.map((url, idx) => (
+                  <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="job-img-link">
+                    <img src={url} alt={`Ảnh sự cố ${idx + 1}`} />
+                  </a>
                 ))}
               </div>
             </div>
           )}
+
+          {/* Your submitted quotation notes if available */}
+          {job.providerNote && (
+            <div className="job-provider-note-box">
+              <span className="note-box-title">Ghi chú bạn đã gửi cho khách:</span>
+              <p className="note-box-text">{job.providerNote}</p>
+            </div>
+          )}
         </div>
 
-        {/* Modal Action Footer */}
+        {/* Action Footer */}
         <div className="job-modal-footer">
+          {/* Always provide chat button so provider can consult */}
           <button 
             type="button" 
-            className="job-modal-decline-btn" 
-            onClick={onClose}
+            className="btn-provider-chat"
+            onClick={() => onOpenChat(job)}
           >
-            Để sau
+            <MessageSquare size={16} />
+            <span>Chat với khách</span>
           </button>
-          <button 
-            type="button" 
-            className="job-modal-accept-btn" 
-            onClick={() => onAccept(job.id)}
-          >
-            <CheckCircle2 size={20} />
-            <span>Nhận công việc ngay</span>
-          </button>
+
+          {isPending && (
+            <>
+              <button 
+                type="button" 
+                className="job-modal-decline-btn" 
+                onClick={() => onRejectRequest(job)}
+              >
+                <Ban size={15} />
+                <span>Từ chối</span>
+              </button>
+              <button 
+                type="button" 
+                className="job-modal-accept-btn" 
+                onClick={() => onOpenQuoteModal(job)}
+              >
+                <DollarSign size={17} />
+                <span>Gửi báo giá</span>
+              </button>
+            </>
+          )}
+
+          {isInProgress && (
+            <button 
+              type="button" 
+              className="job-modal-complete-btn"
+              onClick={() => onCompleteOrder(job)}
+            >
+              <CheckCircle2 size={18} />
+              <span>Đánh dấu hoàn thành việc</span>
+            </button>
+          )}
+
+          {isCompleted && (
+            <button type="button" className="job-modal-done-btn" onClick={onClose}>
+              Đóng
+            </button>
+          )}
         </div>
       </div>
     </div>

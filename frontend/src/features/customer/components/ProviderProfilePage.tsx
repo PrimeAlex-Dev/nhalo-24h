@@ -18,8 +18,11 @@ import {
   Loader2
 } from 'lucide-react';
 import { PATHS } from '../../../routes/paths';
-import { providerProfileService, type PublicProviderItem } from '../../../services';
+import { providerProfileService, customerOrderService, type PublicProviderItem } from '../../../services';
+import type { CustomerOrderSummary } from '../../../types/order';
 import type { ProviderItem } from '../types/customer';
+import { CreateOrderModal } from './CreateOrderModal';
+import { SelectOrderForProviderModal } from './SelectOrderForProviderModal';
 
 export function ProviderProfilePage() {
   const { providerId } = useParams<{ providerId: string }>();
@@ -28,6 +31,9 @@ export function ProviderProfilePage() {
   const [isBooked, setIsBooked] = useState(false);
   const [isCompared, setIsCompared] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showSelectOrderModal, setShowSelectOrderModal] = useState(false);
+  const [pendingOrders, setPendingOrders] = useState<CustomerOrderSummary[]>([]);
+  const [checkingOrders, setCheckingOrders] = useState(false);
   const [realProvider, setRealProvider] = useState<PublicProviderItem | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -136,13 +142,31 @@ export function ProviderProfilePage() {
     navigate(PATHS.CUSTOMER.PROVIDERS);
   };
 
-  const handleBookNow = () => {
-    setShowBookingModal(true);
+  const handleBookNow = async () => {
+    try {
+      setCheckingOrders(true);
+      const orders = await customerOrderService.getMyOrders('PENDING_PROVIDER');
+      if (orders && orders.length > 0) {
+        setPendingOrders(orders);
+        setShowSelectOrderModal(true);
+      } else {
+        setShowBookingModal(true);
+      }
+    } catch {
+      // Fallback if not logged in or API fails
+      setShowBookingModal(true);
+    } finally {
+      setCheckingOrders(false);
+    }
   };
 
-  const handleConfirmBooking = () => {
+  const handleSelectExistingOrder = async (orderId: string) => {
+    await customerOrderService.dispatchRequests(orderId, {
+      providerIds: [provider.id],
+    });
     setIsBooked(true);
-    setShowBookingModal(false);
+    setShowSelectOrderModal(false);
+    navigate(PATHS.CUSTOMER.ORDERS);
   };
 
   return (
@@ -391,8 +415,16 @@ export function ProviderProfilePage() {
                   type="button"
                   className="btn-book-primary"
                   onClick={handleBookNow}
+                  disabled={checkingOrders}
                 >
-                  Book Now
+                  {checkingOrders ? (
+                    <>
+                      <Loader2 size={16} className="spin-icon" />
+                      <span>Đang kiểm tra...</span>
+                    </>
+                  ) : (
+                    'Book Now'
+                  )}
                 </button>
 
                 <button
@@ -435,72 +467,31 @@ export function ProviderProfilePage() {
         </div>
       </div>
 
+      {/* Select Existing Order Modal */}
+      {showSelectOrderModal && (
+        <SelectOrderForProviderModal
+          isOpen={showSelectOrderModal}
+          onClose={() => setShowSelectOrderModal(false)}
+          provider={provider}
+          pendingOrders={pendingOrders}
+          onSelectExistingOrder={handleSelectExistingOrder}
+          onCreateNewOrder={() => setShowBookingModal(true)}
+        />
+      )}
+
       {/* Booking Modal Dialog */}
       {showBookingModal && (
-        <div className="booking-modal-overlay" onClick={() => setShowBookingModal(false)}>
-          <div
-            className="booking-modal-dialog"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
-            <button
-              type="button"
-              className="modal-close-btn"
-              onClick={() => setShowBookingModal(false)}
-              aria-label="Close"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="modal-header">
-              <h3 className="modal-title">Book with {provider.name}</h3>
-              <p className="modal-subtitle">
-                {provider.company} · ${provider.pricePerHour}/hr
-              </p>
-            </div>
-
-            <div className="modal-body">
-              <div className="modal-detail-row">
-                <span className="modal-label">Service Category</span>
-                <span className="modal-val">{provider.category}</span>
-              </div>
-              <div className="modal-detail-row">
-                <span className="modal-label">Earliest Arrival</span>
-                <span className="modal-val text-green font-semibold">
-                  {provider.availabilityDetail || `${provider.availability}, 2:00 PM`}
-                </span>
-              </div>
-              <div className="modal-detail-row">
-                <span className="modal-label">Estimated Response</span>
-                <span className="modal-val">{provider.responseTime || '~10 min'}</span>
-              </div>
-
-              <div className="modal-note-box">
-                <p>
-                  No upfront charge. You only pay after the job is completed and approved to your satisfaction.
-                </p>
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="btn-cancel"
-                onClick={() => setShowBookingModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn-confirm-booking"
-                onClick={handleConfirmBooking}
-              >
-                Confirm Request
-              </button>
-            </div>
-          </div>
-        </div>
+        <CreateOrderModal
+          isOpen={showBookingModal}
+          onClose={() => setShowBookingModal(false)}
+          initialProviderId={provider.id}
+          initialProviderName={provider.name}
+          onSuccess={() => {
+            setIsBooked(true);
+            setShowBookingModal(false);
+            navigate(PATHS.CUSTOMER.ORDERS);
+          }}
+        />
       )}
     </div>
   );
