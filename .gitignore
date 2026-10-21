@@ -25,6 +25,8 @@ backend/target/
 # Database & Storage
 *.h2.db
 postgres_data/
+uploads/
+**/uploads/
 
 # IDE & Editors
 .idea/
