@@ -81,8 +81,9 @@ export interface AdminKpiMetric {
   value: number;
   formattedValue: string;
   unit?: string;
-  changePercent: number;
+  changePercent?: number;
   changeType: 'increase' | 'decrease' | 'neutral';
+  trendLabel?: string;
   compareLabel: string;
   statusLabel: string;
   statusVariant: 'success' | 'warning' | 'info' | 'danger';

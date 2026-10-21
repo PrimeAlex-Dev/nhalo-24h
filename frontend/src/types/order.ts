@@ -59,16 +59,22 @@ export interface CustomerOrderSummary {
   id: string;
   orderCode: string;
   title: string;
+  description?: string;
+  categoryId?: string;
   categoryName?: string;
   status: OrderStatus;
   addressSnapshot: string;
+  contactName?: string;
+  contactPhone?: string;
   expectedScheduleTime: string;
   finalPrice?: number;
+  cancelReason?: string;
   assignedProviderId?: string;
   assignedProviderName?: string;
   assignedProviderAvatar?: string;
   quotationCount: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface CustomerOrderDetail {

@@ -323,4 +323,120 @@ class OrderIntegrationTest {
         Order completedOrder = orderRepository.findById(orderId).orElseThrow();
         assertThat(completedOrder.getStatus()).isEqualTo(OrderStatus.COMPLETED);
     }
+
+    @Test
+    @DisplayName("Khách hàng tạo đơn với thời gian mong muốn trong quá khứ phải thất bại (HTTP 400)")
+    void testCreateOrderWithPastScheduleTimeShouldFail() throws Exception {
+        CreateOrderRequest pastRequest = new CreateOrderRequest(
+            category.getId(),
+            customerAddress.getId(),
+            "Bồn rửa chén bị rò rỉ nước",
+            "Nước chảy tràn dưới tủ bếp cần xử lý gấp",
+            Instant.now().minusSeconds(3600), // 1 giờ trước trong quá khứ
+            "Nguyễn Văn Khách",
+            "0901111222",
+            null,
+            null
+        );
+
+        mockMvc.perform(post("/api/v1/customer/orders")
+                .header("Authorization", "Bearer " + customerToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(pastRequest)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Khách hàng tạo đơn với số điện thoại tùy chọn sai định dạng phải thất bại (HTTP 400)")
+    void testCreateOrderWithInvalidContactPhoneShouldFail() throws Exception {
+        CreateOrderRequest invalidPhoneRequest = new CreateOrderRequest(
+            category.getId(),
+            customerAddress.getId(),
+            "Bồn rửa chén bị rò rỉ nước",
+            "Nước chảy tràn dưới tủ bếp cần xử lý gấp",
+            Instant.now().plusSeconds(86400),
+            "Nguyễn Văn Khách",
+            "0912345", // Sai: chỉ có 7 chữ số
+            null,
+            null
+        );
+
+        mockMvc.perform(post("/api/v1/customer/orders")
+                .header("Authorization", "Bearer " + customerToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalidPhoneRequest)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Khách hàng tạo đơn với tên người liên hệ quá dài phải thất bại (HTTP 400)")
+    void testCreateOrderWithOverlongContactNameShouldFail() throws Exception {
+        String overlongName = "A".repeat(105);
+        CreateOrderRequest overlongNameRequest = new CreateOrderRequest(
+            category.getId(),
+            customerAddress.getId(),
+            "Bồn rửa chén bị rò rỉ nước",
+            "Nước chảy tràn dưới tủ bếp cần xử lý gấp",
+            Instant.now().plusSeconds(86400),
+            overlongName,
+            "0901111222",
+            null,
+            null
+        );
+
+        mockMvc.perform(post("/api/v1/customer/orders")
+                .header("Authorization", "Bearer " + customerToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(overlongNameRequest)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Khách hàng tạo đơn với tên liên hệ quá ngắn < 2 ký tự phải thất bại (HTTP 400)")
+    void testCreateOrderWithShortContactNameShouldFail() throws Exception {
+        CreateOrderRequest shortNameRequest = new CreateOrderRequest(
+            category.getId(),
+            customerAddress.getId(),
+            "Bồn rửa chén bị rò rỉ nước",
+            "Nước chảy tràn dưới tủ bếp cần xử lý gấp",
+            Instant.now().plusSeconds(86400),
+            "A", // Chỉ có 1 ký tự
+            "0901111222",
+            null,
+            null
+        );
+
+        mockMvc.perform(post("/api/v1/customer/orders")
+                .header("Authorization", "Bearer " + customerToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(shortNameRequest)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Khách hàng tạo đơn để trống tên và SĐT liên hệ thì tự động fallback lấy từ tài khoản User")
+    void testCreateOrderWithEmptyContactFieldsShouldFallbackToUser() throws Exception {
+        CreateOrderRequest emptyContactRequest = new CreateOrderRequest(
+            category.getId(),
+            customerAddress.getId(),
+            "Sửa chữa vòi sen",
+            "Vòi sen rò rỉ nước",
+            Instant.now().plusSeconds(86400),
+            null, // Để trống
+            "",   // Để trống
+            null,
+            null
+        );
+
+        MvcResult result = mockMvc.perform(post("/api/v1/customer/orders")
+                .header("Authorization", "Bearer " + customerToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(emptyContactRequest)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+        JsonNode responseNode = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertThat(responseNode.get("contactName").asText()).isEqualTo(customer.getFullName());
+        assertThat(responseNode.get("contactPhone").asText()).isEqualTo(customer.getPhone());
+    }
 }

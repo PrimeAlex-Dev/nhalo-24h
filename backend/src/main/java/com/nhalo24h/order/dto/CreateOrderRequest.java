@@ -1,8 +1,10 @@
 package com.nhalo24h.order.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.List;
@@ -29,12 +31,15 @@ public record CreateOrderRequest(
 
     @Schema(description = "Thời gian mong muốn thợ tới (ISO 8601)", example = "2026-10-18T14:00:00Z")
     @NotNull(message = "Thời gian mong muốn không được để trống")
+    @Future(message = "Thời gian mong muốn phải là thời gian trong tương lai")
     Instant expectedScheduleTime,
 
-    @Schema(description = "Tên người liên hệ (tùy chọn, mặc định lấy từ hồ sơ)", example = "Nguyễn Văn A")
+    @Schema(description = "Tên người liên hệ (tùy chọn, mặc định lấy từ hồ sơ, tối đa 100 ký tự)", example = "Nguyễn Văn A")
+    @Size(max = 100, message = "Tên người liên hệ không được vượt quá 100 ký tự")
     String contactName,
 
-    @Schema(description = "Số điện thoại liên hệ (tùy chọn, mặc định lấy từ tài khoản)", example = "0901234567")
+    @Schema(description = "Số điện thoại liên hệ (tùy chọn, nếu có phải gồm đúng 10 chữ số và bắt đầu bằng số 0)", example = "0901234567")
+    @Pattern(regexp = "^$|^0[0-9]{9}$", message = "Số điện thoại liên hệ phải gồm đúng 10 chữ số và bắt đầu bằng số 0")
     String contactPhone,
 
     @Schema(description = "Danh sách URL hình ảnh minh chứng sự cố")

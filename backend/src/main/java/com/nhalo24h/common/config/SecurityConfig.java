@@ -25,14 +25,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
  * Cấu hình bảo mật nền tảng Spring Security cho dự án Nhà Lo 24h.
- * 
- * Lưu ý quan trọng:
- * - Ở giai đoạn khởi tạo kiến trúc, hệ thống chỉ cấu hình khung nền tảng:
- *   Stateless session, CORS, CSRF disable (phù hợp REST API), PasswordEncoder,
- *   và phân quyền tối thiểu (chỉ mở các endpoint tài liệu kỹ thuật & health check).
- * - Luồng xác thực chi tiết (JWT Filter, UserDetailsService, Login, Register, Refresh Token)
- *   chưa được triển khai ở giai đoạn này và được dành riêng cho module Authentication ở giai đoạn tiếp theo.
- * - Hệ thống CHƯA được coi là hoàn thiện bảo mật cho tới khi module Authentication và JWT Filter được tích hợp.
  */
 @Configuration
 @EnableWebSecurity
@@ -82,10 +74,16 @@ public class SecurityConfig {
                 // Danh mục dịch vụ: Khách xem công khai (GET), thao tác tạo/sửa (POST, PATCH) chỉ dành cho ADMIN
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/service-categories", "/api/v1/service-categories/**").permitAll()
                 .requestMatchers("/api/v1/service-categories/**").hasRole("ADMIN")
+                // Cho phép xem tĩnh các file ảnh sự cố / avatar upload
+                .requestMatchers("/uploads/**").permitAll()
                 // Quản lý người dùng: Toàn bộ API chỉ dành cho Quản trị viên (ADMIN)
                 .requestMatchers("/api/v1/users/**").hasRole("ADMIN")
+                // Quản lý đơn hàng: Chỉ dành cho Quản trị viên (ADMIN)
+                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                 // Xem thông tin cá nhân: Bất kỳ vai trò nào đã đăng nhập
                 .requestMatchers("/api/v1/auth/me").authenticated()
+                // API upload file: Yêu cầu người dùng đã xác thực
+                .requestMatchers("/api/v1/files/**").authenticated()
                 // Hồ sơ khách hàng: Chỉ dành cho người dùng có vai trò CUSTOMER
                 .requestMatchers("/api/v1/customer/**").hasRole("CUSTOMER")
                 // Thông tin thợ công khai: Khách hàng và người dùng vãng lai được xem

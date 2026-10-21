@@ -23,6 +23,7 @@ import com.nhalo24h.user.domain.CustomerAddress;
 import com.nhalo24h.user.domain.User;
 import com.nhalo24h.user.repository.CustomerAddressRepository;
 import com.nhalo24h.user.repository.UserRepository;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -62,6 +63,10 @@ public class CustomerOrderService {
 
     @Transactional
     public CustomerOrderDetailResponse createOrder(UUID customerUserId, CreateOrderRequest request) {
+        if (request.expectedScheduleTime() == null || request.expectedScheduleTime().isBefore(Instant.now())) {
+            throw new AppException(ErrorCode.INVALID_INPUT, "Thời gian mong muốn không thể ở trong quá khứ");
+        }
+
         User customer = userRepository.findById(customerUserId)
             .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy thông tin khách hàng"));
 
@@ -71,13 +76,25 @@ public class CustomerOrderService {
         CustomerAddress address = customerAddressRepository.findByIdAndUserId(request.addressId(), customerUserId)
             .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN, "Địa chỉ đã chọn không thuộc về tài khoản của bạn"));
 
-        String contactName = (request.contactName() != null && !request.contactName().isBlank())
-            ? request.contactName().trim()
-            : customer.getFullName();
+        String contactName = customer.getFullName();
+        if (request.contactName() != null && !request.contactName().isBlank()) {
+            String trimmedName = request.contactName().trim();
+            if (trimmedName.length() < 2 || trimmedName.length() > 100) {
+                throw new AppException(ErrorCode.INVALID_INPUT, "Tên người liên hệ tại nhà phải từ 2 đến 100 ký tự");
+            }
+            contactName = trimmedName;
+        }
 
-        String contactPhone = (request.contactPhone() != null && !request.contactPhone().isBlank())
-            ? request.contactPhone().trim()
-            : (customer.getPhone() != null ? customer.getPhone() : "Chưa cập nhật");
+        String contactPhone = (customer.getPhone() != null && !customer.getPhone().isBlank())
+            ? customer.getPhone()
+            : "Chưa cập nhật";
+        if (request.contactPhone() != null && !request.contactPhone().isBlank()) {
+            String trimmedPhone = request.contactPhone().trim();
+            if (!trimmedPhone.matches("^0[0-9]{9}$")) {
+                throw new AppException(ErrorCode.INVALID_INPUT, "Số điện thoại liên hệ phải gồm đúng 10 chữ số và bắt đầu bằng số 0");
+            }
+            contactPhone = trimmedPhone;
+        }
 
         String addressSnapshot = address.getFullAddress();
         String orderCode = generateOrderCode();

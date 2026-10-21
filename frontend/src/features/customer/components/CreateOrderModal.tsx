@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   MapPin, 
@@ -10,9 +10,15 @@ import {
   Loader2, 
   CheckCircle2, 
   Plus, 
-  UserCheck 
+  UserCheck,
+  ImageIcon
 } from 'lucide-react';
-import { customerOrderService, customerAddressService, categoryService } from '../../../services';
+import { 
+  customerOrderService, 
+  customerAddressService, 
+  categoryService, 
+  fileService 
+} from '../../../services';
 import type { UserAddress } from '../types/customer';
 import type { CustomerOrderDetail } from '../../../types/order';
 import './CreateOrderModal.css';
@@ -30,6 +36,35 @@ interface CreateOrderModalProps {
   initialProviderName?: string;
   defaultCategoryId?: string;
 }
+
+interface UploadItem {
+  id: string;
+  previewUrl: string;
+  serverUrl?: string;
+  isUploading: boolean;
+}
+
+const MAX_IMAGES = 5;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
+
+const getTodayDateString = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getTomorrowDateString = (): string => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const year = tomorrow.getFullYear();
+  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+  const day = String(tomorrow.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export function CreateOrderModal({
   isOpen,
@@ -52,24 +87,46 @@ export function CreateOrderModal({
   const [scheduleTime, setScheduleTime] = useState('14:00');
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
-  const [imageInput, setImageInput] = useState('');
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  
+  // Image upload states
+  const [uploadedImages, setUploadedImages] = useState<UploadItem[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadedImagesRef = useRef<UploadItem[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    uploadedImagesRef.current = uploadedImages;
+  }, [uploadedImages]);
+
+  // Clean up object URLs on component unmount
+  useEffect(() => {
+    return () => {
+      uploadedImagesRef.current.forEach((img) => {
+        if (img.previewUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(img.previewUrl);
+        }
+      });
+    };
+  }, []);
 
   const resetForm = () => {
     setTitle('');
     setDescription('');
     setContactName('');
     setContactPhone('');
-    setImageInput('');
-    setImageUrls([]);
+    uploadedImages.forEach((img) => {
+      if (img.previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(img.previewUrl);
+      }
+    });
+    setUploadedImages([]);
+    setIsDragging(false);
     setErrorMsg(null);
     setSubmitting(false);
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    setScheduleDate(tomorrow.toISOString().split('T')[0]);
+    setScheduleDate(getTomorrowDateString());
     setScheduleTime('14:00');
   };
 
@@ -115,19 +172,107 @@ export function CreateOrderModal({
     }
   };
 
-  const handleAddImage = () => {
-    if (!imageInput.trim()) return;
-    if (imageUrls.length >= 5) {
-      setErrorMsg('Tối đa 5 hình ảnh cho mỗi đơn hàng.');
+  const handleFilesAdded = async (newFiles: File[]) => {
+    if (!newFiles || newFiles.length === 0) return;
+
+    const currentCount = uploadedImages.length;
+    if (currentCount >= MAX_IMAGES) {
+      setErrorMsg('Đã đạt giới hạn tối đa 5 hình ảnh cho mỗi đơn hàng.');
       return;
     }
-    setImageUrls([...imageUrls, imageInput.trim()]);
-    setImageInput('');
+
+    const availableSlots = MAX_IMAGES - currentCount;
+    const filesToProcess = newFiles.slice(0, availableSlots);
+    if (newFiles.length > availableSlots) {
+      setErrorMsg(`Chỉ có thể chọn thêm tối đa ${availableSlots} ảnh nữa.`);
+    }
+
+    const validFiles: File[] = [];
+    for (const file of filesToProcess) {
+      const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+      const type = file.type.toLowerCase();
+      const isValidType = ALLOWED_TYPES.includes(type) || ALLOWED_EXTS.includes(ext);
+
+      if (!isValidType) {
+        setErrorMsg(`Tệp "${file.name}" không hợp lệ. Chỉ chấp nhận định dạng JPG, PNG, WEBP.`);
+        return;
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        setErrorMsg(`Tệp "${file.name}" vượt quá kích thước cho phép (tối đa 10MB).`);
+        return;
+      }
+
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) return;
+
+    const newItems: UploadItem[] = validFiles.map((file) => ({
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      previewUrl: URL.createObjectURL(file),
+      isUploading: true,
+    }));
+
+    setUploadedImages((prev) => [...prev, ...newItems]);
     setErrorMsg(null);
+
+    try {
+      const urls = await fileService.uploadOrderImages(validFiles);
+      setUploadedImages((prev) =>
+        prev.map((item) => {
+          const indexInBatch = newItems.findIndex((n) => n.id === item.id);
+          if (indexInBatch !== -1 && urls[indexInBatch]) {
+            return {
+              ...item,
+              serverUrl: urls[indexInBatch],
+              isUploading: false,
+            };
+          }
+          return item;
+        })
+      );
+    } catch (err: any) {
+      const newIds = new Set(newItems.map((n) => n.id));
+      newItems.forEach((item) => {
+        if (item.previewUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(item.previewUrl);
+        }
+      });
+      setUploadedImages((prev) => prev.filter((item) => !newIds.has(item.id)));
+      setErrorMsg(err.message || 'Không thể tải ảnh lên máy chủ, vui lòng thử lại.');
+    }
   };
 
-  const handleRemoveImage = (index: number) => {
-    setImageUrls(imageUrls.filter((_, idx) => idx !== index));
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFilesAdded(Array.from(e.dataTransfer.files));
+    }
+  };
+
+  const handleRemoveImage = (id: string) => {
+    setUploadedImages((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target && target.previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((item) => item.id !== id);
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -153,12 +298,45 @@ export function CreateOrderModal({
       return;
     }
 
+    const selectedDateTime = new Date(`${scheduleDate}T${scheduleTime}:00`);
+    if (isNaN(selectedDateTime.getTime()) || selectedDateTime.getTime() <= Date.now()) {
+      setErrorMsg('Thời gian hẹn mong muốn không thể ở trong quá khứ. Vui lòng chọn ngày và giờ từ hiện tại trở đi.');
+      return;
+    }
+
+    const trimmedContactName = contactName.trim();
+    if (trimmedContactName.length > 0) {
+      if (trimmedContactName.length < 2 || trimmedContactName.length > 100) {
+        setErrorMsg('Tên người liên hệ tại nhà phải từ 2 đến 100 ký tự.');
+        return;
+      }
+    }
+
+    const trimmedContactPhone = contactPhone.trim();
+    const VIETNAM_PHONE_REGEX = /^0[0-9]{9}$/;
+    if (trimmedContactPhone.length > 0) {
+      if (!VIETNAM_PHONE_REGEX.test(trimmedContactPhone)) {
+        setErrorMsg('Số điện thoại liên hệ phải gồm đúng 10 chữ số và bắt đầu bằng số 0.');
+        return;
+      }
+    }
+
+    const anyUploading = uploadedImages.some((img) => img.isUploading);
+    if (anyUploading) {
+      setErrorMsg('Hình ảnh đang được tải lên, vui lòng đợi giây lát.');
+      return;
+    }
+
+    const finalImageUrls = uploadedImages
+      .map((img) => img.serverUrl)
+      .filter((url): url is string => Boolean(url));
+
     try {
       setSubmitting(true);
       setErrorMsg(null);
 
       // Combine date and time to ISO 8601 Instant
-      const expectedDateTime = new Date(`${scheduleDate}T${scheduleTime}:00`).toISOString();
+      const expectedDateTime = selectedDateTime.toISOString();
 
       const payload = {
         categoryId: selectedCategoryId,
@@ -166,9 +344,9 @@ export function CreateOrderModal({
         title: title.trim(),
         description: description.trim(),
         expectedScheduleTime: expectedDateTime,
-        contactName: contactName.trim() || undefined,
-        contactPhone: contactPhone.trim() || undefined,
-        imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+        contactName: trimmedContactName || undefined,
+        contactPhone: trimmedContactPhone || undefined,
+        imageUrls: finalImageUrls.length > 0 ? finalImageUrls : undefined,
         initialProviderIds: initialProviderId ? [initialProviderId] : undefined,
       };
 
@@ -324,8 +502,17 @@ export function CreateOrderModal({
                   <input
                     type="date"
                     className="form-input"
+                    min={getTodayDateString()}
                     value={scheduleDate}
-                    onChange={(e) => setScheduleDate(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setScheduleDate(val);
+                      if (val && val < getTodayDateString()) {
+                        setErrorMsg('Ngày mong muốn không thể là ngày trong quá khứ.');
+                      } else {
+                        setErrorMsg(null);
+                      }
+                    }}
                   />
                 </div>
                 <div className="form-group-section">
@@ -337,7 +524,10 @@ export function CreateOrderModal({
                     type="time"
                     className="form-input"
                     value={scheduleTime}
-                    onChange={(e) => setScheduleTime(e.target.value)}
+                    onChange={(e) => {
+                      setScheduleTime(e.target.value);
+                      setErrorMsg(null);
+                    }}
                   />
                 </div>
               </div>
@@ -351,63 +541,108 @@ export function CreateOrderModal({
                     className="form-input"
                     placeholder="Mặc định lấy tên tài khoản"
                     value={contactName}
+                    maxLength={100}
                     onChange={(e) => setContactName(e.target.value)}
                   />
+                  <span className="field-helper-hint">Tối đa 100 ký tự (để trống sẽ lấy tên tài khoản)</span>
                 </div>
                 <div className="form-group-section">
                   <label className="section-label">Số điện thoại liên hệ (tùy chọn)</label>
                   <input
                     type="tel"
+                    inputMode="numeric"
                     className="form-input"
                     placeholder="Mặc định lấy SĐT tài khoản"
                     value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
+                    maxLength={10}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setContactPhone(val);
+                    }}
                   />
+                  <span className="field-helper-hint">10 chữ số, bắt đầu bằng 0 (để trống lấy SĐT tài khoản)</span>
                 </div>
               </div>
 
-              {/* 6. Đính kèm hình ảnh minh chứng sự cố */}
+              {/* 6. Đính kèm hình ảnh minh chứng sự cố từ thiết bị */}
               <div className="form-group-section">
-                <label className="section-label">
-                  <Upload size={16} />
-                  <span>Hình ảnh sự cố (tối đa 5 ảnh)</span>
-                </label>
-                <div className="image-input-group">
-                  <input
-                    type="url"
-                    className="form-input"
-                    placeholder="Nhập đường link ảnh (vd: https://res.cloudinary.com/...)"
-                    value={imageInput}
-                    onChange={(e) => setImageInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddImage();
-                      }
-                    }}
-                  />
-                  <button 
-                    type="button" 
-                    className="btn-add-img"
-                    onClick={handleAddImage}
-                  >
-                    Thêm ảnh
-                  </button>
+                <div className="section-label-row">
+                  <label className="section-label">
+                    <ImageIcon size={16} />
+                    <span>Hình ảnh sự cố (tối đa 5 ảnh)</span>
+                  </label>
+                  <span className="image-counter-badge">{uploadedImages.length}/5 ảnh</span>
                 </div>
 
-                {imageUrls.length > 0 && (
-                  <div className="image-preview-list">
-                    {imageUrls.map((url, idx) => (
-                      <div key={idx} className="image-preview-item">
-                        <img src={url} alt={`Ảnh ${idx + 1}`} />
-                        <button
-                          type="button"
-                          className="btn-del-img"
-                          onClick={() => handleRemoveImage(idx)}
-                          title="Xóa ảnh"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      handleFilesAdded(Array.from(e.target.files));
+                    }
+                    e.target.value = '';
+                  }}
+                />
+
+                {uploadedImages.length < MAX_IMAGES && (
+                  <div
+                    className={`image-dropzone ${isDragging ? 'dragging' : ''}`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }
+                    }}
+                  >
+                    <div className="dropzone-icon-circle">
+                      <Upload size={22} />
+                    </div>
+                    <div className="dropzone-content">
+                      <p className="dropzone-primary-text">
+                        <span>Kéo & thả ảnh vào đây hoặc</span> <span className="dropzone-browse-text">chọn từ thiết bị</span>
+                      </p>
+                      <p className="dropzone-secondary-text">
+                        Định dạng JPG, PNG, WEBP &bull; Tối đa 10MB/ảnh
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {uploadedImages.length > 0 && (
+                  <div className="image-preview-grid">
+                    {uploadedImages.map((img, idx) => (
+                      <div key={img.id} className="image-preview-card">
+                        <img src={img.previewUrl} alt={`Ảnh sự cố ${idx + 1}`} />
+                        {img.isUploading && (
+                          <div className="image-uploading-overlay">
+                            <Loader2 size={20} className="spin-icon" />
+                            <span>Đang tải...</span>
+                          </div>
+                        )}
+                        {!img.isUploading && (
+                          <button
+                            type="button"
+                            className="btn-remove-image"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveImage(img.id);
+                            }}
+                            title="Xóa ảnh"
+                            aria-label="Xóa ảnh"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -420,7 +655,7 @@ export function CreateOrderModal({
               <button 
                 type="button" 
                 className="btn-cancel-order" 
-                onClick={onClose}
+                onClick={handleClose}
                 disabled={submitting}
               >
                 Hủy bỏ
@@ -428,7 +663,7 @@ export function CreateOrderModal({
               <button 
                 type="submit" 
                 className="btn-submit-order"
-                disabled={submitting || addresses.length === 0}
+                disabled={submitting || addresses.length === 0 || uploadedImages.some((img) => img.isUploading)}
               >
                 {submitting ? (
                   <>

@@ -1,25 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  AlertTriangle, 
   ArrowRight, 
   CheckCircle2, 
-  Clock, 
   Eye, 
   ShieldCheck, 
   Wrench, 
   Activity,
-  Filter
+  Layers,
+  RefreshCw,
+  ShieldAlert
 } from 'lucide-react';
 import { AdminKpiCards } from '../components/AdminKpiCards';
-import { OrderDetailModal } from '../components/OrderDetailModal';
 import { UserDetailModal } from '../components/UserDetailModal';
 import { 
-  ADMIN_KPI_METRICS, 
-  ADMIN_MOCK_ORDERS 
-} from '../data/adminMockData';
-import { userService } from '../../../services';
-import type { AdminOrderItem, AdminUserItem, OrderStatus } from '../types/admin';
+  userService, 
+  categoryService, 
+  providerProfileService,
+  adminOrderService,
+  request 
+} from '../../../services';
+import type { AdminKpiMetric, AdminUserItem, UserRole } from '../types/admin';
 import { PATHS } from '../../../routes/paths';
 import './AdminDashboardPage.css';
 
@@ -27,168 +28,249 @@ export function AdminDashboardPage() {
   const navigate = useNavigate();
 
   // State management
-  const [orders, setOrders] = useState<AdminOrderItem[]>(ADMIN_MOCK_ORDERS);
-  const [users, setUsers] = useState<AdminUserItem[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<AdminOrderItem | null>(null);
+  const [metrics, setMetrics] = useState<AdminKpiMetric[]>([]);
+  const [recentUsers, setRecentUsers] = useState<AdminUserItem[]>([]);
+  const [pendingProviders, setPendingProviders] = useState<AdminUserItem[]>([]);
+  const [activeCategoriesCount, setActiveCategoriesCount] = useState<number>(0);
+  const [totalCategoriesCount, setTotalCategoriesCount] = useState<number>(0);
+  const [activeProvidersCount, setActiveProvidersCount] = useState<number>(0);
+  const [totalProvidersCount, setTotalProvidersCount] = useState<number>(0);
+  const [availableProvidersCount, setAvailableProvidersCount] = useState<number>(0);
+  const [systemHealth, setSystemHealth] = useState<'UP' | 'DOWN' | 'CHECKING'>('CHECKING');
+  const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [userQuickFilter, setUserQuickFilter] = useState<'all' | 'CUSTOMER' | 'PROVIDER'>('all');
   const [selectedUser, setSelectedUser] = useState<AdminUserItem | null>(null);
-  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [orderQuickFilter, setOrderQuickFilter] = useState<'all' | 'backlog'>('all');
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    userService.getUsers({ size: 10 }).then((res) => {
-      setUsers(res.content);
-    }).catch(() => {
-      // Backend not running or error, keep empty
-    });
-  }, []);
-
-  // Filter pending/disabled providers for the approval widget
-  const pendingProviders = users.filter(
-    (u) => u.role === 'PROVIDER' && u.status === 'DISABLED'
-  );
-
-  // Filter backlogged orders
-  const backlogOrders = orders.filter((o) => o.backlogStatus !== 'normal');
-
-  // Display orders based on quick filter
-  const displayedOrders = orderQuickFilter === 'backlog' ? backlogOrders : orders;
-
-  // Handlers for modal interactions
-  const handleOpenOrderDetail = (order: AdminOrderItem) => {
-    setSelectedOrder(order);
-    setIsOrderModalOpen(true);
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3500);
   };
 
+  // Fetch real data from backend
+  const loadDashboardData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const [
+        customersTotalRes,
+        customersActiveRes,
+        providersTotalRes,
+        providersActiveRes,
+        pendingProvidersRes,
+        categoriesTotalRes,
+        categoriesActiveRes,
+        publicProvidersRes,
+        recentUsersRes,
+        healthRes,
+        ordersRes,
+      ] = await Promise.allSettled([
+        userService.getUsers({ role: 'CUSTOMER', size: 1 }),
+        userService.getUsers({ role: 'CUSTOMER', status: 'ACTIVE', size: 1 }),
+        userService.getUsers({ role: 'PROVIDER', size: 1 }),
+        userService.getUsers({ role: 'PROVIDER', status: 'ACTIVE', size: 1 }),
+        userService.getUsers({ role: 'PROVIDER', status: 'DISABLED', size: 10 }),
+        categoryService.getCategories({ size: 1 }),
+        categoryService.getCategories({ status: 'ACTIVE', size: 1 }),
+        providerProfileService.getPublicProviders(),
+        userService.getUsers({ size: 8, sort: 'createdAt,desc' }),
+        request<{ status: string }>('/api/v1/health'),
+        adminOrderService.getOrders({ size: 100 }),
+      ]);
+
+      // Extract values with fallbacks
+      const totalCustomers = customersTotalRes.status === 'fulfilled' ? customersTotalRes.value.totalElements : 0;
+      const activeCustomers = customersActiveRes.status === 'fulfilled' ? customersActiveRes.value.totalElements : 0;
+
+      const totalProviders = providersTotalRes.status === 'fulfilled' ? providersTotalRes.value.totalElements : 0;
+      const activeProviders = providersActiveRes.status === 'fulfilled' ? providersActiveRes.value.totalElements : 0;
+      setTotalProvidersCount(totalProviders);
+      setActiveProvidersCount(activeProviders);
+
+      const pendingList = pendingProvidersRes.status === 'fulfilled' ? pendingProvidersRes.value.content : [];
+      const pendingCount = pendingProvidersRes.status === 'fulfilled' ? pendingProvidersRes.value.totalElements : 0;
+      setPendingProviders(pendingList);
+
+      const totalCategories = categoriesTotalRes.status === 'fulfilled' ? categoriesTotalRes.value.totalElements : 0;
+      const activeCategories = categoriesActiveRes.status === 'fulfilled' ? categoriesActiveRes.value.totalElements : 0;
+      setTotalCategoriesCount(totalCategories);
+      setActiveCategoriesCount(activeCategories);
+
+      const publicProviders = publicProvidersRes.status === 'fulfilled' && Array.isArray(publicProvidersRes.value) 
+        ? publicProvidersRes.value 
+        : [];
+      const availableCount = publicProviders.filter((p) => p.isAvailable).length;
+      setAvailableProvidersCount(availableCount);
+
+      const usersList = recentUsersRes.status === 'fulfilled' ? recentUsersRes.value.content : [];
+      setRecentUsers(usersList);
+
+      const isUp = healthRes.status === 'fulfilled' && healthRes.value?.status === 'UP';
+      setSystemHealth(isUp ? 'UP' : 'DOWN');
+
+      // Orders metrics
+      const ordersList = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
+      const totalOrdersCount = ordersList.length;
+      const pendingOrdersCount = ordersList.filter((o) => o.status === 'PENDING_PROVIDER').length;
+
+      const dynamicMetrics: AdminKpiMetric[] = [
+        {
+          id: 'total-customers',
+          title: 'Tổng khách hàng',
+          value: totalCustomers,
+          formattedValue: totalCustomers.toLocaleString('vi-VN'),
+          unit: 'người dùng',
+          changeType: 'neutral',
+          compareLabel: 'tài khoản trên hệ thống',
+          trendLabel: `${activeCustomers} kích hoạt`,
+          statusLabel: 'Tăng trưởng tự nhiên',
+          statusVariant: 'success',
+          icon: 'users',
+        },
+        {
+          id: 'total-providers',
+          title: 'Thợ đối tác kỹ thuật',
+          value: totalProviders,
+          formattedValue: totalProviders.toLocaleString('vi-VN'),
+          unit: 'đối tác thợ',
+          changeType: 'neutral',
+          compareLabel: 'cung cấp dịch vụ',
+          trendLabel: `${activeProviders} đang hoạt động`,
+          statusLabel: 'Đối tác đã xác thực',
+          statusVariant: 'info',
+          icon: 'wrench',
+        },
+        {
+          id: 'total-orders',
+          title: 'Tổng đơn hàng dịch vụ',
+          value: totalOrdersCount,
+          formattedValue: totalOrdersCount.toLocaleString('vi-VN'),
+          unit: 'đơn sửa chữa',
+          changeType: 'neutral',
+          compareLabel: 'toàn hệ thống',
+          trendLabel: `${pendingOrdersCount} đơn chờ thợ`,
+          statusLabel: 'Dữ liệu trực tiếp',
+          statusVariant: 'info',
+          icon: 'package',
+        },
+        {
+          id: 'total-categories',
+          title: 'Danh mục dịch vụ',
+          value: totalCategories,
+          formattedValue: totalCategories.toLocaleString('vi-VN'),
+          unit: 'ngành dịch vụ',
+          changeType: 'neutral',
+          compareLabel: 'tiêu chuẩn vận hành',
+          trendLabel: `${activeCategories} danh mục mở`,
+          statusLabel: 'Danh mục chuẩn hóa',
+          statusVariant: 'success',
+          icon: 'package',
+        },
+        {
+          id: 'pending-approvals',
+          title: 'Hồ sơ chờ kích hoạt / duyệt',
+          value: pendingCount,
+          formattedValue: pendingCount < 10 ? `0${pendingCount}` : `${pendingCount}`,
+          unit: 'hồ sơ mới',
+          changeType: pendingCount > 0 ? 'increase' : 'neutral',
+          compareLabel: 'cần xử lý',
+          trendLabel: pendingCount > 0 ? 'Cần duyệt gấp' : 'Đã duyệt tất cả',
+          statusLabel: pendingCount > 0 ? 'Yêu cầu kích hoạt' : 'Hồ sơ sạch',
+          statusVariant: pendingCount > 0 ? 'danger' : 'success',
+          icon: 'user-check',
+        },
+      ];
+
+      setMetrics(dynamicMetrics);
+    } catch {
+      // Backend error fallback
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  // Filter displayed recent users
+  const displayedUsers = recentUsers.filter((u) => {
+    if (userQuickFilter === 'all') return true;
+    return u.role === userQuickFilter;
+  });
+
+  // Handlers for modal interactions
   const handleOpenUserDetail = (user: AdminUserItem) => {
     setSelectedUser(user);
     setIsUserModalOpen(true);
   };
 
-  const handleApproveProvider = (userId: string) => {
-    userService.updateUserStatus(userId, { status: 'ACTIVE' }).then((updated) => {
-      setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+  const handleApproveProvider = async (userId: string) => {
+    try {
+      const updated = await userService.updateUserStatus(userId, { status: 'ACTIVE' });
+      showToast(`Đã kích hoạt và phê duyệt tài khoản thợ ${updated.fullName} thành công!`);
+      // Refresh real data
+      loadDashboardData(true);
       if (selectedUser?.id === userId) {
         setSelectedUser(updated);
       }
-    }).catch(() => {});
+    } catch {
+      showToast('Không thể kích hoạt tài khoản. Vui lòng kiểm tra lại kết nối!');
+    }
   };
 
   const handleToggleUserStatus = async (userId: string, newStatus: AdminUserItem['status']) => {
     try {
       const updated = await userService.updateUserStatus(userId, { status: newStatus });
-      setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+      showToast(`Đã đổi trạng thái tài khoản thành ${newStatus === 'ACTIVE' ? 'Hoạt động' : 'Vô hiệu hóa'}.`);
+      loadDashboardData(true);
       if (selectedUser?.id === userId) {
         setSelectedUser(updated);
       }
     } catch {
-      // ignore
+      showToast('Có lỗi xảy ra khi cập nhật trạng thái người dùng.');
     }
   };
 
-  const handleAssignProvider = (orderId: string, providerName: string) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId
-          ? {
-              ...o,
-              providerName,
-              status: 'in_progress' as OrderStatus,
-              backlogStatus: 'normal',
-              backlogReason: undefined,
-              timeline: [
-                ...o.timeline,
-                {
-                  time: '11:28',
-                  title: 'Admin điều phối thủ công',
-                  description: `Đã gán trực tiếp cho thợ ${providerName}`,
-                  status: 'current' as const,
-                },
-              ],
-            }
-          : o
-      )
-    );
-    if (selectedOrder?.id === orderId) {
-      setSelectedOrder((prev) =>
-        prev
-          ? {
-              ...prev,
-              providerName,
-              status: 'in_progress',
-              backlogStatus: 'normal',
-              backlogReason: undefined,
-            }
-          : null
-      );
+  const getRoleBadge = (role: UserRole) => {
+    switch (role) {
+      case 'ADMIN':
+        return <span className="admin-chip chip-role-admin">Quản trị viên</span>;
+      case 'PROVIDER':
+        return <span className="admin-chip chip-role-provider">Thợ kỹ thuật</span>;
+      case 'CUSTOMER':
+      default:
+        return <span className="admin-chip chip-role-customer">Khách hàng</span>;
     }
   };
 
-  const handleCancelOrder = (orderId: string, reason: string) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId
-          ? {
-              ...o,
-              status: 'cancelled' as OrderStatus,
-              notes: `${o.notes || ''} [Hủy: ${reason}]`,
-              timeline: [
-                ...o.timeline,
-                {
-                  time: '11:28',
-                  title: 'Hủy đơn hàng',
-                  description: reason,
-                  status: 'done' as const,
-                },
-              ],
-            }
-          : o
-      )
-    );
-  };
-
-  const handleResolveBacklog = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId
-          ? {
-              ...o,
-              backlogStatus: 'normal',
-              backlogReason: undefined,
-            }
-          : o
-      )
-    );
-    if (selectedOrder?.id === orderId) {
-      setSelectedOrder((prev) =>
-        prev
-          ? {
-              ...prev,
-              backlogStatus: 'normal',
-              backlogReason: undefined,
-            }
-          : null
-      );
-    }
-  };
-
-  const getOrderStatusBadge = (status: OrderStatus) => {
+  const getStatusBadge = (status: AdminUserItem['status']) => {
     switch (status) {
-      case 'new':
-        return <span className="order-chip chip-new">Mới tạo</span>;
-      case 'unassigned':
-        return <span className="order-chip chip-unassigned">Chờ thợ nhận</span>;
-      case 'in_progress':
-        return <span className="order-chip chip-progress">Đang thực hiện</span>;
-      case 'completed':
-        return <span className="order-chip chip-completed">Hoàn thành</span>;
-      case 'cancelled':
-        return <span className="order-chip chip-cancelled">Đã hủy</span>;
+      case 'ACTIVE':
+        return <span className="admin-chip chip-status-active">Đang hoạt động</span>;
+      case 'DISABLED':
+      default:
+        return <span className="admin-chip chip-status-disabled">Chờ duyệt / Khóa</span>;
     }
   };
 
   return (
     <div className="admin-dashboard-page">
+      {/* Toast notice */}
+      {toastMsg && (
+        <div className="dashboard-toast-notice">
+          <CheckCircle2 size={18} className="text-emerald-500" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
       {/* 01. Thẻ thống kê tổng quan (KPI Cards) */}
       <section className="dashboard-section" aria-labelledby="kpi-heading">
         <div className="section-title-row">
@@ -197,199 +279,218 @@ export function AdminDashboardPage() {
               01. Thống Kê Tổng Quan Hệ Thống (KPI Cards)
             </h2>
             <p className="section-subheading">
-              Chỉ số sức khỏe vận hành trực quan được cập nhật theo thời gian thực
+              Chỉ số sức khỏe vận hành trực quan được đồng bộ trực tiếp từ cơ sở dữ liệu Backend
             </p>
           </div>
-          <span className="live-indicator-tag">
-            <span className="live-dot" /> Dữ liệu trực tuyến
-          </span>
+          <div className="header-actions-row">
+            <button
+              type="button"
+              className={`btn-refresh-dashboard ${isRefreshing ? 'is-spinning' : ''}`}
+              onClick={() => loadDashboardData(true)}
+              title="Làm mới dữ liệu từ backend"
+            >
+              <RefreshCw size={14} /> Làm mới
+            </button>
+            <span className={`live-indicator-tag ${systemHealth === 'UP' ? 'tag-healthy' : 'tag-checking'}`}>
+              <span className="live-dot" /> 
+              {systemHealth === 'UP' ? 'Hệ thống trực tuyến (UP)' : 'Đang kết nối API'}
+            </span>
+          </div>
         </div>
 
         <AdminKpiCards 
-          metrics={ADMIN_KPI_METRICS} 
+          metrics={metrics} 
           onCardClick={(metricId) => {
             if (metricId === 'pending-approvals') {
               navigate(PATHS.ADMIN.USERS);
-            } else if (metricId === 'in-progress-orders' || metricId === 'total-orders') {
-              navigate(PATHS.ADMIN.ORDERS);
-            } else if (metricId === 'total-customers' || metricId === 'total-providers') {
+            } else if (metricId === 'total-customers' || metricId === 'total-providers' || metricId === 'available-providers') {
               navigate(PATHS.ADMIN.USERS);
+            } else if (metricId === 'total-categories') {
+              navigate(PATHS.ADMIN.SERVICES);
             }
           }}
         />
       </section>
 
-      {/* Critical Backlog Alert Banner */}
-      {backlogOrders.length > 0 && (
+      {/* Provider Approvals Alert Banner */}
+      {pendingProviders.length > 0 && (
         <div className="dashboard-alert-banner">
           <div className="banner-left">
             <div className="banner-icon-circle">
-              <AlertTriangle size={24} />
+              <ShieldAlert size={24} />
             </div>
             <div>
               <h3 className="banner-title">
-                Phát hiện {backlogOrders.length} đơn hàng tồn đọng cần Admin can thiệp gấp!
+                Phát hiện {pendingProviders.length} hồ sơ thợ đối tác đang chờ quản trị viên kích hoạt / phê duyệt!
               </h3>
               <p className="banner-desc">
-                Các đơn hàng này đã quá 30 phút chưa có thợ nhận hoặc thi công kéo dài bất thường.
+                Các hồ sơ thợ này đang ở trạng thái chưa kích hoạt (DISABLED), cần Admin kiểm tra thông tin để bắt đầu nhận việc.
               </p>
             </div>
           </div>
           <div className="banner-actions">
             <button
               type="button"
-              className="btn-banner-action"
-              onClick={() => setOrderQuickFilter(orderQuickFilter === 'backlog' ? 'all' : 'backlog')}
-            >
-              <Filter size={15} />
-              {orderQuickFilter === 'backlog' ? 'Xem tất cả đơn' : 'Lọc đơn tồn đọng'}
-            </button>
-            <button
-              type="button"
               className="btn-banner-primary"
-              onClick={() => navigate(PATHS.ADMIN.ORDERS)}
+              onClick={() => navigate(PATHS.ADMIN.USERS)}
             >
-              Tới trang đơn hàng <ArrowRight size={15} />
+              Quản lý tài khoản thợ <ArrowRight size={15} />
             </button>
           </div>
         </div>
       )}
 
-      {/* Main Grid: Orders Oversight & Pending Approvals */}
+      {/* Main Grid: Recent Registered Users & Pending Provider Approvals */}
       <div className="dashboard-main-grid">
-        {/* Left Column: Tình hình đơn hàng */}
+        {/* Left Column: Người dùng & Đối tác mới tham gia */}
         <div className="dashboard-col-orders">
           <div className="dashboard-panel">
             <div className="panel-header">
               <div className="panel-title-wrap">
                 <h3 className="panel-title">
-                  <Activity size={18} className="text-primary inline-icon" /> Tình Hình Đơn Hàng Gần Đây
+                  <Activity size={18} className="text-primary inline-icon" /> Người Dùng & Đối Tác Mới Đăng Ký
                 </h3>
                 <span className="panel-badge-count">
-                  {displayedOrders.length} đơn
+                  {displayedUsers.length} tài khoản
                 </span>
               </div>
 
               <div className="panel-actions">
                 <button
                   type="button"
-                  className={`panel-filter-btn ${orderQuickFilter === 'all' ? 'active' : ''}`}
-                  onClick={() => setOrderQuickFilter('all')}
+                  className={`panel-filter-btn ${userQuickFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setUserQuickFilter('all')}
                 >
-                  Tất cả
+                  Tất cả ({recentUsers.length})
                 </button>
                 <button
                   type="button"
-                  className={`panel-filter-btn warning-tab ${orderQuickFilter === 'backlog' ? 'active' : ''}`}
-                  onClick={() => setOrderQuickFilter('backlog')}
+                  className={`panel-filter-btn ${userQuickFilter === 'CUSTOMER' ? 'active' : ''}`}
+                  onClick={() => setUserQuickFilter('CUSTOMER')}
                 >
-                  Cần can thiệp ({backlogOrders.length})
+                  Khách hàng ({recentUsers.filter((u) => u.role === 'CUSTOMER').length})
+                </button>
+                <button
+                  type="button"
+                  className={`panel-filter-btn ${userQuickFilter === 'PROVIDER' ? 'active' : ''}`}
+                  onClick={() => setUserQuickFilter('PROVIDER')}
+                >
+                  Thợ kỹ thuật ({recentUsers.filter((u) => u.role === 'PROVIDER').length})
                 </button>
                 <button
                   type="button"
                   className="panel-view-all-link"
-                  onClick={() => navigate(PATHS.ADMIN.ORDERS)}
+                  onClick={() => navigate(PATHS.ADMIN.USERS)}
                 >
-                  Quản lý đơn <ArrowRight size={14} />
+                  Xem tất cả <ArrowRight size={14} />
                 </button>
               </div>
             </div>
 
-            {/* Order status overview metric bar */}
+            {/* Quick Status Bar for User Metrics */}
             <div className="order-status-bar">
               <div className="status-bar-pill pill-new">
-                <span className="bar-count">1</span>
-                <span className="bar-label">Mới tạo</span>
-              </div>
-              <div className="status-bar-pill pill-unassigned">
-                <span className="bar-count">2</span>
-                <span className="bar-label">Chờ thợ</span>
+                <span className="bar-count">{recentUsers.filter((u) => u.role === 'CUSTOMER').length}</span>
+                <span className="bar-label">Khách mới</span>
               </div>
               <div className="status-bar-pill pill-progress">
-                <span className="bar-count">2</span>
-                <span className="bar-label">Đang làm</span>
+                <span className="bar-count">{recentUsers.filter((u) => u.role === 'PROVIDER').length}</span>
+                <span className="bar-label">Thợ đối tác</span>
               </div>
               <div className="status-bar-pill pill-completed">
-                <span className="bar-count">1</span>
-                <span className="bar-label">Hoàn thành</span>
+                <span className="bar-count">{recentUsers.filter((u) => u.status === 'ACTIVE').length}</span>
+                <span className="bar-label">Đang hoạt động</span>
               </div>
-              <div className="status-bar-pill pill-cancelled">
-                <span className="bar-count">1</span>
-                <span className="bar-label">Đã hủy</span>
+              <div className="status-bar-pill pill-unassigned">
+                <span className="bar-count">{recentUsers.filter((u) => u.status === 'DISABLED').length}</span>
+                <span className="bar-label">Chờ duyệt / Khóa</span>
               </div>
             </div>
 
-            {/* Orders Table */}
+            {/* Users Table */}
             <div className="orders-table-wrapper">
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Mã Đơn & Dịch Vụ</th>
-                    <th>Khách Hàng</th>
-                    <th>Thợ Phụ Trách</th>
+                    <th>Họ Tên & Email</th>
+                    <th>Vai Trò</th>
+                    <th>Số Điện Thoại</th>
                     <th>Trạng Thái</th>
-                    <th>Chi Phí</th>
-                    <th>Hành Động</th>
+                    <th>Ngày Tham Gia</th>
+                    <th>Thao Tác</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {displayedOrders.map((ord) => (
-                    <tr 
-                      key={ord.id} 
-                      className={ord.backlogStatus !== 'normal' ? 'row-backlog-highlight' : ''}
-                    >
-                      <td>
-                        <div className="table-order-primary">
-                          <span className="table-order-code">{ord.code}</span>
-                          <span className="table-order-service">{ord.serviceName}</span>
-                          {ord.backlogStatus !== 'normal' && (
-                            <span className="table-backlog-tag" title={ord.backlogReason}>
-                              <AlertTriangle size={12} /> {ord.backlogReason}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="table-customer-cell">
-                          <span className="table-user-name">{ord.customerName}</span>
-                          <span className="table-user-sub">{ord.customerPhone}</span>
-                        </div>
-                      </td>
-                      <td>
-                        {ord.providerName ? (
-                          <div className="table-provider-cell">
-                            <span className="table-user-name">{ord.providerName}</span>
-                            <span className="table-user-sub">Đã tiếp nhận</span>
-                          </div>
-                        ) : (
-                          <span className="table-unassigned-tag">
-                            <Clock size={12} /> Chưa có thợ
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <div className="table-status-cell">
-                          {getOrderStatusBadge(ord.status)}
-                          <span className="table-time-text">{ord.createdAt}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="table-price-text">
-                          {ord.price.toLocaleString('vi-VN')} đ
-                        </span>
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="btn-table-inspect"
-                          onClick={() => handleOpenOrderDetail(ord)}
-                          title="Bấm để xem chi tiết và can thiệp"
-                        >
-                          <Eye size={14} /> Chi tiết
-                        </button>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-slate-400">
+                        <RefreshCw size={24} className="mx-auto mb-2 is-spinning text-primary" />
+                        Đang đồng bộ dữ liệu người dùng từ Backend...
                       </td>
                     </tr>
-                  ))}
+                  ) : displayedUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-slate-400">
+                        Chưa có người dùng nào phù hợp với bộ lọc.
+                      </td>
+                    </tr>
+                  ) : (
+                    displayedUsers.map((u) => (
+                      <tr 
+                        key={u.id} 
+                        className={u.status === 'DISABLED' ? 'row-disabled-highlight' : ''}
+                      >
+                        <td>
+                          <div className="table-user-primary-cell">
+                            <div className="table-avatar-circle">
+                              {u.fullName ? u.fullName.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                            <div className="table-user-details">
+                              <span className="table-user-name font-semibold">{u.fullName}</span>
+                              <span className="table-user-sub">{u.email}</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td>
+                          {getRoleBadge(u.role)}
+                        </td>
+
+                        <td>
+                          <span className="table-phone-text">
+                            {u.phone || 'Chưa cập nhật'}
+                          </span>
+                        </td>
+
+                        <td>
+                          {getStatusBadge(u.status)}
+                        </td>
+
+                        <td>
+                          <span className="table-time-text">
+                            {new Date(u.createdAt).toLocaleDateString('vi-VN', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            })}
+                          </span>
+                        </td>
+
+                        <td>
+                          <button
+                            type="button"
+                            className="btn-table-inspect"
+                            onClick={() => handleOpenUserDetail(u)}
+                            title="Bấm để xem hồ sơ và chỉnh sửa trạng thái"
+                          >
+                            <Eye size={14} /> Chi tiết
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -404,10 +505,10 @@ export function AdminDashboardPage() {
               <div className="panel-title-wrap">
                 <h3 className="panel-title">
                   <ShieldCheck size={18} className="text-emerald-600 inline-icon" /> 
-                  Hồ Sơ Thợ Chờ Duyệt
+                  Hồ Sơ Thợ Chờ Kích Hoạt
                 </h3>
                 <span className="panel-badge-count badge-warning">
-                  {pendingProviders.length} mới
+                  {pendingProviders.length} hồ sơ
                 </span>
               </div>
               <button
@@ -422,14 +523,15 @@ export function AdminDashboardPage() {
             <div className="pending-providers-list">
               {pendingProviders.length === 0 ? (
                 <div className="empty-pending-state">
-                  <CheckCircle2 size={32} className="text-emerald-500" />
-                  <p>Không có hồ sơ nào đang chờ duyệt.</p>
+                  <CheckCircle2 size={36} className="text-emerald-500" />
+                  <p className="font-semibold text-slate-700">Tất cả hồ sơ đã được duyệt!</p>
+                  <span className="text-xs text-slate-400">Không có tài khoản thợ nào đang ở trạng thái vô hiệu hóa.</span>
                 </div>
               ) : (
                 pendingProviders.map((prov) => (
                   <div key={prov.id} className="pending-provider-card">
                     <div className="pending-avatar-placeholder">
-                      {prov.fullName ? prov.fullName.charAt(0).toUpperCase() : 'U'}
+                      {prov.fullName ? prov.fullName.charAt(0).toUpperCase() : 'P'}
                     </div>
                     <div className="pending-info">
                       <h4 className="pending-name">{prov.fullName}</h4>
@@ -445,15 +547,15 @@ export function AdminDashboardPage() {
                         type="button"
                         className="btn-approve-quick"
                         onClick={() => handleApproveProvider(prov.id)}
-                        title="Duyệt nhanh hồ sơ này"
+                        title="Kích hoạt tài khoản thợ này ngay"
                       >
-                        Duyệt
+                        Kích hoạt
                       </button>
                       <button
                         type="button"
                         className="btn-inspect-quick"
                         onClick={() => handleOpenUserDetail(prov)}
-                        title="Xem chi tiết CCCD & Kinh nghiệm"
+                        title="Xem chi tiết hồ sơ tài khoản"
                       >
                         Xem
                       </button>
@@ -474,48 +576,85 @@ export function AdminDashboardPage() {
             <div className="system-health-list">
               <div className="health-item">
                 <div className="health-label-row">
-                  <span>Thời gian tiếp nhận trung bình</span>
-                  <strong className="text-emerald-600">4.2 phút</strong>
+                  <span>Trạng thái máy chủ Backend</span>
+                  <strong className={systemHealth === 'UP' ? 'text-emerald-600' : 'text-amber-600'}>
+                    {systemHealth === 'UP' ? 'Hoạt động tốt (UP)' : 'Đang kiểm tra...'}
+                  </strong>
                 </div>
                 <div className="health-progress-bg">
-                  <div className="health-progress-bar bg-emerald-500" style={{ width: '85%' }} />
+                  <div 
+                    className={`health-progress-bar ${systemHealth === 'UP' ? 'bg-emerald-500' : 'bg-amber-500'}`} 
+                    style={{ width: systemHealth === 'UP' ? '100%' : '50%' }} 
+                  />
                 </div>
               </div>
 
               <div className="health-item">
                 <div className="health-label-row">
-                  <span>Tỷ lệ hoàn thành đúng hạn</span>
-                  <strong className="text-blue-600">96.8%</strong>
+                  <span>Thợ đối tác đã kích hoạt</span>
+                  <strong className="text-blue-600">
+                    {activeProvidersCount} / {totalProvidersCount || 0} thợ
+                  </strong>
                 </div>
                 <div className="health-progress-bg">
-                  <div className="health-progress-bar bg-blue-500" style={{ width: '96.8%' }} />
+                  <div 
+                    className="health-progress-bar bg-blue-500" 
+                    style={{ 
+                      width: `${totalProvidersCount > 0 ? Math.min(100, Math.round((activeProvidersCount / totalProvidersCount) * 100)) : 0}%` 
+                    }} 
+                  />
                 </div>
               </div>
 
               <div className="health-item">
                 <div className="health-label-row">
-                  <span>Đánh giá hài lòng khách hàng</span>
-                  <strong className="text-amber-600">4.9 / 5.0 ⭐</strong>
+                  <span>Thợ sẵn sàng nhận việc</span>
+                  <strong className="text-amber-600">
+                    {availableProvidersCount} thợ trực tuyến
+                  </strong>
                 </div>
                 <div className="health-progress-bg">
-                  <div className="health-progress-bar bg-amber-500" style={{ width: '98%' }} />
+                  <div 
+                    className="health-progress-bar bg-amber-500" 
+                    style={{ 
+                      width: `${totalProvidersCount > 0 ? Math.min(100, Math.round((availableProvidersCount / totalProvidersCount) * 100)) : 0}%` 
+                    }} 
+                  />
                 </div>
+              </div>
+
+              <div className="health-item">
+                <div className="health-label-row">
+                  <span>Danh mục dịch vụ kích hoạt</span>
+                  <strong className="text-emerald-600">
+                    {activeCategoriesCount} / {totalCategoriesCount || 0} danh mục
+                  </strong>
+                </div>
+                <div className="health-progress-bg">
+                  <div 
+                    className="health-progress-bar bg-emerald-500" 
+                    style={{ 
+                      width: `${totalCategoriesCount > 0 ? Math.min(100, Math.round((activeCategoriesCount / totalCategoriesCount) * 100)) : 0}%` 
+                    }} 
+                  />
+                </div>
+              </div>
+
+              <div className="category-quick-nav-box">
+                <button
+                  type="button"
+                  className="btn-category-nav-link"
+                  onClick={() => navigate(PATHS.ADMIN.SERVICES)}
+                >
+                  <Layers size={14} /> Quản lý danh mục dịch vụ ({totalCategoriesCount})
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Interactive Modals */}
-      <OrderDetailModal
-        order={selectedOrder}
-        isOpen={isOrderModalOpen}
-        onClose={() => setIsOrderModalOpen(false)}
-        onAssignProvider={handleAssignProvider}
-        onCancelOrder={handleCancelOrder}
-        onResolveBacklog={handleResolveBacklog}
-      />
-
+      {/* User Detail & Status Management Modal */}
       <UserDetailModal
         user={selectedUser}
         isOpen={isUserModalOpen}

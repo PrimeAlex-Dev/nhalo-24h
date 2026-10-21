@@ -9,7 +9,8 @@ import {
   Send, 
   Loader2, 
   AlertCircle, 
-  CheckCircle2 
+  CheckCircle2,
+  Tag
 } from 'lucide-react';
 import { providerProfileService, customerOrderService } from '../../../services';
 import type { PublicProviderItem } from '../../../services/providerProfileService';
@@ -20,6 +21,8 @@ interface InviteProvidersModalProps {
   onClose: () => void;
   orderId: string;
   orderTitle: string;
+  categoryId?: string;
+  categoryName?: string;
   existingProviderIds?: string[];
   onSuccess: () => void;
 }
@@ -29,6 +32,8 @@ export function InviteProvidersModal({
   onClose,
   orderId,
   orderTitle,
+  categoryId,
+  categoryName,
   existingProviderIds = [],
   onSuccess,
 }: InviteProvidersModalProps) {
@@ -48,13 +53,17 @@ export function InviteProvidersModal({
       setErrorMsg(null);
       setSuccessMsg(null);
     }
-  }, [isOpen]);
+  }, [isOpen, categoryId, categoryName]);
 
   const loadProviders = async () => {
     try {
       setLoading(true);
       setErrorMsg(null);
-      const data = await providerProfileService.getPublicProviders();
+      // Query providers matching category of the order
+      const categoryParam = categoryId || categoryName;
+      const data = await providerProfileService.getPublicProviders(
+        categoryParam ? { category: categoryParam } : {}
+      );
       setProviders(data);
     } catch (err: any) {
       setErrorMsg(err.message || 'Không thể tải danh sách thợ đối tác.');
@@ -65,6 +74,33 @@ export function InviteProvidersModal({
 
   const filteredProviders = useMemo(() => {
     return providers.filter((p) => {
+      // 1. Strict category check: Provider must belong to the order's category
+      if (categoryId || categoryName) {
+        const matchesCategory =
+          // Match by categoryId in provider's categories list
+          (categoryId &&
+            p.categories &&
+            p.categories.some(
+              (c) => c.id.toLowerCase() === categoryId.toLowerCase()
+            )) ||
+          // Match by categoryName in provider's categories list or primary category
+          (categoryName &&
+            ((p.categories &&
+              p.categories.some(
+                (c) =>
+                  c.name.toLowerCase().includes(categoryName.toLowerCase()) ||
+                  categoryName.toLowerCase().includes(c.name.toLowerCase())
+              )) ||
+              (p.category &&
+                (p.category.toLowerCase().includes(categoryName.toLowerCase()) ||
+                  categoryName.toLowerCase().includes(p.category.toLowerCase())))));
+
+        if (!matchesCategory) {
+          return false;
+        }
+      }
+
+      // 2. Search query check
       const matchSearch =
         !searchQuery.trim() ||
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -73,7 +109,7 @@ export function InviteProvidersModal({
 
       return matchSearch;
     });
-  }, [providers, searchQuery]);
+  }, [providers, searchQuery, categoryId, categoryName]);
 
   const toggleSelect = (providerId: string) => {
     if (existingProviderIds.includes(providerId)) return;
@@ -120,9 +156,17 @@ export function InviteProvidersModal({
         {/* Header */}
         <div className="invite-modal-header">
           <div>
-            <span className="invite-modal-subtitle">Gửi đơn hàng tới thợ khác</span>
+            <span className="invite-modal-subtitle">Gửi đơn hàng tới thợ chuyên môn</span>
             <h2 className="invite-modal-title">Mời thêm thợ báo giá</h2>
-            <p className="invite-order-name">Đơn: <strong>{orderTitle}</strong></p>
+            <div className="invite-order-meta-row">
+              <p className="invite-order-name">Đơn: <strong>{orderTitle}</strong></p>
+              {categoryName && (
+                <span className="invite-order-category-tag">
+                  <Tag size={12} />
+                  Chuyên môn: <strong>{categoryName}</strong>
+                </span>
+              )}
+            </div>
           </div>
           <button 
             type="button" 
@@ -154,7 +198,7 @@ export function InviteProvidersModal({
           <input
             type="text"
             className="invite-search-input"
-            placeholder="Tìm theo tên thợ, chuyên ngành..."
+            placeholder={categoryName ? `Tìm thợ ${categoryName} theo tên...` : 'Tìm theo tên thợ, chuyên ngành...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -165,11 +209,20 @@ export function InviteProvidersModal({
           {loading ? (
             <div className="invite-loading-box">
               <Loader2 size={32} className="spin-icon text-blue" />
-              <p>Đang tìm danh sách thợ khả thi...</p>
+              <p>Đang tìm danh sách thợ chuyên môn khả thi...</p>
             </div>
           ) : filteredProviders.length === 0 ? (
             <div className="invite-empty-box">
-              <p>Không tìm thấy thợ phù hợp với từ khóa.</p>
+              <p>
+                {categoryName
+                  ? `Hiện chưa có thợ nào thuộc chuyên môn "${categoryName}" khả dụng${
+                      searchQuery.trim() ? ' khớp với tìm kiếm' : ''
+                    }.`
+                  : 'Không tìm thấy thợ phù hợp.'}
+              </p>
+              <span className="invite-empty-subtext">
+                Hệ thống chỉ hiển thị đúng thợ có chuyên môn tương ứng để đảm bảo chất lượng dịch vụ.
+              </span>
             </div>
           ) : (
             <div className="invite-provider-grid">
@@ -222,6 +275,9 @@ export function InviteProvidersModal({
                           {provider.headline || provider.category}
                         </p>
                         <div className="invite-meta-chips">
+                          <span className="meta-chip meta-chip-category">
+                            {provider.category}
+                          </span>
                           <span className="meta-chip">
                             <Star size={12} className="star-icon" />
                             {provider.rating.toFixed(1)} ({provider.reviewsCount})

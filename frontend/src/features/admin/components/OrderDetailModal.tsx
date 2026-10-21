@@ -1,77 +1,111 @@
-import { useState } from 'react';
 import { 
   X, 
-  AlertTriangle, 
-  Clock, 
   MapPin, 
   User, 
   Phone, 
   Wrench, 
   CreditCard, 
-  CheckCircle2, 
   AlertCircle,
-  UserPlus,
-  Ban
+  Clock,
+  Ban,
+  Calendar,
+  Image as ImageIcon
 } from 'lucide-react';
-import type { AdminOrderItem } from '../types/admin';
 import './OrderDetailModal.css';
 
+export interface GenericOrderItem {
+  id: string;
+  orderCode?: string;
+  code?: string;
+  title?: string;
+  serviceName?: string;
+  categoryName?: string;
+  category?: string;
+  contactName?: string;
+  customerName?: string;
+  contactPhone?: string;
+  customerPhone?: string;
+  addressSnapshot?: string;
+  customerAddress?: string;
+  description?: string;
+  notes?: string;
+  expectedScheduleTime?: string;
+  scheduledTime?: string;
+  status: string;
+  finalPrice?: number;
+  price?: number;
+  cancelReason?: string;
+  assignedProviderName?: string;
+  providerName?: string;
+  assignedProviderPhone?: string;
+  providerPhone?: string;
+  assignedProviderAvatar?: string;
+  providerAvatar?: string;
+  images?: string[];
+  quotationCount?: number;
+  createdAt?: string;
+}
+
 interface OrderDetailModalProps {
-  order: AdminOrderItem | null;
+  order: GenericOrderItem | null;
   isOpen: boolean;
   onClose: () => void;
-  onAssignProvider?: (orderId: string, providerName: string) => void;
   onCancelOrder?: (orderId: string, reason: string) => void;
-  onResolveBacklog?: (orderId: string) => void;
 }
 
 export function OrderDetailModal({
   order,
   isOpen,
   onClose,
-  onAssignProvider,
   onCancelOrder,
-  onResolveBacklog,
 }: OrderDetailModalProps) {
-  const [selectedProvider, setSelectedProvider] = useState('Lê Hoàng Minh');
-  const [showAssignDropdown, setShowAssignDropdown] = useState(false);
-  const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
-
   if (!isOpen || !order) return null;
 
-  const getStatusBadge = (status: AdminOrderItem['status']) => {
+  const orderCode = order.orderCode || order.code || 'ORD-UNKNOWN';
+  const orderTitle = order.title || order.serviceName || 'Dịch vụ sửa chữa';
+  const categoryTitle = order.categoryName || order.category || 'Dịch vụ gia đình';
+  const customer = order.contactName || order.customerName || 'Khách hàng';
+  const phone = order.contactPhone || order.customerPhone || 'Chưa có SĐT';
+  const address = order.addressSnapshot || order.customerAddress || 'Chưa có địa chỉ';
+  const desc = order.description || order.notes;
+  const provider = order.assignedProviderName || order.providerName;
+  const provPhone = order.assignedProviderPhone || order.providerPhone;
+  const provAvatar = order.assignedProviderAvatar || order.providerAvatar;
+  const priceVal = order.finalPrice ?? order.price;
+  const schedule = order.expectedScheduleTime || order.scheduledTime || 'Thỏa thuận';
+  const createdDate = order.createdAt 
+    ? new Date(order.createdAt).toLocaleDateString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })
+    : 'Chưa cập nhật';
+
+  const getStatusBadge = (status: string) => {
     switch (status) {
+      case 'PENDING_PROVIDER':
       case 'new':
-        return <span className="status-badge status-new">Đơn mới tạo</span>;
       case 'unassigned':
-        return <span className="status-badge status-unassigned">Đang chờ thợ nhận</span>;
+        return <span className="status-badge status-unassigned">Chờ thợ nhận việc</span>;
+      case 'IN_PROGRESS':
       case 'in_progress':
         return <span className="status-badge status-progress">Đang thực hiện</span>;
+      case 'COMPLETED':
       case 'completed':
-        return <span className="status-badge status-completed">Hoàn thành</span>;
+        return <span className="status-badge status-completed">Đã hoàn thành</span>;
+      case 'CANCELED':
       case 'cancelled':
         return <span className="status-badge status-cancelled">Đã hủy</span>;
+      default:
+        return <span className="status-badge status-unassigned">{status}</span>;
     }
-  };
-
-  const handleAssign = () => {
-    onAssignProvider?.(order.id, selectedProvider);
-    setActionSuccessMsg(`Đã chỉ định trực tiếp thợ ${selectedProvider} cho đơn hàng!`);
-    setShowAssignDropdown(false);
-    setTimeout(() => setActionSuccessMsg(null), 3000);
-  };
-
-  const handleResolve = () => {
-    onResolveBacklog?.(order.id);
-    setActionSuccessMsg('Đã đánh dấu xử lý xong tình trạng tồn đọng!');
-    setTimeout(() => setActionSuccessMsg(null), 3000);
   };
 
   const handleCancel = () => {
     if (window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?')) {
-      onCancelOrder?.(order.id, 'Admin hủy do tồn đọng quá lâu');
-      setActionSuccessMsg('Đã cập nhật trạng thái đơn sang Đã hủy.');
-      setTimeout(() => setActionSuccessMsg(null), 3000);
+      onCancelOrder?.(order.id, 'Quản trị viên hủy đơn');
     }
   };
 
@@ -87,10 +121,11 @@ export function OrderDetailModal({
         {/* Header */}
         <div className="order-modal-header">
           <div className="order-modal-title-wrap">
-            <span className="order-modal-code">{order.code}</span>
+            <span className="order-modal-code">{orderCode}</span>
             <h2 id="order-modal-title" className="order-modal-title">
-              {order.serviceName}
+              {orderTitle}
             </h2>
+            <span className="order-modal-category">{categoryTitle}</span>
           </div>
           <div className="order-modal-header-actions">
             {getStatusBadge(order.status)}
@@ -105,70 +140,52 @@ export function OrderDetailModal({
           </div>
         </div>
 
-        {/* Backlog Alert Warning if applicable */}
-        {order.backlogStatus !== 'normal' && (
+        {/* Cancel notice if canceled */}
+        {order.cancelReason && (
           <div className="order-backlog-alert-box">
             <div className="backlog-alert-icon-wrap">
-              <AlertTriangle size={24} className="backlog-alert-icon" />
+              <Ban size={22} className="backlog-alert-icon" />
             </div>
             <div className="backlog-alert-content">
               <h4 className="backlog-alert-heading">
-                Cảnh báo phát hiện sự cố / tồn đọng đơn hàng
+                Đơn hàng đã bị hủy
               </h4>
               <p className="backlog-alert-desc">
-                {order.backlogReason || 'Đơn hàng đang vượt quá ngưỡng thời gian quy định.'}
+                Lý do hủy: {order.cancelReason}
               </p>
-              {order.waitMinutes && (
-                <span className="backlog-wait-tag">
-                  <Clock size={13} /> Thời gian chờ đợi: {order.waitMinutes} phút
-                </span>
-              )}
             </div>
-            <button 
-              type="button" 
-              className="backlog-resolve-btn"
-              onClick={handleResolve}
-            >
-              <CheckCircle2 size={16} /> Đánh dấu đã can thiệp
-            </button>
-          </div>
-        )}
-
-        {actionSuccessMsg && (
-          <div className="order-success-notice">
-            <CheckCircle2 size={16} /> {actionSuccessMsg}
           </div>
         )}
 
         {/* Body Grid */}
         <div className="order-modal-body">
-          {/* Column 1: Order Info & Customer / Technician */}
+          {/* Column 1: Customer & Assigned Provider */}
           <div className="order-modal-col">
             <div className="order-section-card">
               <h3 className="order-section-title">
-                <User size={16} /> Thông tin khách hàng
+                <User size={16} /> Thông tin khách hàng & Địa điểm
               </h3>
               <div className="order-info-list">
                 <div className="order-info-item">
-                  <span className="order-info-label">Khách hàng:</span>
-                  <span className="order-info-val font-semibold">{order.customerName}</span>
+                  <span className="order-info-label">Người liên hệ:</span>
+                  <span className="order-info-val font-semibold">{customer}</span>
                 </div>
                 <div className="order-info-item">
                   <span className="order-info-label">Số điện thoại:</span>
                   <span className="order-info-val text-primary font-medium">
-                    <Phone size={14} className="inline-icon" /> {order.customerPhone}
+                    <Phone size={14} className="inline-icon" /> {phone}
                   </span>
                 </div>
                 <div className="order-info-item">
-                  <span className="order-info-label">Địa chỉ xử lý:</span>
+                  <span className="order-info-label">Địa chỉ thực hiện:</span>
                   <span className="order-info-val">
-                    <MapPin size={14} className="inline-icon" /> {order.customerAddress}
+                    <MapPin size={14} className="inline-icon" /> {address}
                   </span>
                 </div>
-                {order.notes && (
+                {desc && (
                   <div className="order-notes-box">
-                    <span className="order-notes-title">Ghi chú từ khách:</span>
-                    <p className="order-notes-text">"{order.notes}"</p>
+                    <span className="order-notes-title">Mô tả chi tiết từ khách:</span>
+                    <p className="order-notes-text">"{desc}"</p>
                   </div>
                 )}
               </div>
@@ -178,19 +195,23 @@ export function OrderDetailModal({
               <h3 className="order-section-title">
                 <Wrench size={16} /> Thợ kỹ thuật phụ trách
               </h3>
-              {order.providerName ? (
+              {provider ? (
                 <div className="provider-assigned-card">
-                  {order.providerAvatar && (
+                  {provAvatar ? (
                     <img 
-                      src={order.providerAvatar} 
-                      alt={order.providerName} 
+                      src={provAvatar} 
+                      alt={provider} 
                       className="provider-thumb-avatar" 
                     />
+                  ) : (
+                    <div className="provider-thumb-avatar-placeholder">
+                      {provider.charAt(0).toUpperCase()}
+                    </div>
                   )}
                   <div className="provider-assigned-info">
-                    <span className="provider-assigned-name">{order.providerName}</span>
+                    <span className="provider-assigned-name">{provider}</span>
                     <span className="provider-assigned-phone">
-                      <Phone size={13} /> {order.providerPhone || '09xx xxx xxx'}
+                      <Phone size={13} /> {provPhone || 'Đã tiếp nhận'}
                     </span>
                   </div>
                 </div>
@@ -198,116 +219,87 @@ export function OrderDetailModal({
                 <div className="provider-unassigned-notice">
                   <AlertCircle size={18} className="text-amber-500" />
                   <div>
-                    <p className="unassigned-title">Chưa có thợ nhận đơn</p>
-                    <p className="unassigned-sub">Hệ thống đang phát tín hiệu hoặc đã quá giờ nhận.</p>
+                    <p className="unassigned-title">Đang chờ thợ nhận việc / gửi báo giá</p>
+                    <p className="unassigned-sub">
+                      Khách hàng đang phát thông báo tới các thợ trong khu vực để nhận báo giá cạnh tranh.
+                    </p>
                   </div>
                 </div>
               )}
+            </div>
+          </div>
 
-              {/* Admin Direct Assignment action */}
-              <div className="admin-assign-action-block">
-                {!showAssignDropdown ? (
-                  <button 
-                    type="button" 
-                    className="btn-open-assign" 
-                    onClick={() => setShowAssignDropdown(true)}
-                  >
-                    <UserPlus size={15} /> Chỉ định thợ thủ công ngay
-                  </button>
-                ) : (
-                  <div className="assign-dropdown-box">
-                    <label htmlFor="select-provider" className="assign-label">
-                      Chọn thợ đối tác khu vực gần nhất:
-                    </label>
-                    <div className="assign-controls-row">
-                      <select 
-                        id="select-provider"
-                        className="assign-select"
-                        value={selectedProvider}
-                        onChange={(e) => setSelectedProvider(e.target.value)}
-                      >
-                        <option value="Lê Hoàng Minh">Lê Hoàng Minh (Đạt 4.9⭐ - Bán kính 2.1km)</option>
-                        <option value="Phạm Đức Thành">Phạm Đức Thành (Đạt 4.8⭐ - Bán kính 3.5km)</option>
-                        <option value="Võ Minh Trí">Võ Minh Trí (Thợ khóa - Bán kính 1.5km)</option>
-                      </select>
-                      <button 
-                        type="button" 
-                        className="btn-confirm-assign" 
-                        onClick={handleAssign}
-                      >
-                        Gán thợ
-                      </button>
-                    </div>
+          {/* Column 2: Order Metadata, Pricing & Schedule */}
+          <div className="order-modal-col">
+            <div className="order-section-card">
+              <h3 className="order-section-title">
+                <CreditCard size={16} /> Chi phí & Lịch hẹn
+              </h3>
+              <div className="order-info-list">
+                <div className="order-info-item">
+                  <span className="order-info-label">Chi phí / Báo giá chốt:</span>
+                  <span className="order-price-val">
+                    {priceVal ? `${priceVal.toLocaleString('vi-VN')} đ` : 'Chờ thỏa thuận báo giá'}
+                  </span>
+                </div>
+                <div className="order-info-item">
+                  <span className="order-info-label">Lịch hẹn mong muốn:</span>
+                  <span className="order-info-val">
+                    <Calendar size={14} className="inline-icon" /> {schedule}
+                  </span>
+                </div>
+                <div className="order-info-item">
+                  <span className="order-info-label">Thời điểm tạo đơn:</span>
+                  <span className="order-info-val text-muted">
+                    <Clock size={14} className="inline-icon" /> {createdDate}
+                  </span>
+                </div>
+                {order.quotationCount !== undefined && (
+                  <div className="order-info-item">
+                    <span className="order-info-label">Số lượng báo giá nhận được:</span>
+                    <span className="order-info-val font-semibold text-blue-600">
+                      {order.quotationCount} báo giá từ thợ
+                    </span>
                   </div>
                 )}
               </div>
             </div>
-          </div>
 
-          {/* Column 2: Order Metadata & Timeline */}
-          <div className="order-modal-col">
-            <div className="order-section-card">
-              <h3 className="order-section-title">
-                <CreditCard size={16} /> Chi tiết thanh toán & Thời gian
-              </h3>
-              <div className="order-info-list">
-                <div className="order-info-item">
-                  <span className="order-info-label">Tổng chi phí:</span>
-                  <span className="order-price-val">
-                    {order.price.toLocaleString('vi-VN')} đ
-                  </span>
-                </div>
-                <div className="order-info-item">
-                  <span className="order-info-label">Hình thức:</span>
-                  <span className="order-info-val uppercase">
-                    {order.paymentMethod === 'vnpay' ? 'VNPay Trực Tuyến' : order.paymentMethod === 'wallet' ? 'Ví Điện Tử' : 'Tiền Mặt'}
-                  </span>
-                </div>
-                <div className="order-info-item">
-                  <span className="order-info-label">Lịch hẹn:</span>
-                  <span className="order-info-val">{order.scheduledTime}</span>
-                </div>
-                <div className="order-info-item">
-                  <span className="order-info-label">Thời điểm tạo đơn:</span>
-                  <span className="order-info-val text-muted">{order.createdAt}</span>
+            {/* Images attached by customer */}
+            {order.images && order.images.length > 0 && (
+              <div className="order-section-card">
+                <h3 className="order-section-title">
+                  <ImageIcon size={16} /> Hình ảnh hiện trường ({order.images.length})
+                </h3>
+                <div className="order-images-grid">
+                  {order.images.map((img, idx) => (
+                    <a 
+                      key={idx} 
+                      href={img} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="order-image-thumb"
+                    >
+                      <img src={img} alt={`Hiện trường ${idx + 1}`} />
+                    </a>
+                  ))}
                 </div>
               </div>
-            </div>
-
-            <div className="order-section-card">
-              <h3 className="order-section-title">
-                <Clock size={16} /> Tiến độ xử lý & Dòng thời gian
-              </h3>
-              <div className="order-timeline-list">
-                {order.timeline.map((evt, idx) => (
-                  <div key={idx} className={`timeline-entry status-${evt.status}`}>
-                    <div className="timeline-node">
-                      <span className="timeline-dot" />
-                      {idx < order.timeline.length - 1 && <span className="timeline-connector" />}
-                    </div>
-                    <div className="timeline-content">
-                      <div className="timeline-header-line">
-                        <span className="timeline-title">{evt.title}</span>
-                        <span className="timeline-time">{evt.time}</span>
-                      </div>
-                      <p className="timeline-desc">{evt.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
         {/* Footer actions */}
         <div className="order-modal-footer">
-          <button 
-            type="button" 
-            className="btn-admin-cancel" 
-            onClick={handleCancel}
-          >
-            <Ban size={15} /> Hủy đơn hàng
-          </button>
+          {order.status !== 'CANCELED' && order.status !== 'cancelled' && onCancelOrder && (
+            <button 
+              type="button" 
+              className="btn-admin-cancel" 
+              onClick={handleCancel}
+            >
+              <Ban size={15} /> Hủy đơn hàng
+            </button>
+          )}
           <div className="order-footer-right">
             <button 
               type="button" 
