@@ -468,6 +468,8 @@ export function CustomerOrderDetailModal({
           onClose={() => setShowInviteModal(false)}
           orderId={order.id}
           orderTitle={order.title}
+          categoryId={order.categoryId}
+          categoryName={order.categoryName}
           existingProviderIds={order.quotations ? order.quotations.map((q) => q.providerId) : []}
           onSuccess={() => {
             loadOrderDetail();

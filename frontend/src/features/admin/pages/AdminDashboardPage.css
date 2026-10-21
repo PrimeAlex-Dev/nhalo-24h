@@ -658,3 +658,176 @@
     align-items: flex-start;
   }
 }
+
+/* Toast notice */
+.dashboard-toast-notice {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.12);
+  animation: fadeIn 0.2s ease;
+}
+
+/* Header action row & refresh button */
+.header-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.btn-refresh-dashboard {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-refresh-dashboard:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.is-spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.tag-healthy {
+  color: #059669;
+  background-color: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.tag-checking {
+  color: #d97706;
+  background-color: #fffbeb;
+  border-color: #fde68a;
+}
+
+/* Table User Primary Cell */
+.table-user-primary-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.table-avatar-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1d6ae5 0%, #3b82f6 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.table-user-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.table-phone-text {
+  font-size: 0.8rem;
+  color: #334155;
+  font-weight: 500;
+}
+
+/* Admin chips */
+.admin-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.chip-role-admin {
+  background-color: #f3e8ff;
+  color: #7e22ce;
+  border: 1px solid #e9d5ff;
+}
+
+.chip-role-provider {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.chip-role-customer {
+  background-color: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.chip-status-active {
+  background-color: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.chip-status-disabled {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.row-disabled-highlight {
+  background-color: #fffbfb;
+}
+
+/* Category quick nav in system health panel */
+.category-quick-nav-box {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.btn-category-nav-link {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #1d6ae5;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-category-nav-link:hover {
+  background-color: #eff6ff;
+  border-color: #bfdbfe;
+}
+

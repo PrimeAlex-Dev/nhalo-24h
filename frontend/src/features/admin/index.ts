@@ -10,4 +10,3 @@ export { CategoryEditModal } from './components/CategoryEditModal';
 export { AdminSidebar } from './components/AdminSidebar';
 export { AdminHeader } from './components/AdminHeader';
 export * from './types/admin';
-export * from './data/adminMockData';

@@ -60,7 +60,9 @@ export function AdminKpiCards({ metrics, onCardClick }: AdminKpiCardsProps) {
                 ) : metric.changeType === 'decrease' ? (
                   <TrendingDown size={14} />
                 ) : null}
-                {metric.changePercent > 0 ? `+${metric.changePercent}%` : `${metric.changePercent}%`}
+                {metric.trendLabel 
+                  ? metric.trendLabel 
+                  : ((metric.changePercent ?? 0) > 0 ? `+${metric.changePercent}%` : `${metric.changePercent ?? 0}%`)}
               </span>
               <span className="kpi-compare-label">{metric.compareLabel}</span>
             </div>

@@ -347,3 +347,41 @@
   font-size: 0.85rem;
   border-bottom: 1px solid #bbf7d0;
 }
+
+.invite-order-meta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.invite-order-category-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background-color: #eff6ff;
+  color: #1d6ae5;
+  border: 1px solid #bfdbfe;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.invite-order-category-tag strong {
+  font-weight: 700;
+}
+
+.invite-empty-subtext {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  max-width: 420px;
+  text-align: center;
+}
+
+.meta-chip-category {
+  background-color: #f1f5f9;
+  color: #2563eb;
+  font-weight: 600;
+}

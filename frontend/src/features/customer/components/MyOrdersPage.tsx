@@ -52,13 +52,19 @@ export function MyOrdersPage() {
       }
     };
 
+    const handleOrderRefresh = () => {
+      loadOrders(false);
+    };
+
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleFocus);
+    window.addEventListener('nhalo24h:refresh-orders', handleOrderRefresh);
 
     return () => {
       clearInterval(intervalTimer);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleFocus);
+      window.removeEventListener('nhalo24h:refresh-orders', handleOrderRefresh);
     };
   }, [activeTab]);
 
@@ -122,14 +128,6 @@ export function MyOrdersPage() {
             <h1 className="orders-page-title">Đơn hàng của tôi</h1>
             <p className="orders-page-subtitle">Theo dõi các đơn sửa chữa, xem báo giá của thợ và lịch sử hoàn tất.</p>
           </div>
-          <button 
-            type="button" 
-            className="btn-create-order-action"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <Plus size={18} />
-            <span>Đặt thợ mới</span>
-          </button>
         </div>
 
         {/* Tab Filters */}

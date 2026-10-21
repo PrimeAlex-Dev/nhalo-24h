@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { AdminSidebar } from '../features/admin/components/AdminSidebar';
 import { AdminHeader } from '../features/admin/components/AdminHeader';
-import { ADMIN_MOCK_ORDERS } from '../features/admin/data/adminMockData';
+import { userService } from '../services';
 import './AdminLayout.css';
 
 export interface AdminContextType {
@@ -12,10 +12,18 @@ export interface AdminContextType {
 export function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [pendingUsersCount, setPendingUsersCount] = useState(0);
 
-  // Calculate dynamic badge counters for sidebar/header
-  const pendingUsersCount = 0;
-  const backlogOrdersCount = ADMIN_MOCK_ORDERS.filter((o) => o.backlogStatus !== 'normal').length;
+  useEffect(() => {
+    userService
+      .getUsers({ role: 'PROVIDER', status: 'DISABLED', size: 1 })
+      .then((res) => {
+        setPendingUsersCount(res.totalElements);
+      })
+      .catch(() => {
+        // Backend offline or error -> fallback 0
+      });
+  }, []);
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
@@ -32,7 +40,7 @@ export function AdminLayout() {
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
         pendingUsersCount={pendingUsersCount}
-        backlogOrdersCount={backlogOrdersCount}
+        backlogOrdersCount={0}
       />
 
       {/* Main Content Area */}
@@ -40,7 +48,7 @@ export function AdminLayout() {
         {/* Sticky Top Header */}
         <AdminHeader
           onToggleSidebar={toggleSidebar}
-          backlogCount={backlogOrdersCount}
+          backlogCount={pendingUsersCount}
           onSearchChange={setSearchQuery}
         />
 

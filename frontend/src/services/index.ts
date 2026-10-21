@@ -8,4 +8,5 @@ export * from './providerProfileService';
 export * from './customerOrderService';
 export * from './providerJobService';
 export * from './orderChatService';
-
+export * from './adminOrderService';
+export * from './fileService';
