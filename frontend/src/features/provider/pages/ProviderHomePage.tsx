@@ -92,15 +92,20 @@ export function ProviderHomePage() {
   }, [refreshIncomingRequestsCount]);
 
   // Compute real counts
-  const pendingRequests = incomingRequests.filter((r) => r.requestStatus === 'PENDING_RESPONSE');
-  const newJobsCount = pendingRequests.length > 0 ? pendingRequests.length : incomingRequests.length;
+  const pendingRequests = incomingRequests.filter(
+    (r) => r.requestStatus === 'PENDING_RESPONSE' && r.orderStatus === 'PENDING_PROVIDER'
+  );
+  const newJobsCount = pendingRequests.length;
   const todayJobsCount = inProgressOrders.length;
   const completedCount = completedOrders.length;
   const todayEarnings = completedOrders.reduce((sum, ord) => sum + (ord.quotedPrice || 0), 0);
 
-  // Real matching jobs from incoming requests
-  const featuredJob = incomingRequests[0] || null;
-  const secondaryJob = incomingRequests[1] || null;
+  // Real matching jobs from incoming requests: Chỉ lấy các yêu cầu đang mở (chờ báo giá hoặc đã báo giá)
+  const actionableRequests = incomingRequests.filter(
+    (r) => r.orderStatus === 'PENDING_PROVIDER' && r.requestStatus !== 'CANCELED' && r.requestStatus !== 'REJECTED'
+  );
+  const featuredJob = actionableRequests[0] || null;
+  const secondaryJob = actionableRequests[1] || null;
 
   return (
     <div className="provider-home-container">

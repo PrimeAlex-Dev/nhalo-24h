@@ -196,11 +196,14 @@
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .invite-name-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
@@ -220,6 +223,7 @@
   font-weight: 600;
   padding: 0.15rem 0.45rem;
   border-radius: 9999px;
+  white-space: nowrap;
 }
 
 .invite-headline {
@@ -231,7 +235,8 @@
 .invite-meta-chips {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.65rem;
   margin-top: 0.15rem;
 }
 
@@ -242,6 +247,7 @@
   font-size: 0.75rem;
   color: #64748b;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .star-icon {
@@ -250,9 +256,14 @@
 }
 
 .invite-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
   text-align: right;
   flex-shrink: 0;
   padding-left: 0.5rem;
+  gap: 0.45rem;
 }
 
 .invite-rate {
@@ -265,6 +276,39 @@
   font-size: 0.75rem;
   font-weight: 500;
   color: #64748b;
+}
+
+.btn-view-quick-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  color: #1D6AE5;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-view-quick-profile:hover {
+  background: #1D6AE5;
+  color: #FFFFFF;
+  border-color: #1D6AE5;
+  transform: translateY(-1px);
+}
+
+.invite-provider-name.clickable {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.invite-provider-name.clickable:hover {
+  color: #1D6AE5;
+  text-decoration: underline;
 }
 
 .invite-modal-footer {
@@ -384,4 +428,176 @@
   background-color: #f1f5f9;
   color: #2563eb;
   font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* Responsive for Mobile Devices */
+@media (max-width: 640px) {
+  .invite-modal-backdrop {
+    padding: 0.5rem;
+  }
+
+  .invite-modal-sheet {
+    border-radius: 16px;
+    max-height: 94vh;
+  }
+
+  .invite-modal-header {
+    padding: 0.85rem 1.1rem;
+  }
+
+  .invite-modal-subtitle {
+    font-size: 0.72rem;
+  }
+
+  .invite-modal-title {
+    font-size: 1.15rem;
+    margin: 0.1rem 0 0.2rem 0;
+  }
+
+  .invite-order-meta-row {
+    gap: 0.4rem;
+  }
+
+  .invite-order-name {
+    font-size: 0.82rem;
+  }
+
+  .invite-order-category-tag {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+  }
+
+  .invite-search-box {
+    padding: 0.55rem 1rem 0.35rem;
+  }
+
+  .invite-search-icon {
+    left: 1.65rem;
+  }
+
+  .invite-search-input {
+    padding: 0.5rem 0.75rem 0.5rem 2.3rem;
+    font-size: 0.86rem;
+    border-radius: 8px;
+  }
+
+  .invite-list-body {
+    padding: 0.35rem 0.85rem 0.65rem;
+  }
+
+  .invite-provider-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.75rem 0.85rem;
+    gap: 0.55rem;
+    border-radius: 12px;
+  }
+
+  .invite-card-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    width: 100%;
+  }
+
+  .invite-checkbox {
+    margin-top: 10px;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+
+  .invite-avatar-wrap {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+
+  .invite-info {
+    gap: 0.2rem;
+  }
+
+  .invite-provider-name {
+    font-size: 0.92rem;
+  }
+
+  .invite-headline {
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  .invite-meta-chips {
+    gap: 0.35rem 0.45rem;
+    margin-top: 0.25rem;
+  }
+
+  .meta-chip {
+    font-size: 0.72rem;
+    gap: 3px;
+  }
+
+  .meta-chip-category {
+    font-size: 0.72rem;
+    padding: 1px 6px;
+  }
+
+  .invite-card-right {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding-top: 0.55rem;
+    padding-left: 0;
+    border-top: 1px dashed #e2e8f0;
+    margin-top: 0.15rem;
+    gap: 0.5rem;
+  }
+
+  .invite-rate {
+    font-size: 0.92rem;
+    text-align: left;
+  }
+
+  .invite-rate small {
+    font-size: 0.72rem;
+  }
+
+  .btn-view-quick-profile {
+    padding: 5px 11px;
+    font-size: 0.75rem;
+    gap: 4px;
+    border-radius: 8px;
+  }
+
+  .invite-modal-footer {
+    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+  }
+
+  .invite-footer-left {
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .invite-footer-right {
+    gap: 0.45rem;
+  }
+
+  .btn-cancel-invite {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.82rem;
+    border-radius: 8px;
+  }
+
+  .btn-submit-invite {
+    padding: 0.5rem 0.95rem;
+    font-size: 0.82rem;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
 }

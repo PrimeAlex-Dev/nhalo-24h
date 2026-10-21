@@ -72,7 +72,15 @@ export function ProviderJobsPage() {
 
       if (activeTab === 'requests') {
         const data = await providerJobService.getIncomingRequests();
-        setJobs(data);
+        // Sắp xếp các yêu cầu còn mở lên trước, các đơn đã có người nhận hoặc đã đóng xuống sau
+        const sorted = [...data].sort((a, b) => {
+          const isAClosed = a.requestStatus === 'CANCELED' || a.requestStatus === 'REJECTED' || a.orderStatus !== 'PENDING_PROVIDER';
+          const isBClosed = b.requestStatus === 'CANCELED' || b.requestStatus === 'REJECTED' || b.orderStatus !== 'PENDING_PROVIDER';
+          if (isAClosed && !isBClosed) return 1;
+          if (!isAClosed && isBClosed) return -1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+        setJobs(sorted);
       } else if (activeTab === 'in_progress') {
         const data = await providerJobService.getAssignedOrders('IN_PROGRESS');
         setJobs(data);
@@ -206,13 +214,16 @@ export function ProviderJobsPage() {
         ) : (
           <div className="jobs-list">
             {jobs.map((job) => {
-              const isPending = job.requestStatus === 'PENDING_RESPONSE';
-              const isQuoted = job.requestStatus === 'QUOTED';
-              const isInProgress = job.orderStatus === 'IN_PROGRESS';
-              const isCompleted = job.orderStatus === 'COMPLETED';
+              const isMyJobInProgress = job.requestStatus === 'ACCEPTED' && job.orderStatus === 'IN_PROGRESS';
+              const isMyJobCompleted = job.requestStatus === 'ACCEPTED' && job.orderStatus === 'COMPLETED';
+              const isAssignedToOther = job.requestStatus === 'CANCELED' && (job.orderStatus === 'IN_PROGRESS' || job.orderStatus === 'COMPLETED');
+              const isOrderCanceled = job.orderStatus === 'CANCELED';
+              const isRejected = job.requestStatus === 'REJECTED';
+              const isQuoted = job.requestStatus === 'QUOTED' && job.orderStatus === 'PENDING_PROVIDER';
+              const isPending = job.requestStatus === 'PENDING_RESPONSE' && job.orderStatus === 'PENDING_PROVIDER';
 
               return (
-                <div key={job.requestId || job.orderId} className="job-feed-card">
+                <div key={job.requestId || job.orderId} className={`job-feed-card ${isAssignedToOther ? 'assigned-other-card' : ''}`}>
                   {/* Card Top: Category + Status Badge */}
                   <div className="card-top-row">
                     <div className="category-chip">
@@ -221,12 +232,18 @@ export function ProviderJobsPage() {
                       <span className="job-code-chip">· {job.orderCode}</span>
                     </div>
 
-                    {isInProgress ? (
+                    {isMyJobInProgress ? (
                       <span className="urgency-badge in-progress">Đang làm</span>
+                    ) : isMyJobCompleted ? (
+                      <span className="urgency-badge completed">Đã xong</span>
+                    ) : isAssignedToOther ? (
+                      <span className="urgency-badge assigned-other">Đơn đã có người nhận</span>
+                    ) : isOrderCanceled ? (
+                      <span className="urgency-badge canceled">Đơn đã bị hủy</span>
+                    ) : isRejected ? (
+                      <span className="urgency-badge rejected">Đã từ chối</span>
                     ) : isQuoted ? (
                       <span className="urgency-badge quoted">Đã báo giá: {job.quotedPrice?.toLocaleString('vi-VN')} đ</span>
-                    ) : isCompleted ? (
-                      <span className="urgency-badge completed">Đã xong</span>
                     ) : (
                       <span className="urgency-badge pending">Chờ bạn báo giá</span>
                     )}
@@ -274,10 +291,20 @@ export function ProviderJobsPage() {
                   <div className="card-bottom-row">
                     <div className="price-estimate-block">
                       <span className="price-label">
-                        {isInProgress || isCompleted ? 'Giá chốt:' : isQuoted ? 'Giá đã báo:' : 'Báo giá:'}
+                        {isMyJobInProgress || isMyJobCompleted
+                          ? 'Giá chốt:'
+                          : isAssignedToOther
+                          ? (job.quotedPrice ? 'Giá bạn đã báo:' : 'Trạng thái:')
+                          : isQuoted
+                          ? 'Giá đã báo:'
+                          : 'Báo giá:'}
                       </span>
                       <span className="price-number">
-                        {job.quotedPrice ? `${job.quotedPrice.toLocaleString('vi-VN')} đ` : 'Chưa báo giá'}
+                        {isAssignedToOther && !job.quotedPrice
+                          ? 'Yêu cầu đã đóng'
+                          : job.quotedPrice
+                          ? `${job.quotedPrice.toLocaleString('vi-VN')} đ`
+                          : 'Chưa báo giá'}
                       </span>
                     </div>
 
@@ -303,7 +330,7 @@ export function ProviderJobsPage() {
                         </button>
                       )}
 
-                      {isInProgress && (
+                      {isMyJobInProgress && (
                         <button
                           type="button"
                           className="btn-finish-feed"

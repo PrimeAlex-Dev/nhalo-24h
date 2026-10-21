@@ -10,10 +10,12 @@ import {
   Loader2, 
   AlertCircle, 
   CheckCircle2,
-  Tag
+  Tag,
+  Eye
 } from 'lucide-react';
 import { providerProfileService, customerOrderService } from '../../../services';
 import type { PublicProviderItem } from '../../../services/providerProfileService';
+import { ProviderQuickViewDrawer } from './ProviderQuickViewDrawer';
 import './InviteProvidersModal.css';
 
 interface InviteProvidersModalProps {
@@ -42,6 +44,7 @@ export function InviteProvidersModal({
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [previewProvider, setPreviewProvider] = useState<PublicProviderItem | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -50,6 +53,7 @@ export function InviteProvidersModal({
       loadProviders();
       setSearchQuery('');
       setSelectedIds([]);
+      setPreviewProvider(null);
       setErrorMsg(null);
       setSuccessMsg(null);
     }
@@ -264,7 +268,16 @@ export function InviteProvidersModal({
 
                       <div className="invite-info">
                         <div className="invite-name-row">
-                          <span className="invite-provider-name">{provider.name}</span>
+                          <span 
+                            className="invite-provider-name clickable"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreviewProvider(provider);
+                            }}
+                            title="Bấm để xem chi tiết hồ sơ & đánh giá"
+                          >
+                            {provider.name}
+                          </span>
                           {isAlreadyInvited && (
                             <span className="badge-already-invited">
                               <UserCheck size={12} /> Đã gửi yêu cầu
@@ -301,6 +314,19 @@ export function InviteProvidersModal({
                           : `${provider.pricePerHour} đ`}
                         <small>/giờ</small>
                       </span>
+
+                      <button
+                        type="button"
+                        className="btn-view-quick-profile"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewProvider(provider);
+                        }}
+                        title="Xem chi tiết hồ sơ & nhận xét khách hàng"
+                      >
+                        <Eye size={13} />
+                        <span>Xem hồ sơ</span>
+                      </button>
                     </div>
                   </div>
                 );
@@ -346,6 +372,16 @@ export function InviteProvidersModal({
           </div>
         </div>
       </div>
+
+      {/* Quick View Drawer for Provider Profile & Reviews */}
+      <ProviderQuickViewDrawer
+        isOpen={!!previewProvider}
+        onClose={() => setPreviewProvider(null)}
+        provider={previewProvider}
+        isSelected={previewProvider ? selectedIds.includes(previewProvider.id) : false}
+        isAlreadyInvited={previewProvider ? existingProviderIds.includes(previewProvider.id) : false}
+        onToggleSelect={(id) => toggleSelect(id)}
+      />
     </div>
   );
 }

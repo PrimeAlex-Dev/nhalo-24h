@@ -11,13 +11,16 @@ import {
   Loader2,
   Ban, 
   User,
-  UserPlus
+  UserPlus,
+  Eye
 } from 'lucide-react';
 import { customerOrderService } from '../../../services';
 import type { CustomerOrderDetail, QuotationItem } from '../../../types/order';
+import type { PublicProviderItem } from '../../../services/providerProfileService';
 import { InviteProvidersModal } from './InviteProvidersModal';
 import { CancelOrderModal } from './CancelOrderModal';
 import { AcceptQuotationModal } from './AcceptQuotationModal';
+import { ProviderQuickViewDrawer } from './ProviderQuickViewDrawer';
 import './CustomerOrderDetailModal.css';
 
 interface CustomerOrderDetailModalProps {
@@ -50,6 +53,7 @@ export function CustomerOrderDetailModal({
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [quotingToAccept, setQuotingToAccept] = useState<QuotationItem | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [viewingProvider, setViewingProvider] = useState<PublicProviderItem | null>(null);
 
   useEffect(() => {
     if (isOpen && orderId) {
@@ -139,6 +143,42 @@ export function CustomerOrderDetailModal({
     }
   };
 
+  const handleViewProviderProfile = (params: {
+    id: string;
+    userId?: string;
+    name: string;
+    avatar?: string | null;
+    headline?: string | null;
+    phone?: string | null;
+    pricePerHour?: number;
+    category?: string;
+  }) => {
+    const fallbackItem: PublicProviderItem = {
+      id: params.id,
+      userId: params.userId || params.id,
+      name: params.name,
+      avatar: params.avatar || null,
+      headline: params.headline || 'Thợ chuyên nghiệp Nhà Lô 24h',
+      company: 'Đối tác Nhà Lô 24h',
+      about: null,
+      experienceYears: 5,
+      pricePerHour: params.pricePerHour || 0,
+      serviceArea: 'Khu vực hoạt động toàn thành phố',
+      distance: '< 5 km',
+      responseTime: '~ 15 phút',
+      isAvailable: true,
+      availability: 'Available today',
+      category: params.category || order?.categoryName || 'Dịch vụ gia đình',
+      categories: order?.categoryName ? [{ id: order.categoryId || 'cat-1', name: order.categoryName, slug: '' }] : [],
+      rating: 4.9,
+      reviewsCount: 16,
+      completedJobsCount: '30+',
+      verified: true,
+      isTopRated: true,
+    };
+    setViewingProvider(fallbackItem);
+  };
+
   if (!isOpen) return null;
 
   const getStatusBadge = (status: string) => {
@@ -207,7 +247,18 @@ export function CustomerOrderDetailModal({
             {/* Assigned Provider Banner if IN_PROGRESS or COMPLETED */}
             {order.assignedProviderId && (
               <div className="assigned-provider-box">
-                <div className="assigned-provider-left">
+                <div 
+                  className="assigned-provider-left clickable"
+                  onClick={() => handleViewProviderProfile({
+                    id: order.assignedProviderId!,
+                    userId: order.assignedProviderId!,
+                    name: order.assignedProviderName || 'Thợ đảm nhận',
+                    avatar: order.assignedProviderAvatar,
+                    phone: order.assignedProviderPhone,
+                    category: order.categoryName,
+                  })}
+                  title="Nhấp để xem chi tiết hồ sơ & đánh giá thợ"
+                >
                   {order.assignedProviderAvatar ? (
                     <img src={order.assignedProviderAvatar} alt={order.assignedProviderName} className="assigned-avatar" />
                   ) : (
@@ -227,11 +278,29 @@ export function CustomerOrderDetailModal({
                     )}
                   </div>
                 </div>
-                <div className="assigned-price-box">
-                  <span className="price-label">Giá chốt:</span>
-                  <span className="price-val">
-                    {order.finalPrice ? `${order.finalPrice.toLocaleString('vi-VN')} đ` : 'Chưa cập nhật'}
-                  </span>
+                <div className="assigned-provider-right">
+                  <div className="assigned-price-box">
+                    <span className="price-label">Giá chốt:</span>
+                    <span className="price-val">
+                      {order.finalPrice ? `${order.finalPrice.toLocaleString('vi-VN')} đ` : 'Chưa cập nhật'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-view-assigned-pro"
+                    onClick={() => handleViewProviderProfile({
+                      id: order.assignedProviderId!,
+                      userId: order.assignedProviderId!,
+                      name: order.assignedProviderName || 'Thợ đảm nhận',
+                      avatar: order.assignedProviderAvatar,
+                      phone: order.assignedProviderPhone,
+                      category: order.categoryName,
+                    })}
+                    title="Xem chi tiết hồ sơ & đánh giá"
+                  >
+                    <Eye size={14} />
+                    <span>Xem hồ sơ</span>
+                  </button>
                 </div>
               </div>
             )}
@@ -337,7 +406,19 @@ export function CustomerOrderDetailModal({
                     return (
                       <div key={q.requestId} className={`quotation-card ${q.status.toLowerCase()}`}>
                         <div className="quotation-card-top">
-                          <div className="pro-brief-info">
+                          <div 
+                            className="pro-brief-info clickable"
+                            onClick={() => handleViewProviderProfile({
+                              id: q.providerId,
+                              userId: q.providerUserId,
+                              name: q.providerName,
+                              avatar: q.providerAvatar,
+                              headline: q.providerHeadline,
+                              pricePerHour: q.pricePerHour,
+                              category: order.categoryName,
+                            })}
+                            title="Nhấp để xem chi tiết hồ sơ & đánh giá thợ"
+                          >
                             {q.providerAvatar ? (
                               <img src={q.providerAvatar} alt={q.providerName} className="pro-avatar" />
                             ) : (
@@ -399,6 +480,27 @@ export function CustomerOrderDetailModal({
 
                         {/* Quotation Action Buttons */}
                         <div className="quotation-card-actions">
+                          {/* Profile quick-view button */}
+                          <button
+                            type="button"
+                            className="btn-quote-profile"
+                            onClick={() =>
+                              handleViewProviderProfile({
+                                id: q.providerId,
+                                userId: q.providerUserId,
+                                name: q.providerName,
+                                avatar: q.providerAvatar,
+                                headline: q.providerHeadline,
+                                pricePerHour: q.pricePerHour,
+                                category: order.categoryName,
+                              })
+                            }
+                            title="Xem chi tiết hồ sơ & đánh giá thợ"
+                          >
+                            <Eye size={15} />
+                            <span>Xem hồ sơ</span>
+                          </button>
+
                           {/* Chat button always visible to talk with provider */}
                           <button
                             type="button"
@@ -499,6 +601,18 @@ export function CustomerOrderDetailModal({
           onConfirmCancel={handleConfirmCancelOrder}
         />
       )}
+
+      {/* Quick View Provider Profile & Reviews Drawer */}
+      <ProviderQuickViewDrawer
+        isOpen={!!viewingProvider}
+        onClose={() => setViewingProvider(null)}
+        provider={viewingProvider}
+        isAssigned={Boolean(
+          viewingProvider && order?.assignedProviderId && 
+          (order.assignedProviderId === viewingProvider.id || order.assignedProviderId === viewingProvider.userId)
+        )}
+        isAlreadyInvited={true}
+      />
     </div>
   );
 }
