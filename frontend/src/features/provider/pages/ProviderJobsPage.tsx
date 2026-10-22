@@ -20,6 +20,7 @@ import { SubmitQuotationModal } from '../components/SubmitQuotationModal';
 import { CompleteJobModal } from '../components/CompleteJobModal';
 import { RejectRequestModal } from '../components/RejectRequestModal';
 import { OrderChatDrawer } from '../../order/components/OrderChatDrawer';
+import { Pagination } from '../../../components/common/Pagination';
 import './ProviderJobsPage.css';
 
 type ProviderTab = 'requests' | 'in_progress' | 'completed';
@@ -32,6 +33,11 @@ export function ProviderJobsPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
+  // Pagination State (5 jobs per page)
+  const [page, setPage] = useState(0);
+  const [pageSize] = useState(5);
+  const [pageInfo, setPageInfo] = useState({ totalPages: 0, totalElements: 0 });
+
   // Modals state
   const [selectedJob, setSelectedJob] = useState<ProviderJobItem | null>(null);
   const [quotingJob, setQuotingJob] = useState<ProviderJobItem | null>(null);
@@ -40,16 +46,16 @@ export function ProviderJobsPage() {
   const [chatJob, setChatJob] = useState<ProviderJobItem | null>(null);
 
   useEffect(() => {
-    loadJobs(false);
+    loadJobs(false, page);
 
     // Auto-poll jobs every 12 seconds
     const intervalTimer = setInterval(() => {
-      loadJobs(true);
+      loadJobs(true, page);
     }, 12000);
 
     const handleFocus = () => {
       if (document.visibilityState === 'visible') {
-        loadJobs(true);
+        loadJobs(true, page);
       }
     };
 
@@ -61,9 +67,9 @@ export function ProviderJobsPage() {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleFocus);
     };
-  }, [activeTab]);
+  }, [activeTab, page]);
 
-  const loadJobs = async (silent = false) => {
+  const loadJobs = async (silent = false, pageToLoad = page) => {
     try {
       if (!silent) {
         setLoading(true);
@@ -71,22 +77,17 @@ export function ProviderJobsPage() {
       setErrorMsg(null);
 
       if (activeTab === 'requests') {
-        const data = await providerJobService.getIncomingRequests();
-        // Sắp xếp các yêu cầu còn mở lên trước, các đơn đã có người nhận hoặc đã đóng xuống sau
-        const sorted = [...data].sort((a, b) => {
-          const isAClosed = a.requestStatus === 'CANCELED' || a.requestStatus === 'REJECTED' || a.orderStatus !== 'PENDING_PROVIDER';
-          const isBClosed = b.requestStatus === 'CANCELED' || b.requestStatus === 'REJECTED' || b.orderStatus !== 'PENDING_PROVIDER';
-          if (isAClosed && !isBClosed) return 1;
-          if (!isAClosed && isBClosed) return -1;
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        });
-        setJobs(sorted);
+        const res = await providerJobService.getIncomingRequests(undefined, pageToLoad, pageSize);
+        setJobs(res.content);
+        setPageInfo({ totalPages: res.totalPages, totalElements: res.totalElements });
       } else if (activeTab === 'in_progress') {
-        const data = await providerJobService.getAssignedOrders('IN_PROGRESS');
-        setJobs(data);
+        const res = await providerJobService.getAssignedOrders('IN_PROGRESS', pageToLoad, pageSize);
+        setJobs(res.content);
+        setPageInfo({ totalPages: res.totalPages, totalElements: res.totalElements });
       } else {
-        const data = await providerJobService.getAssignedOrders('COMPLETED');
-        setJobs(data);
+        const res = await providerJobService.getAssignedOrders('COMPLETED', pageToLoad, pageSize);
+        setJobs(res.content);
+        setPageInfo({ totalPages: res.totalPages, totalElements: res.totalElements });
       }
       if (refreshIncomingRequestsCount) {
         refreshIncomingRequestsCount();
@@ -100,6 +101,17 @@ export function ProviderJobsPage() {
         setLoading(false);
       }
     }
+  };
+
+  const handleTabChange = (newTab: ProviderTab) => {
+    setActiveTab(newTab);
+    setPage(0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const showNotice = (msg: string) => {
@@ -161,7 +173,7 @@ export function ProviderJobsPage() {
           <button
             type="button"
             className={`tab-btn ${activeTab === 'requests' ? 'active' : ''}`}
-            onClick={() => setActiveTab('requests')}
+            onClick={() => handleTabChange('requests')}
           >
             <span>Yêu cầu mới / Báo giá</span>
           </button>
@@ -169,7 +181,7 @@ export function ProviderJobsPage() {
           <button
             type="button"
             className={`tab-btn ${activeTab === 'in_progress' ? 'active' : ''}`}
-            onClick={() => setActiveTab('in_progress')}
+            onClick={() => handleTabChange('in_progress')}
           >
             <span>Việc đang làm</span>
           </button>
@@ -177,7 +189,7 @@ export function ProviderJobsPage() {
           <button
             type="button"
             className={`tab-btn ${activeTab === 'completed' ? 'active' : ''}`}
-            onClick={() => setActiveTab('completed')}
+            onClick={() => handleTabChange('completed')}
           >
             <span>Đã hoàn thành</span>
           </button>
@@ -212,7 +224,8 @@ export function ProviderJobsPage() {
             </p>
           </div>
         ) : (
-          <div className="jobs-list">
+          <>
+            <div className="jobs-list">
             {jobs.map((job) => {
               const isMyJobInProgress = job.requestStatus === 'ACCEPTED' && job.orderStatus === 'IN_PROGRESS';
               const isMyJobCompleted = job.requestStatus === 'ACCEPTED' && job.orderStatus === 'COMPLETED';
@@ -354,6 +367,18 @@ export function ProviderJobsPage() {
               );
             })}
           </div>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={page}
+            totalPages={pageInfo.totalPages}
+            totalElements={pageInfo.totalElements}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            itemName="công việc"
+            disabled={loading}
+          />
+        </>
         )}
       </div>
 

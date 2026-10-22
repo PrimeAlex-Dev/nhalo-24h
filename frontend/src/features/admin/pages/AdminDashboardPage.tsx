@@ -115,8 +115,9 @@ export function AdminDashboardPage() {
       setSystemHealth(isUp ? 'UP' : 'DOWN');
 
       // Orders metrics
-      const ordersList = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
-      const totalOrdersCount = ordersList.length;
+      const ordersResData = ordersRes.status === 'fulfilled' ? ordersRes.value : null;
+      const ordersList = ordersResData ? ordersResData.content : [];
+      const totalOrdersCount = ordersResData ? ordersResData.totalElements : 0;
       const pendingOrdersCount = ordersList.filter((o) => o.status === 'PENDING_PROVIDER').length;
 
       const dynamicMetrics: AdminKpiMetric[] = [

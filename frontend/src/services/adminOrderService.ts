@@ -23,7 +23,7 @@ export const adminOrderService = {
    * Nếu backend chưa cung cấp endpoint quản trị /api/v1/admin/orders,
    * hàm bắt lỗi và trả về danh sách rỗng để UI render trạng thái thông báo sạch sẽ.
    */
-  async getOrders(params: AdminOrderQuery = {}): Promise<CustomerOrderSummary[]> {
+  async getOrders(params: AdminOrderQuery = {}): Promise<AdminOrderResponse> {
     try {
       const query = new URLSearchParams();
       if (params.status && params.status !== 'ALL') {
@@ -48,16 +48,45 @@ export const adminOrderService = {
         method: 'GET',
       });
 
+      if (response && 'content' in response && Array.isArray(response.content)) {
+        const pageMeta = (response as any).page;
+        return {
+          content: response.content,
+          totalElements: response.totalElements ?? pageMeta?.totalElements ?? response.content.length,
+          totalPages: response.totalPages ?? pageMeta?.totalPages ?? 1,
+          number: response.number ?? pageMeta?.number ?? (params.page ?? 0),
+          size: response.size ?? pageMeta?.size ?? (params.size ?? 10),
+        };
+      }
       if (Array.isArray(response)) {
-        return response;
+        const actualSize = params.size ?? 10;
+        const actualPage = params.page ?? 0;
+        const totalPages = Math.ceil(response.length / actualSize) || 1;
+        const paginatedContent = response.slice(actualPage * actualSize, (actualPage + 1) * actualSize);
+        return {
+          content: paginatedContent,
+          totalElements: response.length,
+          totalPages: totalPages,
+          number: actualPage,
+          size: actualSize,
+        };
       }
-      if (response && Array.isArray(response.content)) {
-        return response.content;
-      }
-      return [];
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        number: 0,
+        size: params.size ?? 10,
+      };
     } catch {
       // Backend chưa có endpoint admin orders -> trả về rỗng an toàn
-      return [];
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        number: 0,
+        size: params.size ?? 10,
+      };
     }
   },
 

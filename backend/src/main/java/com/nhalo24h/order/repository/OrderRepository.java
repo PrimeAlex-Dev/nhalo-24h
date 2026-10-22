@@ -5,6 +5,8 @@ import com.nhalo24h.order.domain.OrderStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -18,9 +20,17 @@ public interface OrderRepository extends JpaRepository<Order, UUID>, JpaSpecific
 
     List<Order> findAllByCustomerIdAndStatusOrderByCreatedAtDesc(UUID customerId, OrderStatus status);
 
+    Page<Order> findAllByCustomerIdOrderByCreatedAtDesc(UUID customerId, Pageable pageable);
+
+    Page<Order> findAllByCustomerIdAndStatusOrderByCreatedAtDesc(UUID customerId, OrderStatus status, Pageable pageable);
+
     List<Order> findAllByAssignedProviderIdOrderByCreatedAtDesc(UUID providerProfileId);
 
     List<Order> findAllByAssignedProviderIdAndStatusOrderByCreatedAtDesc(UUID providerProfileId, OrderStatus status);
+
+    Page<Order> findAllByAssignedProviderIdOrderByCreatedAtDesc(UUID providerProfileId, Pageable pageable);
+
+    Page<Order> findAllByAssignedProviderIdAndStatusOrderByCreatedAtDesc(UUID providerProfileId, OrderStatus status, Pageable pageable);
 
     Optional<Order> findByIdAndCustomerId(UUID id, UUID customerId);
 

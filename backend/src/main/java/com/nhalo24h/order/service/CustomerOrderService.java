@@ -29,6 +29,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -149,33 +151,44 @@ public class CustomerOrderService {
             ? orderRepository.findAllByCustomerIdAndStatusOrderByCreatedAtDesc(customerUserId, status)
             : orderRepository.findAllByCustomerIdOrderByCreatedAtDesc(customerUserId);
 
-        return orders.stream().map(order -> {
-            int quotationCount = orderRequestRepository.countByOrderId(order.getId());
-            String providerName = null;
-            String providerAvatar = null;
-            UUID providerId = null;
-            if (order.getAssignedProvider() != null) {
-                providerId = order.getAssignedProvider().getId();
-                providerName = order.getAssignedProvider().getUser().getFullName();
-                providerAvatar = order.getAssignedProvider().getAvatarUrl();
-            }
+        return orders.stream().map(this::mapToOrderSummaryResponse).toList();
+    }
 
-            return new CustomerOrderSummaryResponse(
-                order.getId(),
-                order.getOrderCode(),
-                order.getTitle(),
-                order.getCategory() != null ? order.getCategory().getName() : null,
-                order.getStatus().name(),
-                order.getAddressSnapshot(),
-                order.getExpectedScheduleTime(),
-                order.getFinalPrice(),
-                providerId,
-                providerName,
-                providerAvatar,
-                quotationCount,
-                order.getCreatedAt()
-            );
-        }).toList();
+    @Transactional(readOnly = true)
+    public Page<CustomerOrderSummaryResponse> getMyOrders(UUID customerUserId, OrderStatus status, Pageable pageable) {
+        Page<Order> orders = (status != null)
+            ? orderRepository.findAllByCustomerIdAndStatusOrderByCreatedAtDesc(customerUserId, status, pageable)
+            : orderRepository.findAllByCustomerIdOrderByCreatedAtDesc(customerUserId, pageable);
+
+        return orders.map(this::mapToOrderSummaryResponse);
+    }
+
+    private CustomerOrderSummaryResponse mapToOrderSummaryResponse(Order order) {
+        int quotationCount = orderRequestRepository.countByOrderId(order.getId());
+        String providerName = null;
+        String providerAvatar = null;
+        UUID providerId = null;
+        if (order.getAssignedProvider() != null) {
+            providerId = order.getAssignedProvider().getId();
+            providerName = order.getAssignedProvider().getUser().getFullName();
+            providerAvatar = order.getAssignedProvider().getAvatarUrl();
+        }
+
+        return new CustomerOrderSummaryResponse(
+            order.getId(),
+            order.getOrderCode(),
+            order.getTitle(),
+            order.getCategory() != null ? order.getCategory().getName() : null,
+            order.getStatus().name(),
+            order.getAddressSnapshot(),
+            order.getExpectedScheduleTime(),
+            order.getFinalPrice(),
+            providerId,
+            providerName,
+            providerAvatar,
+            quotationCount,
+            order.getCreatedAt()
+        );
     }
 
     @Transactional(readOnly = true)

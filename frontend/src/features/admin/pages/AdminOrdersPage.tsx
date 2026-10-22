@@ -15,6 +15,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { OrderDetailModal, type GenericOrderItem } from '../components/OrderDetailModal';
+import { Pagination } from '../../../components/common/Pagination';
 import { categoryService, adminOrderService } from '../../../services';
 import type { AdminCategoryItem } from '../types/admin';
 import type { CustomerOrderSummary, OrderStatus } from '../../../types/order';
@@ -37,6 +38,11 @@ export function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<GenericOrderItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Pagination State (10 items per page)
+  const [page, setPage] = useState(0);
+  const [pageSize] = useState(10);
+  const [pageInfo, setPageInfo] = useState({ totalPages: 0, totalElements: 0 });
+
   // Fetch active categories from backend to populate filter dropdown
   useEffect(() => {
     categoryService.getCategories({ status: 'ACTIVE', size: 100 })
@@ -49,7 +55,7 @@ export function AdminOrdersPage() {
   }, []);
 
   // Fetch orders from backend
-  const fetchOrders = useCallback(async (isRefresh = false) => {
+  const fetchOrders = useCallback(async (isRefresh = false, pageIndex = page) => {
     if (isRefresh) {
       setIsRefreshing(true);
     } else {
@@ -57,26 +63,51 @@ export function AdminOrdersPage() {
     }
 
     try {
-      const data = await adminOrderService.getOrders({
+      const res = await adminOrderService.getOrders({
         status: activeTab === 'ALL' ? undefined : activeTab,
         categoryId: categoryFilter === 'all' ? undefined : categoryFilter,
         search: searchQuery.trim() || undefined,
+        page: pageIndex,
+        size: pageSize,
       });
-      setOrders(data);
+      setOrders(res.content);
+      setPageInfo({
+        totalPages: res.totalPages,
+        totalElements: res.totalElements,
+      });
     } catch {
       setOrders([]);
+      setPageInfo({ totalPages: 0, totalElements: 0 });
     } finally {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [activeTab, categoryFilter, searchQuery]);
+  }, [activeTab, categoryFilter, searchQuery, page, pageSize]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Tab counts
-  const countAll = orders.length;
+  const handleTabChange = (tab: OrderTabType) => {
+    setActiveTab(tab);
+    setPage(0);
+  };
+
+  const handleCategoryChange = (catId: string) => {
+    setCategoryFilter(catId);
+    setPage(0);
+  };
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    setPage(0);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  // Status overview counts for current view
   const countPending = orders.filter((o) => o.status === 'PENDING_PROVIDER').length;
   const countInProgress = orders.filter((o) => o.status === 'IN_PROGRESS').length;
   const countCompleted = orders.filter((o) => o.status === 'COMPLETED').length;
@@ -169,41 +200,41 @@ export function AdminOrdersPage() {
         <button
           type="button"
           className={`orders-tab-btn ${activeTab === 'ALL' ? 'active' : ''}`}
-          onClick={() => setActiveTab('ALL')}
+          onClick={() => handleTabChange('ALL')}
         >
-          Tất cả đơn ({countAll})
+          Tất cả đơn {activeTab === 'ALL' && pageInfo.totalElements > 0 ? `(${pageInfo.totalElements})` : ''}
         </button>
 
         <button
           type="button"
           className={`orders-tab-btn ${activeTab === 'PENDING_PROVIDER' ? 'active' : ''}`}
-          onClick={() => setActiveTab('PENDING_PROVIDER')}
+          onClick={() => handleTabChange('PENDING_PROVIDER')}
         >
-          <Clock size={14} /> Chờ thợ nhận việc ({countPending})
+          <Clock size={14} /> Chờ thợ nhận việc {activeTab === 'PENDING_PROVIDER' && pageInfo.totalElements > 0 ? `(${pageInfo.totalElements})` : ''}
         </button>
 
         <button
           type="button"
           className={`orders-tab-btn ${activeTab === 'IN_PROGRESS' ? 'active' : ''}`}
-          onClick={() => setActiveTab('IN_PROGRESS')}
+          onClick={() => handleTabChange('IN_PROGRESS')}
         >
-          Đang thực hiện ({countInProgress})
+          Đang thực hiện {activeTab === 'IN_PROGRESS' && pageInfo.totalElements > 0 ? `(${pageInfo.totalElements})` : ''}
         </button>
 
         <button
           type="button"
           className={`orders-tab-btn ${activeTab === 'COMPLETED' ? 'active' : ''}`}
-          onClick={() => setActiveTab('COMPLETED')}
+          onClick={() => handleTabChange('COMPLETED')}
         >
-          <CheckCircle2 size={14} /> Hoàn thành ({countCompleted})
+          <CheckCircle2 size={14} /> Hoàn thành {activeTab === 'COMPLETED' && pageInfo.totalElements > 0 ? `(${pageInfo.totalElements})` : ''}
         </button>
 
         <button
           type="button"
           className={`orders-tab-btn ${activeTab === 'CANCELED' ? 'active' : ''}`}
-          onClick={() => setActiveTab('CANCELED')}
+          onClick={() => handleTabChange('CANCELED')}
         >
-          <XCircle size={14} /> Đã hủy ({countCanceled})
+          <XCircle size={14} /> Đã hủy {activeTab === 'CANCELED' && pageInfo.totalElements > 0 ? `(${pageInfo.totalElements})` : ''}
         </button>
       </div>
 
@@ -216,7 +247,7 @@ export function AdminOrdersPage() {
             className="toolbar-search-input"
             placeholder="Tìm theo mã đơn, tiêu đề dịch vụ, địa chỉ, thợ phụ trách..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
         </div>
 
@@ -226,7 +257,7 @@ export function AdminOrdersPage() {
             <select
               className="toolbar-select"
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+              onChange={(e) => handleCategoryChange(e.target.value)}
             >
               <option value="all">Tất cả ngành dịch vụ</option>
               {categories.map((cat) => (
@@ -408,6 +439,17 @@ export function AdminOrdersPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        <Pagination
+          currentPage={page}
+          totalPages={pageInfo.totalPages}
+          totalElements={pageInfo.totalElements}
+          pageSize={pageSize}
+          onPageChange={handlePageChange}
+          itemName="đơn hàng"
+          disabled={loading}
+        />
       </div>
 
       {/* Modal Detail */}

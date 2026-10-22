@@ -197,7 +197,8 @@ export function FindProviderPage() {
     setSelectedProviderForBooking(provider);
     try {
       setCheckingOrders(true);
-      const orders = await customerOrderService.getMyOrders('PENDING_PROVIDER');
+      const res = await customerOrderService.getMyOrders('PENDING_PROVIDER', 0, 50);
+      const orders = res.content;
       if (orders && orders.length > 0) {
         setPendingOrders(orders);
         setShowSelectOrderModal(true);

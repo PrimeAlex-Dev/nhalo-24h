@@ -45,7 +45,7 @@ public class AdminOrderController {
         @Parameter(description = "Từ khóa tìm kiếm theo mã đơn, tiêu đề, tên khách, SĐT hoặc địa chỉ")
         @RequestParam(required = false) String search,
 
-        @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+        @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         Page<AdminOrderSummaryResponse> response = adminOrderService.getOrders(status, categoryId, search, pageable);
         return ResponseEntity.ok(response);
