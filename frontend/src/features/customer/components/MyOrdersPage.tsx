@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { PATHS } from '../../../routes/paths';
 import './MyOrdersPage.css';
 import { 
   Calendar, 
@@ -9,7 +11,9 @@ import {
   AlertCircle, 
   Wrench, 
   Inbox,
-  Bell
+  Bell,
+  Home,
+  ArrowLeft
 } from 'lucide-react';
 import { customerOrderService } from '../../../services';
 import type { CustomerOrderSummary, OrderStatus } from '../../../types/order';
@@ -124,10 +128,16 @@ export function MyOrdersPage() {
       <div className="container orders-container">
         {/* Page Header */}
         <div className="orders-header-row">
-          <div>
+          <div className="orders-header-text">
             <h1 className="orders-page-title">Đơn hàng của tôi</h1>
             <p className="orders-page-subtitle">Theo dõi các đơn sửa chữa, xem báo giá của thợ và lịch sử hoàn tất.</p>
           </div>
+          <Link to={PATHS.CUSTOMER.ROOT} className="orders-header-back-home" title="Trở về trang chủ">
+            <ArrowLeft size={15} />
+            <Home size={14} />
+            <span className="back-home-text-full">Trở về trang chủ</span>
+            <span className="back-home-text-short">Trang chủ</span>
+          </Link>
         </div>
 
         {/* Tab Filters */}
@@ -188,14 +198,24 @@ export function MyOrdersPage() {
             <Inbox size={48} className="empty-icon" />
             <h3>Chưa có đơn hàng nào</h3>
             <p>Bạn chưa có đơn sửa chữa nào trong mục này. Bấm nút dưới để tạo đơn và nhận báo giá từ thợ nhé!</p>
-            <button 
-              type="button" 
-              className="btn-empty-create"
-              onClick={() => setShowCreateModal(true)}
-            >
-              <Plus size={16} />
-              <span>Đặt lịch sửa chữa ngay</span>
-            </button>
+            <div className="empty-state-actions">
+              <button 
+                type="button" 
+                className="btn-empty-create"
+                onClick={() => setShowCreateModal(true)}
+              >
+                <Plus size={16} />
+                <span>Đặt lịch sửa chữa ngay</span>
+              </button>
+              <Link 
+                to={PATHS.CUSTOMER.ROOT} 
+                className="btn-empty-back-home"
+                title="Trở về trang chủ"
+              >
+                <Home size={15} />
+                <span>Trở về trang chủ</span>
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="orders-list">

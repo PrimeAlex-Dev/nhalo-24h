@@ -9,7 +9,8 @@ import {
   Navigation,
   MessageSquare,
   DollarSign,
-  Ban
+  Ban,
+  Info
 } from 'lucide-react';
 import type { ProviderJobItem } from '../../../types/order';
 import './JobDetailModal.css';
@@ -44,10 +45,13 @@ export function JobDetailModal({
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
   };
 
-  const isPending = job.requestStatus === 'PENDING_RESPONSE';
-  const isQuoted = job.requestStatus === 'QUOTED';
-  const isInProgress = job.orderStatus === 'IN_PROGRESS';
-  const isCompleted = job.orderStatus === 'COMPLETED';
+  const isMyJobInProgress = job.requestStatus === 'ACCEPTED' && job.orderStatus === 'IN_PROGRESS';
+  const isMyJobCompleted = job.requestStatus === 'ACCEPTED' && job.orderStatus === 'COMPLETED';
+  const isAssignedToOther = job.requestStatus === 'CANCELED' && (job.orderStatus === 'IN_PROGRESS' || job.orderStatus === 'COMPLETED');
+  const isOrderCanceled = job.orderStatus === 'CANCELED';
+  const isRejected = job.requestStatus === 'REJECTED';
+  const isQuoted = job.requestStatus === 'QUOTED' && job.orderStatus === 'PENDING_PROVIDER';
+  const isPending = job.requestStatus === 'PENDING_RESPONSE' && job.orderStatus === 'PENDING_PROVIDER';
 
   return (
     <div className="job-modal-backdrop" onClick={onClose}>
@@ -78,7 +82,7 @@ export function JobDetailModal({
         {/* Modal Body */}
         <div className="job-modal-body">
           {/* Status / Earnings banner */}
-          {isInProgress ? (
+          {isMyJobInProgress ? (
             <div className="job-modal-price-box in-progress">
               <div>
                 <div className="job-modal-price-label">Giá chốt công việc</div>
@@ -87,6 +91,52 @@ export function JobDetailModal({
                 </div>
               </div>
               <div className="job-modal-price-tag in-progress">Đang thực hiện</div>
+            </div>
+          ) : isMyJobCompleted ? (
+            <div className="job-modal-price-box completed">
+              <div>
+                <div className="job-modal-price-label">Đã hoàn tất & Thu tiền</div>
+                <div className="job-modal-price-value">
+                  {job.quotedPrice?.toLocaleString('vi-VN')} đ
+                </div>
+              </div>
+              <div className="job-modal-price-tag completed">Hoàn thành</div>
+            </div>
+          ) : isAssignedToOther ? (
+            <div className="job-modal-price-box assigned-other">
+              <div className="assigned-other-content">
+                <div className="assigned-other-title">
+                  <Info size={16} />
+                  <span>Đơn đã có thợ khác nhận</span>
+                </div>
+                <div className="assigned-other-desc">
+                  Khách hàng đã lựa chọn một thợ khác cho công việc này. Yêu cầu báo giá của bạn đã đóng.
+                </div>
+                {job.quotedPrice ? (
+                  <div className="assigned-other-subprice">
+                    Mức giá bạn đã gửi báo giá: <strong>{job.quotedPrice.toLocaleString('vi-VN')} đ</strong>
+                  </div>
+                ) : null}
+              </div>
+              <div className="job-modal-price-tag assigned-other">Đã đóng</div>
+            </div>
+          ) : isOrderCanceled ? (
+            <div className="job-modal-price-box canceled">
+              <div>
+                <div className="job-modal-price-label">Trạng thái đơn hàng</div>
+                <div className="job-modal-price-value text-muted">Đã bị hủy</div>
+                <div className="job-modal-price-subdesc">Khách hàng đã hủy yêu cầu công việc này.</div>
+              </div>
+              <div className="job-modal-price-tag canceled">Đã hủy</div>
+            </div>
+          ) : isRejected ? (
+            <div className="job-modal-price-box rejected">
+              <div>
+                <div className="job-modal-price-label">Trạng thái yêu cầu</div>
+                <div className="job-modal-price-value text-muted">Đã từ chối</div>
+                {job.rejectReason && <div className="job-modal-price-subdesc">Lý do: {job.rejectReason}</div>}
+              </div>
+              <div className="job-modal-price-tag rejected">Từ chối</div>
             </div>
           ) : isQuoted ? (
             <div className="job-modal-price-box quoted">
@@ -97,16 +147,6 @@ export function JobDetailModal({
                 </div>
               </div>
               <div className="job-modal-price-tag quoted">Đang chờ khách duyệt</div>
-            </div>
-          ) : isCompleted ? (
-            <div className="job-modal-price-box completed">
-              <div>
-                <div className="job-modal-price-label">Đã hoàn tất & Thu tiền</div>
-                <div className="job-modal-price-value">
-                  {job.quotedPrice?.toLocaleString('vi-VN')} đ
-                </div>
-              </div>
-              <div className="job-modal-price-tag completed">Hoàn thành</div>
             </div>
           ) : (
             <div className="job-modal-price-box pending">
@@ -130,11 +170,11 @@ export function JobDetailModal({
                 <div className="job-modal-info-val">
                   {job.customerName} · <strong>{job.customerPhone || '***-***'}</strong>
                 </div>
-                {!isInProgress && !isCompleted && (
+                {!isMyJobInProgress && !isMyJobCompleted && (
                   <span className="phone-privacy-hint">SĐT được bảo mật và hiển thị khi khách chốt việc.</span>
                 )}
               </div>
-              {isInProgress && (
+              {isMyJobInProgress && (
                 <button 
                   type="button" 
                   onClick={handleCall}
@@ -247,7 +287,7 @@ export function JobDetailModal({
             </>
           )}
 
-          {isInProgress && (
+          {isMyJobInProgress && (
             <button 
               type="button" 
               className="job-modal-complete-btn"
@@ -258,7 +298,7 @@ export function JobDetailModal({
             </button>
           )}
 
-          {isCompleted && (
+          {(isMyJobCompleted || isAssignedToOther || isOrderCanceled || isRejected || isQuoted) && (
             <button type="button" className="job-modal-done-btn" onClick={onClose}>
               Đóng
             </button>

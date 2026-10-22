@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, Loader2, MessageSquare, Clock } from 'lucide-react';
+import { 
+  X, 
+  Send, 
+  Loader2, 
+  MessageSquare, 
+  Sparkles, 
+  User 
+} from 'lucide-react';
 import { orderChatService } from '../../../services';
 import type { ChatMessageItem, MessageSenderRole } from '../../../types/order';
 import './OrderChatDrawer.css';
@@ -32,18 +39,29 @@ export function OrderChatDrawer({
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen && requestId) {
       loadMessages(true);
-      // Auto-poll messages every 4 seconds
+      // Auto-poll messages every 3.5 seconds
       const timer = setInterval(() => {
         loadMessages(false);
-      }, 4000);
+      }, 3500);
       return () => clearInterval(timer);
     }
   }, [isOpen, requestId]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     scrollToBottom();
@@ -69,23 +87,44 @@ export function OrderChatDrawer({
     }
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!inputText.trim() || !requestId || sending) return;
 
+    const messageContent = inputText.trim();
     try {
       setSending(true);
       const newMsg = await orderChatService.sendMessage(requestId, {
-        content: inputText.trim(),
+        content: messageContent,
       });
       setMessages((prev) => [...prev, newMsg]);
       setInputText('');
+      inputRef.current?.focus();
     } catch (err: any) {
       setErrorMsg(err.message || 'Không thể gửi tin nhắn.');
     } finally {
       setSending(false);
     }
   };
+
+  const handleSelectSuggestion = (text: string) => {
+    setInputText(text);
+    inputRef.current?.focus();
+  };
+
+  const suggestions = currentUserRole === 'CUSTOMER'
+    ? [
+        'Xin chào thợ, thời gian nào anh/chị có thể qua xem được?',
+        'Mức giá báo này đã bao gồm tiền công và linh kiện chưa ạ?',
+        'Tôi có đính kèm ảnh chi tiết sự cố trong đơn hàng rồi nhé.',
+      ]
+    : [
+        'Xin chào quý khách, tôi có thể qua kiểm tra theo đúng giờ hẹn.',
+        'Quý khách có thể mô tả kỹ hơn hiện tượng đang bị sự cố không ạ?',
+        'Tôi đã xem ảnh sự cố và sẽ chuẩn bị sẵn thiết bị để xử lý.',
+      ];
+
+  const partnerRoleLabel = currentUserRole === 'CUSTOMER' ? 'Thợ chuyên nghiệp' : 'Khách hàng';
 
   if (!isOpen) return null;
 
@@ -100,35 +139,45 @@ export function OrderChatDrawer({
         {/* Header */}
         <div className="chat-drawer-header">
           <div className="chat-partner-info">
-            {partnerAvatar ? (
-              <img src={partnerAvatar} alt={partnerName} className="chat-partner-avatar" />
-            ) : (
-              <div className="chat-partner-avatar-fallback">
-                {partnerName ? partnerName.charAt(0).toUpperCase() : 'U'}
-              </div>
-            )}
-            <div>
+            <div className="chat-avatar-wrapper">
+              {partnerAvatar ? (
+                <img src={partnerAvatar} alt={partnerName} className="chat-partner-avatar" />
+              ) : (
+                <div className="chat-partner-avatar-fallback">
+                  {partnerName ? partnerName.charAt(0).toUpperCase() : <User size={18} />}
+                </div>
+              )}
+              <span className="chat-online-dot" title="Đang trực tuyến" />
+            </div>
+
+            <div className="chat-partner-text-meta">
               <div className="chat-partner-name-row">
                 <h3 className="chat-partner-name">{partnerName}</h3>
-                {quotedPrice && quotedPrice > 0 && (
-                  <span className="chat-price-badge">
-                    {quotedPrice.toLocaleString('vi-VN')} đ
-                  </span>
-                )}
+                <span className="chat-role-pill">{partnerRoleLabel}</span>
               </div>
-              <p className="chat-order-context">
-                {partnerHeadline ? partnerHeadline : (orderTitle ? `Đơn: ${orderTitle}` : 'Trao đổi báo giá')}
+              <p className="chat-order-context" title={partnerHeadline || orderTitle || 'Trao đổi báo giá'}>
+                {partnerHeadline ? partnerHeadline : (orderTitle ? `Đơn: ${orderTitle}` : 'Trao đổi trực tiếp')}
               </p>
             </div>
           </div>
-          <button 
-            type="button" 
-            className="chat-close-btn" 
-            onClick={onClose}
-            aria-label="Đóng chat"
-          >
-            <X size={20} />
-          </button>
+
+          <div className="chat-header-actions">
+            {quotedPrice && quotedPrice > 0 && (
+              <div className="chat-header-price-tag" title="Mức giá báo">
+                <span className="price-tag-sub">Báo giá</span>
+                <span className="price-tag-val">{quotedPrice.toLocaleString('vi-VN')} đ</span>
+              </div>
+            )}
+            <button 
+              type="button" 
+              className="chat-close-btn" 
+              onClick={onClose}
+              aria-label="Đóng chat"
+              title="Đóng cửa sổ chat"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Message Body */}
@@ -141,58 +190,108 @@ export function OrderChatDrawer({
 
           {loading ? (
             <div className="chat-loading-state">
-              <Loader2 size={28} className="spin-icon" />
-              <p>Đang tải tin nhắn...</p>
+              <Loader2 size={32} className="spin-icon chat-spinner" />
+              <p>Đang kết nối tin nhắn...</p>
             </div>
           ) : messages.length === 0 ? (
             <div className="chat-empty-state">
-              <MessageSquare size={36} className="chat-empty-icon" />
-              <p className="chat-empty-title">Chưa có tin nhắn nào</p>
+              <div className="chat-empty-icon-circle">
+                <MessageSquare size={32} />
+              </div>
+              <h4 className="chat-empty-title">Bắt đầu cuộc trò chuyện</h4>
               <p className="chat-empty-sub">
-                Hãy gửi tin nhắn để trao đổi chi tiết về sự cố, giá cả và thời gian hẹn nhé!
+                Trao đổi thêm về tình trạng sự cố, chốt thời gian đến nhà hoặc thương lượng chi tiết chi phí trước khi làm việc.
               </p>
+
+              {/* Quick suggestions */}
+              <div className="chat-suggestions-box">
+                <div className="chat-suggestions-label">
+                  <Sparkles size={13} />
+                  <span>Gợi ý câu hỏi nhanh:</span>
+                </div>
+                <div className="chat-suggestions-list">
+                  {suggestions.map((sug, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="chat-suggestion-chip"
+                      onClick={() => handleSelectSuggestion(sug)}
+                    >
+                      {sug}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : (
-            messages.map((msg) => {
-              const isMine = msg.senderRole === currentUserRole;
-              const formattedTime = new Date(msg.createdAt).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-              });
+            <div className="chat-messages-stream">
+              <div className="chat-conversation-start-badge">
+                <span>Cuộc trò chuyện trao đổi báo giá</span>
+              </div>
 
-              return (
-                <div key={msg.id} className={`chat-message-row ${isMine ? 'mine' : 'partner'}`}>
-                  <div className="chat-bubble">
-                    <p className="chat-text">{msg.content}</p>
-                    <span className="chat-timestamp">
-                      <Clock size={11} /> {formattedTime}
-                    </span>
+              {messages.map((msg) => {
+                const isMine = msg.senderRole === currentUserRole;
+                const formattedTime = new Date(msg.createdAt).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                });
+
+                return (
+                  <div key={msg.id} className={`chat-message-row ${isMine ? 'mine' : 'partner'}`}>
+                    {!isMine && (
+                      <div className="partner-mini-avatar-col">
+                        {partnerAvatar ? (
+                          <img src={partnerAvatar} alt="" className="partner-mini-avatar" />
+                        ) : (
+                          <div className="partner-mini-avatar fallback">
+                            {partnerName ? partnerName.charAt(0).toUpperCase() : 'U'}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="chat-bubble">
+                      <div className="chat-text">{msg.content}</div>
+                      <div className="chat-bubble-meta">
+                        <span className="chat-timestamp">{formattedTime}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              );
-            })
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
           )}
-          <div ref={messagesEndRef} />
         </div>
 
         {/* Input Footer */}
         <form onSubmit={handleSendMessage} className="chat-input-footer">
-          <input
-            type="text"
-            className="chat-input-field"
-            placeholder="Nhập tin nhắn..."
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            disabled={sending || loading}
-          />
-          <button 
-            type="submit" 
-            className="chat-send-btn" 
-            disabled={!inputText.trim() || sending || loading}
-            aria-label="Gửi tin nhắn"
-          >
-            {sending ? <Loader2 size={18} className="spin-icon" /> : <Send size={18} />}
-          </button>
+          <div className="chat-input-bar">
+            <input
+              ref={inputRef}
+              type="text"
+              className="chat-input-field"
+              placeholder="Nhập tin nhắn..."
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              disabled={sending || loading}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+            />
+            <button 
+              type="submit" 
+              className="chat-send-btn" 
+              disabled={!inputText.trim() || sending || loading}
+              aria-label="Gửi tin nhắn"
+              title="Gửi tin nhắn"
+            >
+              {sending ? <Loader2 size={18} className="spin-icon" /> : <Send size={17} />}
+            </button>
+          </div>
         </form>
       </div>
     </div>

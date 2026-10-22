@@ -22,8 +22,10 @@ export function ProviderLayout() {
   const refreshIncomingRequestsCount = useCallback(async () => {
     try {
       const reqs = await providerJobService.getIncomingRequests();
-      const pending = reqs.filter((r) => r.requestStatus === 'PENDING_RESPONSE');
-      setIncomingRequestsCount(pending.length > 0 ? pending.length : reqs.length);
+      const pending = reqs.filter(
+        (r) => r.requestStatus === 'PENDING_RESPONSE' && r.orderStatus === 'PENDING_PROVIDER'
+      );
+      setIncomingRequestsCount(pending.length);
     } catch {
       setIncomingRequestsCount(0);
     }
