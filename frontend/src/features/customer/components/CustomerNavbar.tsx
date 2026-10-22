@@ -69,7 +69,7 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
               <div className="customer-logo-icon">
                 <Wrench size={18} color="#FFFFFF" strokeWidth={2.4} />
               </div>
-              <span className="customer-logo-text">HomeFix</span>
+              <span className="customer-logo-text">Nhà Lo 24h</span>
             </Link>
           </div>
 
@@ -91,18 +91,18 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
             <Link 
               to={PATHS.CUSTOMER.ORDERS} 
               className="customer-orders-btn" 
-              aria-label="My Orders"
+              aria-label="Đơn hàng của tôi"
             >
               <ClipboardList size={18} className="orders-icon" />
-              <span className="orders-text">My Orders</span>
+              <span className="orders-text">Đơn hàng của tôi</span>
             </Link>
 
             {/* Notifications Bell with Badge */}
             <button 
               type="button" 
               className="customer-icon-btn customer-bell-btn" 
-              aria-label="Notifications"
-              title="Notifications"
+              aria-label="Thông báo"
+              title="Thông báo"
             >
               <Bell size={19} />
               {mockCurrentUser.unreadNotifications > 0 && (
@@ -119,7 +119,7 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
                 className="customer-avatar-btn"
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 aria-expanded={isUserMenuOpen}
-                aria-label="User menu"
+                aria-label="Menu tài khoản"
               >
                 <div className="customer-avatar-circle">
                   {avatarLetter}
@@ -135,7 +135,9 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
                     </div>
                     <div className="dropdown-user-info">
                       <span className="dropdown-user-name">{displayName}</span>
-                      <span className="dropdown-user-role">{user?.role || 'Customer'}</span>
+                      <span className="dropdown-user-role">
+                        {user?.role === 'ADMIN' ? 'Quản trị viên' : user?.role === 'PROVIDER' ? 'Thợ kỹ thuật' : 'Khách hàng'}
+                      </span>
                     </div>
                   </div>
                   <div className="dropdown-divider" />
@@ -156,7 +158,7 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
                     onClick={() => setIsUserMenuOpen(false)}
                   >
                     <ClipboardList size={16} />
-                    <span>My Orders</span>
+                    <span>Đơn hàng của tôi</span>
                   </Link>
                   <Link 
                     to={PATHS.CUSTOMER.PROFILE} 
@@ -164,7 +166,7 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
                     onClick={() => setIsUserMenuOpen(false)}
                   >
                     <User size={16} />
-                    <span>My Profile</span>
+                    <span>Hồ sơ cá nhân</span>
                   </Link>
                   <a 
                     href="#settings" 
@@ -172,7 +174,7 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
                     onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); }}
                   >
                     <Settings size={16} />
-                    <span>Settings</span>
+                    <span>Cài đặt</span>
                   </a>
                   <div className="dropdown-divider" />
                   <button 
@@ -181,7 +183,7 @@ export function CustomerNavbar({ onLogout }: CustomerNavbarProps = {}) {
                     onClick={handleLogoutClick}
                   >
                     <LogOut size={16} />
-                    <span>Log Out (Về Landing Page)</span>
+                    <span>Đăng xuất</span>
                   </button>
                 </div>
               )}

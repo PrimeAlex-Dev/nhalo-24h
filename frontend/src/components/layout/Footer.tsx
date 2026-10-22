@@ -59,7 +59,7 @@ export function Footer() {
         <div className="footer-bottom">
           <div className="footer-giant-brand">Nhà Lo 24h</div>
           <p className="footer-copyright">
-            &copy; {CURRENT_YEAR} Nhalo24h. All rights reserved.
+            &copy; {CURRENT_YEAR} Nhà Lo 24h. Toàn bộ bản quyền được bảo hộ.
           </p>
         </div>
       </div>

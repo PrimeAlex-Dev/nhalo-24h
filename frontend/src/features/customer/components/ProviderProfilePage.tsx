@@ -179,10 +179,10 @@ export function ProviderProfilePage() {
             type="button"
             className="profile-back-link"
             onClick={handleBack}
-            aria-label="Back to providers"
+            aria-label="Quay lại danh sách thợ"
           >
             <ArrowLeft size={16} />
-            <span>Back to providers</span>
+            <span>Quay lại danh sách thợ</span>
           </button>
         </div>
 
@@ -191,13 +191,13 @@ export function ProviderProfilePage() {
           <div className="booking-toast-alert" role="alert">
             <CheckCircle2 size={18} className="toast-icon" />
             <div className="toast-content">
-              <strong>Booking request sent!</strong> {provider.name} has been notified and typically responds within {provider.responseTime || '~10 min'}.
+              <strong>Đã gửi yêu cầu đặt thợ!</strong> {provider.name} đã nhận được thông báo và thường phản hồi trong vòng {provider.responseTime || '~10 phút'}.
             </div>
             <button
               type="button"
               className="toast-close-btn"
               onClick={() => setIsBooked(false)}
-              aria-label="Close notification"
+              aria-label="Đóng thông báo"
             >
               <X size={15} />
             </button>
@@ -229,7 +229,7 @@ export function ProviderProfilePage() {
                     <BadgeCheck
                       size={20}
                       className="profile-verified-icon"
-                      aria-label="Verified pro"
+                      aria-label="Thợ đã xác minh"
                     />
                   )}
                 </div>
@@ -249,18 +249,20 @@ export function ProviderProfilePage() {
                     ))}
                   </div>
                   <span className="profile-rating-number">{provider.rating}</span>
-                  <span className="profile-reviews-count">({provider.reviewsCount} reviews)</span>
+                  <span className="profile-reviews-count">({provider.reviewsCount} đánh giá)</span>
                 </div>
 
                 {/* Tags Row */}
                 <div className="profile-badges-row">
                   <span className="profile-badge service-badge">{provider.category}</span>
                   {provider.isTopRated && (
-                    <span className="profile-badge top-rated-badge">Top rated</span>
+                    <span className="profile-badge top-rated-badge">Đánh giá cao</span>
                   )}
                   <span className="profile-badge availability-badge">
                     <Clock size={13} />
-                    <span>{provider.availabilityDetail || `${provider.availability}, 2:00 PM`}</span>
+                    <span>
+                      {provider.availabilityDetail || (provider.availability === 'Available today' ? 'Sẵn sàng hôm nay' : 'Sắp rảnh')}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -272,8 +274,8 @@ export function ProviderProfilePage() {
                 <div className="metric-icon-box">
                   <Award size={20} />
                 </div>
-                <div className="metric-value">{provider.experienceYears || 12} yrs</div>
-                <div className="metric-label">Experience</div>
+                <div className="metric-value">{provider.experienceYears || 12} năm</div>
+                <div className="metric-label">Kinh nghiệm</div>
               </div>
 
               <div className="profile-metric-card">
@@ -281,15 +283,15 @@ export function ProviderProfilePage() {
                   <Briefcase size={20} />
                 </div>
                 <div className="metric-value">{provider.completedJobsCount || '1,840'}</div>
-                <div className="metric-label">Jobs done</div>
+                <div className="metric-label">Đã hoàn thành</div>
               </div>
 
               <div className="profile-metric-card">
                 <div className="metric-icon-box">
                   <Clock size={20} />
                 </div>
-                <div className="metric-value">{provider.responseTime || '~10 min'}</div>
-                <div className="metric-label">Responds</div>
+                <div className="metric-value">{provider.responseTime || '~10 phút'}</div>
+                <div className="metric-label">Phản hồi</div>
               </div>
 
               <div className="profile-metric-card">
@@ -297,24 +299,24 @@ export function ProviderProfilePage() {
                   <MapPin size={20} />
                 </div>
                 <div className="metric-value">{provider.distance}</div>
-                <div className="metric-label">Distance</div>
+                <div className="metric-label">Khoảng cách</div>
               </div>
             </div>
 
             {/* About Section */}
             <div className="profile-section">
-              <h2 className="section-title">About</h2>
+              <h2 className="section-title">Giới thiệu bản thân</h2>
               <p className="section-paragraph">
                 {provider.about ||
-                  'Certified professional with years of hands-on experience in residential services. Dedicated to punctual arrivals, upfront estimates, and high quality long-lasting results.'}
+                  'Kỹ thuật viên chuyên nghiệp với nhiều năm kinh nghiệm cung cấp dịch vụ dân dụng. Cam kết đúng giờ, báo giá rõ ràng và bảo hành chu đáo.'}
               </p>
             </div>
 
             {/* Skills & Specialties */}
             <div className="profile-section">
-              <h2 className="section-title">Skills &amp; specialties</h2>
+              <h2 className="section-title">Chuyên môn &amp; Kỹ năng</h2>
               <div className="skills-pill-group">
-                {(provider.skills || ['Diagnosis & Repair', 'Installation', 'Preventative Maintenance', 'Emergency Callout']).map(
+                {(provider.skills || ['Kiểm tra & Sửa chữa', 'Lắp đặt thiết bị', 'Bảo dưỡng định kỳ', 'Xử lý sự cố khẩn cấp']).map(
                   (skill, index) => (
                     <div key={index} className="skill-pill">
                       <Check size={14} strokeWidth={2.5} className="skill-check-icon" />
@@ -330,7 +332,7 @@ export function ProviderProfilePage() {
               <div className="ai-insight-box">
                 <Sparkles size={18} className="ai-sparkles-icon" />
                 <p className="ai-insight-text">
-                  <strong className="ai-prefix">AI insight:</strong> {provider.aiInsight}
+                  <strong className="ai-prefix">Gợi ý AI:</strong> {provider.aiInsight}
                 </p>
               </div>
             )}
@@ -338,7 +340,7 @@ export function ProviderProfilePage() {
             {/* Reviews Section */}
             <div className="profile-section reviews-section">
               <div className="reviews-section-header">
-                <h2 className="section-title">Reviews</h2>
+                <h2 className="section-title">Đánh giá từ khách hàng</h2>
                 <div className="reviews-summary-right">
                   <div className="stars-group">
                     {Array.from({ length: 5 }).map((_, idx) => (
@@ -353,7 +355,7 @@ export function ProviderProfilePage() {
                   </div>
                   <span className="summary-score">{provider.rating}</span>
                   <span className="summary-dot">·</span>
-                  <span className="summary-count">{provider.reviewsCount} reviews</span>
+                  <span className="summary-count">{provider.reviewsCount} đánh giá</span>
                 </div>
               </div>
 
@@ -399,15 +401,15 @@ export function ProviderProfilePage() {
             <div className="sticky-booking-card">
               <div className="booking-card-price-row">
                 <div className="price-label-group">
-                  <span className="starting-from-text">Starting from</span>
+                  <span className="starting-from-text">Giá từ</span>
                   <div className="price-display">
-                    <span className="price-value">{provider.pricePerHour > 1000 ? `${provider.pricePerHour.toLocaleString('vi-VN')} đ` : `$${provider.pricePerHour}`}</span>
-                    <span className="price-unit">{provider.pricePerHour > 1000 ? '/giờ' : '/hr'}</span>
+                    <span className="price-value">{provider.pricePerHour > 1000 ? `${provider.pricePerHour.toLocaleString('vi-VN')} đ` : `${provider.pricePerHour.toLocaleString('vi-VN')} đ`}</span>
+                    <span className="price-unit">/giờ</span>
                   </div>
                 </div>
 
                 <div className="booking-availability-pill">
-                  {provider.availability}
+                  {provider.availability === 'Available today' ? 'Sẵn sàng hôm nay' : 'Sắp rảnh'}
                 </div>
               </div>
 
@@ -424,7 +426,7 @@ export function ProviderProfilePage() {
                       <span>Đang kiểm tra...</span>
                     </>
                   ) : (
-                    'Book Now'
+                    'Đặt thợ ngay'
                   )}
                 </button>
 
@@ -436,12 +438,12 @@ export function ProviderProfilePage() {
                   {isCompared ? (
                     <>
                       <Check size={16} />
-                      <span>Added to compare</span>
+                      <span>Đã thêm so sánh</span>
                     </>
                   ) : (
                     <>
                       <ArrowLeftRight size={15} />
-                      <span>Add to compare</span>
+                      <span>Thêm vào so sánh</span>
                     </>
                   )}
                 </button>
@@ -452,15 +454,15 @@ export function ProviderProfilePage() {
               <div className="booking-trust-list">
                 <div className="trust-item">
                   <ShieldCheck size={17} className="trust-icon text-green" />
-                  <span>Background-checked &amp; verified</span>
+                  <span>Đã xác minh danh tính &amp; tay nghề</span>
                 </div>
                 <div className="trust-item">
                   <Clock size={17} className="trust-icon text-blue" />
-                  <span>Typically responds in {provider.responseTime || '~10 min'}</span>
+                  <span>Thường phản hồi trong {provider.responseTime || '~10 phút'}</span>
                 </div>
                 <div className="trust-item">
                   <Award size={17} className="trust-icon text-amber" />
-                  <span>{provider.completedJobsCount || '1,840'} jobs completed</span>
+                  <span>{provider.completedJobsCount || '1,840'} công việc đã hoàn thành</span>
                 </div>
               </div>
             </div>
