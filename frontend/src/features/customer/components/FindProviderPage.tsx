@@ -86,18 +86,18 @@ export function FindProviderPage() {
 
   // Combined category filters (DB categories + fallback filters)
   const categoryFilters = useMemo(() => {
-    const combined = ['All services'];
+    const combined = ['Tất cả dịch vụ'];
     if (dbCategories.length > 0) {
       combined.push(...dbCategories);
     } else {
-      combined.push(...providerCategoryFilters.filter((c) => c !== 'All services'));
+      combined.push(...providerCategoryFilters.filter((c) => c !== 'Tất cả dịch vụ' && c !== 'All services'));
     }
     return Array.from(new Set(combined));
   }, [dbCategories]);
 
-  // Derive selected category from URL search params (or default to 'All services')
+  // Derive selected category from URL search params (or default to 'Tất cả dịch vụ')
   const selectedCategory = useMemo(() => {
-    if (!categoryParam) return 'All services';
+    if (!categoryParam || categoryParam.toLowerCase() === 'all services') return 'Tất cả dịch vụ';
     const found = categoryFilters.find(
       (c) => c.toLowerCase() === categoryParam.trim().toLowerCase()
     );
@@ -113,7 +113,7 @@ export function FindProviderPage() {
 
   const handleCategorySelect = (category: string) => {
     const nextParams = new URLSearchParams(searchParams);
-    if (category === 'All services') {
+    if (category === 'Tất cả dịch vụ' || category === 'All services') {
       nextParams.delete('category');
     } else {
       nextParams.set('category', category);
@@ -148,7 +148,7 @@ export function FindProviderPage() {
     return providersPool
       .filter((provider) => {
         // Category filter
-        if (selectedCategory !== 'All services') {
+        if (selectedCategory !== 'Tất cả dịch vụ' && selectedCategory !== 'All services') {
           const catLower = selectedCategory.toLowerCase();
           const pCatLower = provider.category.toLowerCase();
           if (!pCatLower.includes(catLower) && !catLower.includes(pCatLower)) {
@@ -187,17 +187,15 @@ export function FindProviderPage() {
   }, [providersPool, searchQuery, selectedCategory, availableTodayOnly, sortBy]);
 
   const formatPrice = (price: number) => {
-    if (price > 1000) {
-      return `${price.toLocaleString('vi-VN')} đ`;
-    }
-    return `$${price}`;
+    return `${price.toLocaleString('vi-VN')} đ`;
   };
 
   const handleQuickBook = async (provider: any) => {
     setSelectedProviderForBooking(provider);
     try {
       setCheckingOrders(true);
-      const orders = await customerOrderService.getMyOrders('PENDING_PROVIDER');
+      const res = await customerOrderService.getMyOrders('PENDING_PROVIDER', 0, 50);
+      const orders = res.content;
       if (orders && orders.length > 0) {
         setPendingOrders(orders);
         setShowSelectOrderModal(true);
@@ -429,7 +427,7 @@ export function FindProviderPage() {
                   className="reset-filters-btn"
                   onClick={() => {
                     setSearchQuery('');
-                    handleCategorySelect('All services');
+                    handleCategorySelect('Tất cả dịch vụ');
                     setAvailableTodayOnly(false);
                   }}
                 >

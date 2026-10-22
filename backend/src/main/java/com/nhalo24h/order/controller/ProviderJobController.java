@@ -13,7 +13,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -37,14 +43,23 @@ public class ProviderJobController {
         this.providerJobService = providerJobService;
     }
 
+    @GetMapping("/requests/count-pending")
+    @Operation(summary = "Đếm số lượng yêu cầu mới chờ phản hồi", description = "Đếm nhanh số yêu cầu báo giá PENDING_RESPONSE để hiển thị badge trên Navbar của thợ.")
+    public ResponseEntity<Map<String, Integer>> getPendingRequestsCount(@AuthenticationPrincipal UserPrincipal principal) {
+        validatePrincipal(principal);
+        int count = providerJobService.getPendingRequestsCount(principal.getId());
+        return ResponseEntity.ok(Map.of("count", count));
+    }
+
     @GetMapping("/requests")
-    @Operation(summary = "Danh sách yêu cầu báo giá", description = "Lấy danh sách các yêu cầu báo giá gửi đến thợ, có thể lọc theo trạng thái (PENDING_RESPONSE, QUOTED, REJECTED, ACCEPTED, CANCELED).")
-    public ResponseEntity<List<ProviderJobResponse>> getIncomingRequests(
+    @Operation(summary = "Danh sách yêu cầu báo giá", description = "Lấy danh sách các yêu cầu báo giá gửi đến thợ, có phân trang và lọc theo trạng thái (PENDING_RESPONSE, QUOTED, REJECTED, ACCEPTED, CANCELED).")
+    public ResponseEntity<Page<ProviderJobResponse>> getIncomingRequests(
         @AuthenticationPrincipal UserPrincipal principal,
-        @RequestParam(required = false) OrderRequestStatus status
+        @RequestParam(required = false) OrderRequestStatus status,
+        @ParameterObject @PageableDefault(size = 5, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         validatePrincipal(principal);
-        List<ProviderJobResponse> response = providerJobService.getIncomingRequests(principal.getId(), status);
+        Page<ProviderJobResponse> response = providerJobService.getIncomingRequests(principal.getId(), status, pageable);
         return ResponseEntity.ok(response);
     }
 
@@ -84,13 +99,14 @@ public class ProviderJobController {
     }
 
     @GetMapping("/orders")
-    @Operation(summary = "Danh sách việc đã nhận làm", description = "Lấy danh sách các công việc thợ đã được khách chốt chọn (IN_PROGRESS hoặc COMPLETED).")
-    public ResponseEntity<List<ProviderJobResponse>> getAssignedOrders(
+    @Operation(summary = "Danh sách việc đã nhận làm", description = "Lấy danh sách các công việc thợ đã được khách chốt chọn (IN_PROGRESS hoặc COMPLETED), có phân trang.")
+    public ResponseEntity<Page<ProviderJobResponse>> getAssignedOrders(
         @AuthenticationPrincipal UserPrincipal principal,
-        @RequestParam(required = false) OrderStatus status
+        @RequestParam(required = false) OrderStatus status,
+        @ParameterObject @PageableDefault(size = 5, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         validatePrincipal(principal);
-        List<ProviderJobResponse> response = providerJobService.getAssignedOrders(principal.getId(), status);
+        Page<ProviderJobResponse> response = providerJobService.getAssignedOrders(principal.getId(), status, pageable);
         return ResponseEntity.ok(response);
     }
 

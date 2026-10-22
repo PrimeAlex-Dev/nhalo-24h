@@ -131,3 +131,15 @@ export interface ChatMessageItem {
   content: string;
   createdAt: string;
 }
+
+export interface SpringPageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+  empty: boolean;
+}
+

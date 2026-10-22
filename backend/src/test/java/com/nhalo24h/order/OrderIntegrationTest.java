@@ -237,12 +237,12 @@ class OrderIntegrationTest {
         MvcResult p2Requests = mockMvc.perform(get("/api/v1/provider/requests")
                 .header("Authorization", "Bearer " + provider2Token))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.length()").value(1))
-            .andExpect(jsonPath("$[0].orderId").value(orderId.toString()))
-            .andExpect(jsonPath("$[0].requestStatus").value("PENDING_RESPONSE"))
+            .andExpect(jsonPath("$.page.totalElements").value(1))
+            .andExpect(jsonPath("$.content[0].orderId").value(orderId.toString()))
+            .andExpect(jsonPath("$.content[0].requestStatus").value("PENDING_RESPONSE"))
             .andReturn();
 
-        UUID requestId2 = UUID.fromString(objectMapper.readTree(p2Requests.getResponse().getContentAsString()).get(0).get("requestId").asText());
+        UUID requestId2 = UUID.fromString(objectMapper.readTree(p2Requests.getResponse().getContentAsString()).get("content").get(0).get("requestId").asText());
 
         // ==========================================
         // BƯỚC 3: Thợ 1 gửi báo giá và nhắn tin trao đổi
@@ -308,10 +308,10 @@ class OrderIntegrationTest {
         mockMvc.perform(get("/api/v1/provider/orders")
                 .header("Authorization", "Bearer " + provider1Token))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.length()").value(1))
-            .andExpect(jsonPath("$[0].orderId").value(orderId.toString()))
-            .andExpect(jsonPath("$[0].orderStatus").value("IN_PROGRESS"))
-            .andExpect(jsonPath("$[0].customerPhone").value("0901111222"));
+            .andExpect(jsonPath("$.page.totalElements").value(1))
+            .andExpect(jsonPath("$.content[0].orderId").value(orderId.toString()))
+            .andExpect(jsonPath("$.content[0].orderStatus").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.content[0].customerPhone").value("0901111222"));
 
         // ==========================================
         // BƯỚC 5: Thợ 1 hoàn thành công việc

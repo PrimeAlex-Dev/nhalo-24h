@@ -20,6 +20,7 @@ import type { CustomerOrderSummary, OrderStatus } from '../../../types/order';
 import { CreateOrderModal } from './CreateOrderModal';
 import { CustomerOrderDetailModal } from './CustomerOrderDetailModal';
 import { OrderChatDrawer } from '../../order/components/OrderChatDrawer';
+import { Pagination } from '../../../components/common/Pagination';
 
 type OrderTabFilter = 'ALL' | OrderStatus;
 
@@ -28,6 +29,11 @@ export function MyOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<OrderTabFilter>('ALL');
+
+  // Pagination State (5 orders per page)
+  const [page, setPage] = useState(0);
+  const [pageSize] = useState(5);
+  const [pageInfo, setPageInfo] = useState({ totalPages: 0, totalElements: 0 });
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -42,22 +48,21 @@ export function MyOrdersPage() {
   const [chatOrderTitle, setChatOrderTitle] = useState<string | undefined>();
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    loadOrders(false);
+    loadOrders(false, page);
 
     // Auto-poll orders every 12 seconds
     const intervalTimer = setInterval(() => {
-      loadOrders(true);
+      loadOrders(true, page);
     }, 12000);
 
     const handleFocus = () => {
       if (document.visibilityState === 'visible') {
-        loadOrders(true);
+        loadOrders(true, page);
       }
     };
 
     const handleOrderRefresh = () => {
-      loadOrders(false);
+      loadOrders(false, page);
     };
 
     window.addEventListener('focus', handleFocus);
@@ -70,17 +75,21 @@ export function MyOrdersPage() {
       document.removeEventListener('visibilitychange', handleFocus);
       window.removeEventListener('nhalo24h:refresh-orders', handleOrderRefresh);
     };
-  }, [activeTab]);
+  }, [activeTab, page]);
 
-  const loadOrders = async (silent = false) => {
+  const loadOrders = async (silent = false, pageToLoad = page) => {
     try {
       if (!silent) {
         setLoading(true);
       }
       setErrorMsg(null);
       const statusParam = activeTab === 'ALL' ? undefined : activeTab;
-      const data = await customerOrderService.getMyOrders(statusParam);
-      setOrders(data);
+      const res = await customerOrderService.getMyOrders(statusParam, pageToLoad, pageSize);
+      setOrders(res.content);
+      setPageInfo({
+        totalPages: res.totalPages,
+        totalElements: res.totalElements,
+      });
     } catch (err: any) {
       if (!silent) {
         setErrorMsg(err.message || 'Không thể tải danh sách đơn hàng.');
@@ -90,6 +99,17 @@ export function MyOrdersPage() {
         setLoading(false);
       }
     }
+  };
+
+  const handleTabChange = (newTab: OrderTabFilter) => {
+    setActiveTab(newTab);
+    setPage(0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleOpenChat = (
@@ -145,35 +165,35 @@ export function MyOrdersPage() {
           <button 
             type="button" 
             className={`filter-tab-btn ${activeTab === 'ALL' ? 'active' : ''}`}
-            onClick={() => setActiveTab('ALL')}
+            onClick={() => handleTabChange('ALL')}
           >
             Tất cả
           </button>
           <button 
             type="button" 
             className={`filter-tab-btn ${activeTab === 'PENDING_PROVIDER' ? 'active' : ''}`}
-            onClick={() => setActiveTab('PENDING_PROVIDER')}
+            onClick={() => handleTabChange('PENDING_PROVIDER')}
           >
             Chờ báo giá
           </button>
           <button 
             type="button" 
             className={`filter-tab-btn ${activeTab === 'IN_PROGRESS' ? 'active' : ''}`}
-            onClick={() => setActiveTab('IN_PROGRESS')}
+            onClick={() => handleTabChange('IN_PROGRESS')}
           >
             Đang làm
           </button>
           <button 
             type="button" 
             className={`filter-tab-btn ${activeTab === 'COMPLETED' ? 'active' : ''}`}
-            onClick={() => setActiveTab('COMPLETED')}
+            onClick={() => handleTabChange('COMPLETED')}
           >
             Đã hoàn thành
           </button>
           <button 
             type="button" 
             className={`filter-tab-btn ${activeTab === 'CANCELED' ? 'active' : ''}`}
-            onClick={() => setActiveTab('CANCELED')}
+            onClick={() => handleTabChange('CANCELED')}
           >
             Đã hủy
           </button>
@@ -218,7 +238,8 @@ export function MyOrdersPage() {
             </div>
           </div>
         ) : (
-          <div className="orders-list">
+          <>
+            <div className="orders-list">
             {orders.map((order) => {
               return (
                 <div
@@ -304,6 +325,18 @@ export function MyOrdersPage() {
               );
             })}
           </div>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={page}
+            totalPages={pageInfo.totalPages}
+            totalElements={pageInfo.totalElements}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            itemName="đơn hàng"
+            disabled={loading}
+          />
+        </>
         )}
       </div>
 

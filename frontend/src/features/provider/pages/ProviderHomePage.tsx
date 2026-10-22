@@ -38,16 +38,16 @@ export function ProviderHomePage() {
         if (!silent) {
           setLoading(true);
         }
-        const [requests, inProgress, completed] = await Promise.all([
-          providerJobService.getIncomingRequests(),
-          providerJobService.getAssignedOrders('IN_PROGRESS'),
-          providerJobService.getAssignedOrders('COMPLETED'),
+        const [requestsRes, inProgressRes, completedRes] = await Promise.all([
+          providerJobService.getIncomingRequests(undefined, 0, 10),
+          providerJobService.getAssignedOrders('IN_PROGRESS', 0, 10),
+          providerJobService.getAssignedOrders('COMPLETED', 0, 10),
         ]);
 
         if (!ignore) {
-          setIncomingRequests(requests);
-          setInProgressOrders(inProgress);
-          setCompletedOrders(completed);
+          setIncomingRequests(requestsRes.content);
+          setInProgressOrders(inProgressRes.content);
+          setCompletedOrders(completedRes.content);
         }
       } catch (err) {
         console.warn('Could not load provider dashboard data:', err);

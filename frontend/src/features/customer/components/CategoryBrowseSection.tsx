@@ -42,7 +42,7 @@ const renderCategoryIcon = (iconUrl?: string | null) => {
     return (
       <img 
         src={trimmed} 
-        alt="Category icon" 
+        alt="Biểu tượng danh mục" 
         className="category-custom-icon" 
       />
     );
@@ -138,9 +138,9 @@ export function CategoryBrowseSection() {
         {/* Section Header */}
         <div className="category-header">
           <div className="category-header-left">
-            <h2 className="category-main-title">Browse by category</h2>
+            <h2 className="category-main-title">Khám phá theo danh mục</h2>
             <p className="category-sub-title">
-              Pick a service or just describe your problem — AI handles the rest.
+              Chọn dịch vụ bạn cần hoặc mô tả sự cố — hệ thống sẽ kết nối thợ phù hợp nhất.
             </p>
           </div>
           <div className="category-header-right">
@@ -148,7 +148,7 @@ export function CategoryBrowseSection() {
               to={PATHS.CUSTOMER.PROVIDERS} 
               className="view-all-providers-link"
             >
-              <span>View all providers</span>
+              <span>Xem tất cả thợ</span>
               <ArrowRight size={15} />
             </Link>
           </div>

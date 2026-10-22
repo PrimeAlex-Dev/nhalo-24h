@@ -17,6 +17,8 @@ import com.nhalo24h.provider.domain.ProviderProfile;
 import com.nhalo24h.provider.repository.ProviderProfileRepository;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +43,12 @@ public class ProviderJobService {
     }
 
     @Transactional(readOnly = true)
+    public int getPendingRequestsCount(UUID providerUserId) {
+        ProviderProfile profile = getProviderProfileByUserId(providerUserId);
+        return orderRequestRepository.countPendingIncomingRequests(profile.getId());
+    }
+
+    @Transactional(readOnly = true)
     public List<ProviderJobResponse> getIncomingRequests(UUID providerUserId, OrderRequestStatus status) {
         ProviderProfile profile = getProviderProfileByUserId(providerUserId);
 
@@ -52,6 +60,17 @@ public class ProviderJobService {
     }
 
     @Transactional(readOnly = true)
+    public Page<ProviderJobResponse> getIncomingRequests(UUID providerUserId, OrderRequestStatus status, Pageable pageable) {
+        ProviderProfile profile = getProviderProfileByUserId(providerUserId);
+
+        Page<OrderRequest> requests = (status != null)
+            ? orderRequestRepository.findAllByProviderIdAndStatusWithOrder(profile.getId(), status, pageable)
+            : orderRequestRepository.findAllByProviderIdWithOrder(profile.getId(), pageable);
+
+        return requests.map(this::mapToProviderJobResponse);
+    }
+
+    @Transactional(readOnly = true)
     public List<ProviderJobResponse> getAssignedOrders(UUID providerUserId, OrderStatus status) {
         ProviderProfile profile = getProviderProfileByUserId(providerUserId);
 
@@ -59,36 +78,49 @@ public class ProviderJobService {
             ? orderRepository.findAllByAssignedProviderIdAndStatusOrderByCreatedAtDesc(profile.getId(), status)
             : orderRepository.findAllByAssignedProviderIdOrderByCreatedAtDesc(profile.getId());
 
-        return orders.stream().map(order -> {
-            OrderRequest matchedRequest = orderRequestRepository.findByOrderIdAndProviderId(order.getId(), profile.getId())
-                .orElse(null);
+        return orders.stream().map(order -> mapAssignedOrderToJobResponse(order, profile)).toList();
+    }
 
-            List<String> images = orderImageRepository.findAllByOrderId(order.getId())
-                .stream()
-                .map(OrderImage::getImageUrl)
-                .toList();
+    @Transactional(readOnly = true)
+    public Page<ProviderJobResponse> getAssignedOrders(UUID providerUserId, OrderStatus status, Pageable pageable) {
+        ProviderProfile profile = getProviderProfileByUserId(providerUserId);
 
-            return new ProviderJobResponse(
-                matchedRequest != null ? matchedRequest.getId() : null,
-                order.getId(),
-                order.getOrderCode(),
-                order.getTitle(),
-                order.getDescription(),
-                order.getCategory() != null ? order.getCategory().getName() : null,
-                order.getContactName(),
-                order.getContactPhone(),
-                order.getAddressSnapshot(),
-                order.getExpectedScheduleTime(),
-                images,
-                matchedRequest != null ? matchedRequest.getStatus().name() : OrderRequestStatus.ACCEPTED.name(),
-                order.getStatus().name(),
-                order.getFinalPrice(),
-                matchedRequest != null ? matchedRequest.getProviderNote() : null,
-                matchedRequest != null ? matchedRequest.getEstimatedArrivalTime() : null,
-                null,
-                order.getCreatedAt()
-            );
-        }).toList();
+        Page<Order> orders = (status != null)
+            ? orderRepository.findAllByAssignedProviderIdAndStatusOrderByCreatedAtDesc(profile.getId(), status, pageable)
+            : orderRepository.findAllByAssignedProviderIdOrderByCreatedAtDesc(profile.getId(), pageable);
+
+        return orders.map(order -> mapAssignedOrderToJobResponse(order, profile));
+    }
+
+    private ProviderJobResponse mapAssignedOrderToJobResponse(Order order, ProviderProfile profile) {
+        OrderRequest matchedRequest = orderRequestRepository.findByOrderIdAndProviderId(order.getId(), profile.getId())
+            .orElse(null);
+
+        List<String> images = orderImageRepository.findAllByOrderId(order.getId())
+            .stream()
+            .map(OrderImage::getImageUrl)
+            .toList();
+
+        return new ProviderJobResponse(
+            matchedRequest != null ? matchedRequest.getId() : null,
+            order.getId(),
+            order.getOrderCode(),
+            order.getTitle(),
+            order.getDescription(),
+            order.getCategory() != null ? order.getCategory().getName() : null,
+            order.getContactName(),
+            order.getContactPhone(),
+            order.getAddressSnapshot(),
+            order.getExpectedScheduleTime(),
+            images,
+            matchedRequest != null ? matchedRequest.getStatus().name() : OrderRequestStatus.ACCEPTED.name(),
+            order.getStatus().name(),
+            order.getFinalPrice(),
+            matchedRequest != null ? matchedRequest.getProviderNote() : null,
+            matchedRequest != null ? matchedRequest.getEstimatedArrivalTime() : null,
+            null,
+            order.getCreatedAt()
+        );
     }
 
     @Transactional(readOnly = true)

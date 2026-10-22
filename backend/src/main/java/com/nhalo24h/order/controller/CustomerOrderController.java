@@ -15,6 +15,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -51,13 +56,14 @@ public class CustomerOrderController {
     }
 
     @GetMapping
-    @Operation(summary = "Danh sách đơn hàng của tôi", description = "Lấy danh sách các đơn hàng của khách hàng đang đăng nhập, có thể lọc theo trạng thái đơn.")
-    public ResponseEntity<List<CustomerOrderSummaryResponse>> getMyOrders(
+    @Operation(summary = "Danh sách đơn hàng của tôi", description = "Lấy danh sách các đơn hàng của khách hàng đang đăng nhập, có thể lọc theo trạng thái đơn và phân trang.")
+    public ResponseEntity<Page<CustomerOrderSummaryResponse>> getMyOrders(
         @AuthenticationPrincipal UserPrincipal principal,
-        @RequestParam(required = false) OrderStatus status
+        @RequestParam(required = false) OrderStatus status,
+        @ParameterObject @PageableDefault(size = 5, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         validatePrincipal(principal);
-        List<CustomerOrderSummaryResponse> response = customerOrderService.getMyOrders(principal.getId(), status);
+        Page<CustomerOrderSummaryResponse> response = customerOrderService.getMyOrders(principal.getId(), status, pageable);
         return ResponseEntity.ok(response);
     }
 

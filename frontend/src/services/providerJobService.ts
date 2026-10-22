@@ -5,19 +5,87 @@ import type {
   RejectOrderRequestPayload,
   OrderRequestStatus,
   OrderStatus,
+  SpringPageResponse,
 } from '../types/order';
 
 export const providerJobService = {
   /**
-   * Lấy danh sách yêu cầu báo giá gửi đến thợ
+   * Đếm nhanh số lượng yêu cầu mới đang chờ phản hồi (để hiển thị badge navbar)
    */
-  async getIncomingRequests(status?: OrderRequestStatus): Promise<ProviderJobItem[]> {
-    const url = status
-      ? `/api/v1/provider/requests?status=${encodeURIComponent(status)}`
-      : '/api/v1/provider/requests';
-    return request<ProviderJobItem[]>(url, {
+  async getPendingRequestsCount(): Promise<number> {
+    try {
+      const res = await request<{ count: number }>('/api/v1/provider/requests/count-pending', {
+        method: 'GET',
+      });
+      return res.count ?? 0;
+    } catch {
+      return 0;
+    }
+  },
+
+  /**
+   * Lấy danh sách yêu cầu báo giá gửi đến thợ (có phân trang và lọc theo status)
+   */
+  async getIncomingRequests(
+    status?: OrderRequestStatus,
+    page?: number,
+    size?: number
+  ): Promise<SpringPageResponse<ProviderJobItem>> {
+    const params = new URLSearchParams();
+    if (status) {
+      params.append('status', status);
+    }
+    if (page !== undefined) {
+      params.append('page', page.toString());
+    }
+    if (size !== undefined) {
+      params.append('size', size.toString());
+    }
+    const qs = params.toString();
+    const url = `/api/v1/provider/requests${qs ? `?${qs}` : ''}`;
+    const response = await request<SpringPageResponse<ProviderJobItem> | ProviderJobItem[]>(url, {
       method: 'GET',
     });
+
+    if (response && 'content' in response && Array.isArray(response.content)) {
+      const pageMeta = (response as any).page;
+      return {
+        content: response.content,
+        totalElements: response.totalElements ?? pageMeta?.totalElements ?? response.content.length,
+        totalPages: response.totalPages ?? pageMeta?.totalPages ?? 1,
+        number: response.number ?? pageMeta?.number ?? (page ?? 0),
+        size: response.size ?? pageMeta?.size ?? (size ?? 5),
+        first: response.first ?? (pageMeta ? pageMeta.number === 0 : true),
+        last: response.last ?? (pageMeta ? pageMeta.number >= pageMeta.totalPages - 1 : true),
+        empty: response.empty ?? response.content.length === 0,
+      };
+    }
+    if (Array.isArray(response)) {
+      const actualSize = size ?? 5;
+      const actualPage = page ?? 0;
+      const totalPages = Math.ceil(response.length / actualSize) || 1;
+      const paginatedContent = response.slice(actualPage * actualSize, (actualPage + 1) * actualSize);
+      return {
+        content: paginatedContent,
+        totalElements: response.length,
+        totalPages: totalPages,
+        number: actualPage,
+        size: actualSize,
+        first: actualPage === 0,
+        last: actualPage >= totalPages - 1,
+        empty: response.length === 0,
+      };
+    }
+    return {
+      content: [],
+      totalElements: 0,
+      totalPages: 0,
+      number: 0,
+      size: size ?? 5,
+      first: true,
+      last: true,
+      empty: true,
+    };
   },
 
   /**
@@ -50,15 +118,68 @@ export const providerJobService = {
   },
 
   /**
-   * Lấy danh sách việc đã nhận làm (IN_PROGRESS hoặc COMPLETED)
+   * Lấy danh sách việc đã nhận làm (IN_PROGRESS hoặc COMPLETED), có phân trang
    */
-  async getAssignedOrders(status?: OrderStatus): Promise<ProviderJobItem[]> {
-    const url = status
-      ? `/api/v1/provider/orders?status=${encodeURIComponent(status)}`
-      : '/api/v1/provider/orders';
-    return request<ProviderJobItem[]>(url, {
+  async getAssignedOrders(
+    status?: OrderStatus,
+    page?: number,
+    size?: number
+  ): Promise<SpringPageResponse<ProviderJobItem>> {
+    const params = new URLSearchParams();
+    if (status) {
+      params.append('status', status);
+    }
+    if (page !== undefined) {
+      params.append('page', page.toString());
+    }
+    if (size !== undefined) {
+      params.append('size', size.toString());
+    }
+    const qs = params.toString();
+    const url = `/api/v1/provider/orders${qs ? `?${qs}` : ''}`;
+    const response = await request<SpringPageResponse<ProviderJobItem> | ProviderJobItem[]>(url, {
       method: 'GET',
     });
+
+    if (response && 'content' in response && Array.isArray(response.content)) {
+      const pageMeta = (response as any).page;
+      return {
+        content: response.content,
+        totalElements: response.totalElements ?? pageMeta?.totalElements ?? response.content.length,
+        totalPages: response.totalPages ?? pageMeta?.totalPages ?? 1,
+        number: response.number ?? pageMeta?.number ?? (page ?? 0),
+        size: response.size ?? pageMeta?.size ?? (size ?? 5),
+        first: response.first ?? (pageMeta ? pageMeta.number === 0 : true),
+        last: response.last ?? (pageMeta ? pageMeta.number >= pageMeta.totalPages - 1 : true),
+        empty: response.empty ?? response.content.length === 0,
+      };
+    }
+    if (Array.isArray(response)) {
+      const actualSize = size ?? 5;
+      const actualPage = page ?? 0;
+      const totalPages = Math.ceil(response.length / actualSize) || 1;
+      const paginatedContent = response.slice(actualPage * actualSize, (actualPage + 1) * actualSize);
+      return {
+        content: paginatedContent,
+        totalElements: response.length,
+        totalPages: totalPages,
+        number: actualPage,
+        size: actualSize,
+        first: actualPage === 0,
+        last: actualPage >= totalPages - 1,
+        empty: response.length === 0,
+      };
+    }
+    return {
+      content: [],
+      totalElements: 0,
+      totalPages: 0,
+      number: 0,
+      size: size ?? 5,
+      first: true,
+      last: true,
+      empty: true,
+    };
   },
 
   /**
