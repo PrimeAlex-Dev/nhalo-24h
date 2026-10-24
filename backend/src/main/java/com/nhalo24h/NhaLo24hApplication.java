@@ -13,4 +13,5 @@ public class NhaLo24hApplication {
     public static void main(String[] args) {
         SpringApplication.run(NhaLo24hApplication.class, args);
     }
+
 }
