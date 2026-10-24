@@ -402,8 +402,6 @@ export function CustomerOrderDetailModal({
     return list;
   }, [order?.quotations, quotationSort]);
 
-  if (!isOpen) return null;
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PENDING_PROVIDER':
@@ -467,7 +465,7 @@ export function CustomerOrderDetailModal({
         diagnosisOrReason: 'Thợ đã hoàn thành khảo sát thực tế và gửi báo giá chốt công việc',
         status: 'PENDING_APPROVAL' as const,
         items: [],
-        createdAt: order.updatedAt || new Date().toISOString(),
+        createdAt: order.updatedAt || order.createdAt || '',
       };
     }
 
@@ -485,6 +483,8 @@ export function CustomerOrderDetailModal({
       order.paymentStatus === 'PAYMENT_PENDING';
     return Boolean(isAwaitingPaymentStatus && isUnpaid);
   }, [order]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="order-detail-backdrop" onClick={onClose}>
