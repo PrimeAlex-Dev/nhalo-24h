@@ -373,6 +373,78 @@
   flex-wrap: wrap;
 }
 
+.quotations-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.quotation-sort-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #F8FAFC;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 0.3rem 0.65rem;
+  transition: all 0.2s ease;
+}
+
+.quotation-sort-wrapper:hover,
+.quotation-sort-wrapper:focus-within {
+  border-color: #93C5FD;
+  background: #FFFFFF;
+  box-shadow: 0 1px 4px rgba(29, 106, 229, 0.08);
+}
+
+.quotation-sort-wrapper .sort-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748B;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.quotation-sort-wrapper .sort-icon {
+  color: #1D6AE5;
+  flex-shrink: 0;
+}
+
+.quotation-sort-wrapper .sort-select-box {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.quotation-sort-select {
+  appearance: none;
+  background: transparent;
+  border: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #0F172A;
+  padding: 0.1rem 1.35rem 0.1rem 0.2rem;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+}
+
+.quotation-sort-select:focus {
+  color: #1D6AE5;
+}
+
+.quotation-sort-wrapper .sort-chevron-icon {
+  position: absolute;
+  right: 0;
+  pointer-events: none;
+  color: #64748B;
+}
+
 .btn-invite-more-pro {
   display: inline-flex;
   align-items: center;
@@ -721,4 +793,60 @@
 
 .btn-close-modal:hover {
   background: #F1F5F9;
+}
+
+/* Responsive Mobile Adjustments */
+@media (max-width: 640px) {
+  .quotations-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+
+  .quotations-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .quotation-sort-wrapper {
+    flex: 1;
+    min-width: 0;
+    justify-content: space-between;
+  }
+
+  .quotation-sort-wrapper .sort-select-box {
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-end;
+  }
+
+  .quotation-sort-select {
+    width: 100%;
+    text-overflow: ellipsis;
+  }
+
+  .btn-invite-more-pro {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .quotations-header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .quotation-sort-wrapper {
+    width: 100%;
+  }
+
+  .btn-invite-more-pro {
+    width: 100%;
+    justify-content: center;
+  }
 }

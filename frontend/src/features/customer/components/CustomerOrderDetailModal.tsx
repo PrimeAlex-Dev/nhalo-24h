@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
   MapPin, 
@@ -12,7 +12,9 @@ import {
   Ban, 
   User,
   UserPlus,
-  Eye
+  Eye,
+  ArrowUpDown,
+  ChevronDown
 } from 'lucide-react';
 import { customerOrderService } from '../../../services';
 import type { CustomerOrderDetail, QuotationItem } from '../../../types/order';
@@ -38,6 +40,8 @@ interface CustomerOrderDetailModalProps {
   ) => void;
 }
 
+export type QuotationSortOption = 'DEFAULT' | 'PRICE_ASC' | 'PRICE_DESC';
+
 export function CustomerOrderDetailModal({
   orderId,
   isOpen,
@@ -54,9 +58,11 @@ export function CustomerOrderDetailModal({
   const [quotingToAccept, setQuotingToAccept] = useState<QuotationItem | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [viewingProvider, setViewingProvider] = useState<PublicProviderItem | null>(null);
+  const [quotationSort, setQuotationSort] = useState<QuotationSortOption>('DEFAULT');
 
   useEffect(() => {
     if (isOpen && orderId) {
+      setQuotationSort('DEFAULT');
       loadOrderDetail(false);
 
       // Auto-poll order detail every 6 seconds while modal is open
@@ -178,6 +184,47 @@ export function CustomerOrderDetailModal({
     };
     setViewingProvider(fallbackItem);
   };
+
+  const sortedQuotations = useMemo(() => {
+    if (!order?.quotations || order.quotations.length === 0) return [];
+    const list = [...order.quotations];
+
+    if (quotationSort === 'PRICE_ASC') {
+      return list.sort((a, b) => {
+        const hasPriceA = a.quotedPrice !== undefined && a.quotedPrice !== null;
+        const hasPriceB = b.quotedPrice !== undefined && b.quotedPrice !== null;
+
+        if (hasPriceA && !hasPriceB) return -1;
+        if (!hasPriceA && hasPriceB) return 1;
+
+        if (hasPriceA && hasPriceB) {
+          if (a.quotedPrice !== b.quotedPrice) {
+            return a.quotedPrice! - b.quotedPrice!;
+          }
+        }
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      });
+    }
+
+    if (quotationSort === 'PRICE_DESC') {
+      return list.sort((a, b) => {
+        const hasPriceA = a.quotedPrice !== undefined && a.quotedPrice !== null;
+        const hasPriceB = b.quotedPrice !== undefined && b.quotedPrice !== null;
+
+        if (hasPriceA && !hasPriceB) return -1;
+        if (!hasPriceA && hasPriceB) return 1;
+
+        if (hasPriceA && hasPriceB) {
+          if (a.quotedPrice !== b.quotedPrice) {
+            return b.quotedPrice! - a.quotedPrice!;
+          }
+        }
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      });
+    }
+
+    return list;
+  }, [order?.quotations, quotationSort]);
 
   if (!isOpen) return null;
 
@@ -368,16 +415,42 @@ export function CustomerOrderDetailModal({
                     <span className="quotation-guide-tag">Chọn 1 báo giá ưng ý để chốt việc</span>
                   )}
                 </div>
-                {order.status === 'PENDING_PROVIDER' && (
-                  <button
-                    type="button"
-                    className="btn-invite-more-pro"
-                    onClick={() => setShowInviteModal(true)}
-                  >
-                    <UserPlus size={14} />
-                    <span>Mời thêm thợ</span>
-                  </button>
-                )}
+
+                <div className="quotations-header-actions">
+                  {order.quotations && order.quotations.length >= 2 && (
+                    <div className="quotation-sort-wrapper">
+                      <label htmlFor="quotationSortSelect" className="sort-label">
+                        <ArrowUpDown size={13} className="sort-icon" />
+                        <span className="sort-label-text">Sắp xếp:</span>
+                      </label>
+                      <div className="sort-select-box">
+                        <select
+                          id="quotationSortSelect"
+                          value={quotationSort}
+                          onChange={(e) => setQuotationSort(e.target.value as QuotationSortOption)}
+                          className="quotation-sort-select"
+                          aria-label="Sắp xếp danh sách báo giá theo giá"
+                        >
+                          <option value="DEFAULT">Mặc định (Mới nhất)</option>
+                          <option value="PRICE_ASC">Giá: Thấp đến Cao</option>
+                          <option value="PRICE_DESC">Giá: Cao đến Thấp</option>
+                        </select>
+                        <ChevronDown size={14} className="sort-chevron-icon" />
+                      </div>
+                    </div>
+                  )}
+
+                  {order.status === 'PENDING_PROVIDER' && (
+                    <button
+                      type="button"
+                      className="btn-invite-more-pro"
+                      onClick={() => setShowInviteModal(true)}
+                    >
+                      <UserPlus size={14} />
+                      <span>Mời thêm thợ</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {(!order.quotations || order.quotations.length === 0) ? (
@@ -397,7 +470,7 @@ export function CustomerOrderDetailModal({
                 </div>
               ) : (
                 <div className="quotation-cards-list">
-                  {order.quotations.map((q) => {
+                  {sortedQuotations.map((q) => {
                     const isQuoted = q.status === 'QUOTED';
                     const isAccepted = q.status === 'ACCEPTED';
                     const isRejected = q.status === 'REJECTED';
