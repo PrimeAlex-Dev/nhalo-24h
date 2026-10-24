@@ -5,14 +5,17 @@ import com.nhalo24h.common.error.AppException;
 import com.nhalo24h.common.error.ErrorCode;
 import com.nhalo24h.order.domain.OrderRequestStatus;
 import com.nhalo24h.order.domain.OrderStatus;
+import com.nhalo24h.order.dto.CancelOrderDto;
+import com.nhalo24h.order.dto.CompleteOrderRequest;
+import com.nhalo24h.order.dto.ConfirmCashPaymentRequest;
 import com.nhalo24h.order.dto.ProviderJobResponse;
 import com.nhalo24h.order.dto.RejectOrderRequestDto;
 import com.nhalo24h.order.dto.SubmitQuotationRequest;
+import com.nhalo24h.order.dto.SubmitSurveyQuoteRequest;
 import com.nhalo24h.order.service.ProviderJobService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
@@ -34,7 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/provider")
 @PreAuthorize("hasRole('PROVIDER')")
-@Tag(name = "Provider Jobs", description = "Các API nhận yêu cầu báo giá, gửi báo giá và quản lý việc nhận làm của thợ")
+@Tag(name = "Provider Jobs", description = "Các API nhận yêu cầu báo giá, khảo sát, cập nhật vật tư, báo hoàn thành và xác nhận thu tiền mặt của thợ")
 public class ProviderJobController {
 
     private final ProviderJobService providerJobService;
@@ -52,7 +55,7 @@ public class ProviderJobController {
     }
 
     @GetMapping("/requests")
-    @Operation(summary = "Danh sách yêu cầu báo giá", description = "Lấy danh sách các yêu cầu báo giá gửi đến thợ, có phân trang và lọc theo trạng thái (PENDING_RESPONSE, QUOTED, REJECTED, ACCEPTED, CANCELED).")
+    @Operation(summary = "Danh sách yêu cầu báo giá", description = "Lấy danh sách các yêu cầu báo giá gửi đến thợ, có phân trang và lọc theo trạng thái.")
     public ResponseEntity<Page<ProviderJobResponse>> getIncomingRequests(
         @AuthenticationPrincipal UserPrincipal principal,
         @RequestParam(required = false) OrderRequestStatus status,
@@ -75,7 +78,7 @@ public class ProviderJobController {
     }
 
     @PostMapping("/requests/{requestId}/quote")
-    @Operation(summary = "Gửi báo giá cho khách", description = "Thợ nhập giá tiền, ghi chú cam kết/vật tư và giờ ước tính có mặt để gửi cho khách.")
+    @Operation(summary = "Gửi báo giá ban đầu (3 nhóm chi phí)", description = "Thợ nhập phí khảo sát, phí di chuyển, chính sách miễn giảm, tiền công & vật tư dự kiến.")
     public ResponseEntity<Void> submitQuotation(
         @AuthenticationPrincipal UserPrincipal principal,
         @PathVariable UUID requestId,
@@ -99,7 +102,7 @@ public class ProviderJobController {
     }
 
     @GetMapping("/orders")
-    @Operation(summary = "Danh sách việc đã nhận làm", description = "Lấy danh sách các công việc thợ đã được khách chốt chọn (IN_PROGRESS hoặc COMPLETED), có phân trang.")
+    @Operation(summary = "Danh sách việc đã nhận làm", description = "Lấy danh sách các công việc thợ đã được khách chọn, có phân trang.")
     public ResponseEntity<Page<ProviderJobResponse>> getAssignedOrders(
         @AuthenticationPrincipal UserPrincipal principal,
         @RequestParam(required = false) OrderStatus status,
@@ -110,15 +113,65 @@ public class ProviderJobController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/orders/{orderId}/complete")
-    @Operation(summary = "Đánh dấu hoàn thành công việc", description = "Thợ bấm hoàn thành khi đã sửa chữa xong, chuyển trạng thái đơn hàng sang COMPLETED.")
-    public ResponseEntity<Void> completeOrder(
+    @PostMapping("/orders/{orderId}/survey-quote")
+    @Operation(summary = "Gửi Báo giá cuối sau khảo sát thực tế", description = "Thợ cập nhật kết quả kiểm tra hiện trạng, tiền công chốt và danh sách linh kiện/vật tư cần thay để khách xác nhận trước khi sửa.")
+    public ResponseEntity<ProviderJobResponse> submitSurveyQuote(
         @AuthenticationPrincipal UserPrincipal principal,
-        @PathVariable UUID orderId
+        @PathVariable UUID orderId,
+        @Valid @RequestBody SubmitSurveyQuoteRequest request
     ) {
         validatePrincipal(principal);
-        providerJobService.completeOrder(principal.getId(), orderId);
-        return ResponseEntity.ok().build();
+        ProviderJobResponse response = providerJobService.submitSurveyQuote(principal.getId(), orderId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/orders/{orderId}/change-request")
+    @Operation(summary = "Gửi Yêu cầu điều chỉnh phát sinh trong khi sửa", description = "Khi phát sinh thêm vật tư hoặc công việc ngoài dự kiến, thợ gửi yêu cầu điều chỉnh chờ khách đồng ý trước khi làm.")
+    public ResponseEntity<ProviderJobResponse> submitChangeRequest(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable UUID orderId,
+        @Valid @RequestBody SubmitSurveyQuoteRequest request
+    ) {
+        validatePrincipal(principal);
+        ProviderJobResponse response = providerJobService.submitChangeRequest(principal.getId(), orderId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/orders/{orderId}/complete")
+    @Operation(summary = "Báo hoàn thành công việc & Gửi hóa đơn nghiệm thu", description = "Thợ báo đã sửa chữa xong kèm ghi chú và ảnh nghiệm thu, chuyển đơn sang AWAITING_COMPLETION_CONFIRMATION chờ khách kiểm tra và thanh toán.")
+    public ResponseEntity<ProviderJobResponse> completeOrder(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable UUID orderId,
+        @RequestBody(required = false) CompleteOrderRequest request
+    ) {
+        validatePrincipal(principal);
+        ProviderJobResponse response = providerJobService.completeOrder(principal.getId(), orderId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/orders/{orderId}/confirm-cash")
+    @Operation(summary = "Xác nhận thu tiền mặt (Bước 2)", description = "Thợ xác nhận đã nhận đúng số tiền mặt khách khai báo hoặc báo không khớp.")
+    public ResponseEntity<ProviderJobResponse> confirmCashPayment(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable UUID orderId,
+        @Valid @RequestBody ConfirmCashPaymentRequest request
+    ) {
+        validatePrincipal(principal);
+        ProviderJobResponse response = providerJobService.confirmCashPayment(principal.getId(), orderId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/orders/{orderId}/cancel")
+    @Operation(summary = "Thợ xác nhận hủy đơn việc", description = "Thợ xác nhận hủy đơn khi đã thỏa thuận với khách hàng hoặc gặp sự cố bất khả kháng.")
+    public ResponseEntity<ProviderJobResponse> cancelAssignedOrder(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable UUID orderId,
+        @RequestBody(required = false) CancelOrderDto request
+    ) {
+        validatePrincipal(principal);
+        String reason = (request != null && request.reason() != null) ? request.reason() : null;
+        ProviderJobResponse response = providerJobService.cancelAssignedOrder(principal.getId(), orderId, reason);
+        return ResponseEntity.ok(response);
     }
 
     private void validatePrincipal(UserPrincipal principal) {

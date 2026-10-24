@@ -30,6 +30,12 @@ public class OrderImage {
     @Column(name = "image_url", nullable = false, length = 500)
     private String imageUrl;
 
+    @Column(name = "image_stage", nullable = false, length = 30)
+    private String imageStage = "ISSUE_BEFORE";
+
+    @Column(name = "uploaded_by_role", nullable = false, length = 20)
+    private String uploadedByRole = "CUSTOMER";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -39,12 +45,27 @@ public class OrderImage {
     public OrderImage(Order order, String imageUrl) {
         this.order = order;
         this.imageUrl = imageUrl;
+        this.imageStage = "ISSUE_BEFORE";
+        this.uploadedByRole = "CUSTOMER";
+    }
+
+    public OrderImage(Order order, String imageUrl, String imageStage, String uploadedByRole) {
+        this.order = order;
+        this.imageUrl = imageUrl;
+        this.imageStage = imageStage != null ? imageStage : "ISSUE_BEFORE";
+        this.uploadedByRole = uploadedByRole != null ? uploadedByRole : "CUSTOMER";
     }
 
     @PrePersist
     protected void onCreate() {
         if (this.createdAt == null) {
             this.createdAt = Instant.now();
+        }
+        if (this.imageStage == null || this.imageStage.isBlank()) {
+            this.imageStage = "ISSUE_BEFORE";
+        }
+        if (this.uploadedByRole == null || this.uploadedByRole.isBlank()) {
+            this.uploadedByRole = "CUSTOMER";
         }
     }
 
@@ -70,6 +91,22 @@ public class OrderImage {
 
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public String getImageStage() {
+        return imageStage;
+    }
+
+    public void setImageStage(String imageStage) {
+        this.imageStage = imageStage;
+    }
+
+    public String getUploadedByRole() {
+        return uploadedByRole;
+    }
+
+    public void setUploadedByRole(String uploadedByRole) {
+        this.uploadedByRole = uploadedByRole;
     }
 
     public Instant getCreatedAt() {

@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -42,6 +43,12 @@ public class ServiceCategory {
     @Column(name = "display_order", nullable = false)
     private Integer displayOrder;
 
+    @Column(name = "default_workflow_type", nullable = false, length = 30)
+    private String defaultWorkflowType = "SURVEY_FIRST";
+
+    @Column(name = "commission_rate", nullable = false, precision = 5, scale = 2)
+    private BigDecimal commissionRate = new BigDecimal("10.00");
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -58,6 +65,8 @@ public class ServiceCategory {
         this.iconUrl = normalizeString(iconUrl);
         this.status = status != null ? status : CategoryStatus.ACTIVE;
         this.displayOrder = displayOrder != null ? displayOrder : 0;
+        this.defaultWorkflowType = "SURVEY_FIRST";
+        this.commissionRate = new BigDecimal("10.00");
     }
 
     @PrePersist
@@ -74,6 +83,12 @@ public class ServiceCategory {
         }
         if (this.displayOrder == null) {
             this.displayOrder = 0;
+        }
+        if (this.defaultWorkflowType == null || this.defaultWorkflowType.isBlank()) {
+            this.defaultWorkflowType = "SURVEY_FIRST";
+        }
+        if (this.commissionRate == null) {
+            this.commissionRate = new BigDecimal("10.00");
         }
         if (this.name != null) {
             this.name = this.name.trim();
@@ -161,6 +176,22 @@ public class ServiceCategory {
 
     public void setDisplayOrder(Integer displayOrder) {
         this.displayOrder = displayOrder != null ? displayOrder : 0;
+    }
+
+    public String getDefaultWorkflowType() {
+        return defaultWorkflowType;
+    }
+
+    public void setDefaultWorkflowType(String defaultWorkflowType) {
+        this.defaultWorkflowType = defaultWorkflowType != null ? defaultWorkflowType : "SURVEY_FIRST";
+    }
+
+    public BigDecimal getCommissionRate() {
+        return commissionRate;
+    }
+
+    public void setCommissionRate(BigDecimal commissionRate) {
+        this.commissionRate = commissionRate != null ? commissionRate : new BigDecimal("10.00");
     }
 
     public Instant getCreatedAt() {

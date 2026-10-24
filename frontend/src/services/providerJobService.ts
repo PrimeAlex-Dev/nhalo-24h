@@ -2,6 +2,9 @@ import { request } from './apiClient';
 import type {
   ProviderJobItem,
   SubmitQuotationPayload,
+  SubmitSurveyQuotePayload,
+  CompleteOrderPayload,
+  ConfirmCashPaymentPayload,
   RejectOrderRequestPayload,
   OrderRequestStatus,
   OrderStatus,
@@ -98,7 +101,7 @@ export const providerJobService = {
   },
 
   /**
-   * Gửi báo giá cho khách hàng
+   * Thợ gửi báo giá ban đầu (bóc tách 3 nhóm chi phí)
    */
   async submitQuotation(requestId: string, payload: SubmitQuotationPayload): Promise<void> {
     await request<void>(`/api/v1/provider/requests/${requestId}/quote`, {
@@ -108,7 +111,27 @@ export const providerJobService = {
   },
 
   /**
-   * Từ chối yêu cầu nhận việc
+   * Thợ gửi Báo giá cuối sau khảo sát thực tế kèm bảng kê vật tư
+   */
+  async submitSurveyQuote(orderId: string, payload: SubmitSurveyQuotePayload): Promise<ProviderJobItem> {
+    return request<ProviderJobItem>(`/api/v1/provider/orders/${orderId}/survey-quote`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Thợ gửi Yêu cầu điều chỉnh chi phí / phát sinh vật tư trong khi làm
+   */
+  async submitChangeRequest(orderId: string, payload: SubmitSurveyQuotePayload): Promise<ProviderJobItem> {
+    return request<ProviderJobItem>(`/api/v1/provider/orders/${orderId}/change-request`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Thợ từ chối nhận việc kèm lý do
    */
   async rejectRequest(requestId: string, payload: RejectOrderRequestPayload): Promise<void> {
     await request<void>(`/api/v1/provider/requests/${requestId}/reject`, {
@@ -118,7 +141,7 @@ export const providerJobService = {
   },
 
   /**
-   * Lấy danh sách việc đã nhận làm (IN_PROGRESS hoặc COMPLETED), có phân trang
+   * Lấy danh sách các công việc thợ đã được chốt (có phân trang)
    */
   async getAssignedOrders(
     status?: OrderStatus,
@@ -183,11 +206,32 @@ export const providerJobService = {
   },
 
   /**
-   * Đánh dấu hoàn thành công việc
+   * Thợ báo hoàn thành công việc kèm ghi chú & ảnh nghiệm thu (chuyển sang AWAITING_COMPLETION_CONFIRMATION)
    */
-  async completeOrder(orderId: string): Promise<void> {
-    await request<void>(`/api/v1/provider/orders/${orderId}/complete`, {
+  async completeOrder(orderId: string, payload?: CompleteOrderPayload): Promise<ProviderJobItem> {
+    return request<ProviderJobItem>(`/api/v1/provider/orders/${orderId}/complete`, {
       method: 'POST',
+      body: payload ? JSON.stringify(payload) : JSON.stringify({}),
+    });
+  },
+
+  /**
+   * Thợ xác nhận đã nhận tiền mặt khách khai báo hoặc báo không khớp (Bước 2 thanh toán tiền mặt)
+   */
+  async confirmCashPayment(orderId: string, payload: ConfirmCashPaymentPayload): Promise<ProviderJobItem> {
+    return request<ProviderJobItem>(`/api/v1/provider/orders/${orderId}/confirm-cash`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Thợ xác nhận hủy đơn việc sau khi thỏa thuận với khách hoặc sự cố bất khả kháng
+   */
+  async cancelOrder(orderId: string, reason?: string): Promise<ProviderJobItem> {
+    return request<ProviderJobItem>(`/api/v1/provider/orders/${orderId}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason || 'Thợ xác nhận hủy việc' }),
     });
   },
 };

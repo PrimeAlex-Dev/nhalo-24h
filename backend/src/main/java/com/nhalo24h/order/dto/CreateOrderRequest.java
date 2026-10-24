@@ -46,6 +46,37 @@ public record CreateOrderRequest(
     List<String> imageUrls,
 
     @Schema(description = "Danh sách ID hồ sơ thợ (ProviderProfile id) muốn gửi yêu cầu báo giá ban đầu (tùy chọn)")
-    List<UUID> initialProviderIds
+    List<UUID> initialProviderIds,
+
+    @Schema(description = "Mức độ khẩn cấp (NORMAL, URGENT, EMERGENCY)", example = "NORMAL")
+    String urgencyLevel,
+
+    @Schema(description = "Thông tin bổ sung theo loại dịch vụ (VD: diện tích, số phòng, mức độ bẩn đối với dịch vụ vệ sinh)")
+    String serviceMetadata
 ) {
+    public CreateOrderRequest(
+        UUID categoryId,
+        UUID addressId,
+        String title,
+        String description,
+        Instant expectedScheduleTime,
+        String contactName,
+        String contactPhone,
+        List<String> imageUrls,
+        List<UUID> initialProviderIds
+    ) {
+        this(
+            categoryId,
+            addressId,
+            title,
+            description,
+            expectedScheduleTime,
+            contactName,
+            contactPhone,
+            imageUrls,
+            initialProviderIds,
+            "NORMAL",
+            null
+        );
+    }
 }

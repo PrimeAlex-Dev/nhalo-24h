@@ -3,6 +3,9 @@ import type {
   CreateOrderPayload,
   DispatchOrderRequestsPayload,
   CancelOrderPayload,
+  DeclareCashPaymentPayload,
+  ConfirmOnlinePaymentPayload,
+  OnlinePaymentInitResponse,
   CustomerOrderDetail,
   CustomerOrderSummary,
   OrderStatus,
@@ -86,7 +89,7 @@ export const customerOrderService = {
   },
 
   /**
-   * Xem chi tiết đơn hàng (gồm ảnh, thông tin liên lạc và danh sách các báo giá)
+   * Xem chi tiết đơn hàng (gồm 3 nhóm chi phí, lịch sử phiên bản báo giá, thanh toán và nhật ký)
    */
   async getOrderDetail(id: string): Promise<CustomerOrderDetail> {
     return request<CustomerOrderDetail>(`/api/v1/customer/orders/${id}`, {
@@ -105,7 +108,7 @@ export const customerOrderService = {
   },
 
   /**
-   * Chấp nhận báo giá (Chốt thợ): chuyển đơn sang IN_PROGRESS và tự động hủy các báo giá khác
+   * Khách chọn 1 thợ (Đồng ý điều kiện khảo sát AWAITING_SURVEY hoặc vào thẳng IN_PROGRESS nếu gói cố định)
    */
   async acceptQuotation(requestId: string): Promise<void> {
     await request<void>(`/api/v1/customer/orders/requests/${requestId}/accept`, {
@@ -114,10 +117,81 @@ export const customerOrderService = {
   },
 
   /**
-   * Hủy đơn hàng
+   * Khách đồng ý Báo giá cuối sau khảo sát hoặc đồng ý Yêu cầu điều chỉnh phát sinh
+   */
+  async approveLatestQuote(orderId: string): Promise<CustomerOrderDetail> {
+    return request<CustomerOrderDetail>(`/api/v1/customer/orders/${orderId}/approve-quote`, {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Khách từ chối khoản phát sinh trong khi sửa (giữ nguyên báo giá đã duyệt trước đó)
+   */
+  async rejectChangeRequest(orderId: string, payload?: CancelOrderPayload): Promise<CustomerOrderDetail> {
+    return request<CustomerOrderDetail>(`/api/v1/customer/orders/${orderId}/reject-change`, {
+      method: 'POST',
+      body: payload ? JSON.stringify(payload) : undefined,
+    });
+  },
+
+  /**
+   * Khách từ chối sửa sau khảo sát (Đơn chuyển sang DECLINED_AFTER_SURVEY, chỉ tính phí khảo sát + di chuyển)
+   */
+  async declineAfterSurvey(orderId: string, payload?: CancelOrderPayload): Promise<CustomerOrderDetail> {
+    return request<CustomerOrderDetail>(`/api/v1/customer/orders/${orderId}/decline-after-survey`, {
+      method: 'POST',
+      body: payload ? JSON.stringify(payload) : undefined,
+    });
+  },
+
+  /**
+   * Khách khai báo số tiền mặt thực tế đã đưa cho thợ (Bước 1 thanh toán tiền mặt)
+   */
+  async declareCashPayment(orderId: string, payload: DeclareCashPaymentPayload): Promise<CustomerOrderDetail> {
+    return request<CustomerOrderDetail>(`/api/v1/customer/orders/${orderId}/pay-cash`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Khởi tạo giao dịch thanh toán Online giả lập (Mock Gateway)
+   */
+  async initOnlinePayment(orderId: string): Promise<OnlinePaymentInitResponse> {
+    return request<OnlinePaymentInitResponse>(`/api/v1/customer/orders/${orderId}/pay-online/init`, {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Xác nhận kết quả thanh toán Online (Mock Gateway Callback)
+   */
+  async confirmOnlinePayment(
+    orderId: string,
+    payload: ConfirmOnlinePaymentPayload
+  ): Promise<CustomerOrderDetail> {
+    return request<CustomerOrderDetail>(`/api/v1/customer/orders/${orderId}/pay-online/confirm`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Hủy đơn hàng (Chỉ cho phép khi chưa chọn thợ: PENDING_PROVIDER)
    */
   async cancelOrder(id: string, payload?: CancelOrderPayload): Promise<void> {
     await request<void>(`/api/v1/customer/orders/${id}/cancel`, {
+      method: 'POST',
+      body: payload ? JSON.stringify(payload) : undefined,
+    });
+  },
+
+  /**
+   * Phương án A: Gửi thông báo yêu cầu dời lịch / hủy đơn tới thợ khi thợ đang đến khảo sát (AWAITING_SURVEY)
+   */
+  async notifyCancelRequest(id: string, payload?: CancelOrderPayload): Promise<CustomerOrderDetail> {
+    return request<CustomerOrderDetail>(`/api/v1/customer/orders/${id}/notify-cancel`, {
       method: 'POST',
       body: payload ? JSON.stringify(payload) : undefined,
     });

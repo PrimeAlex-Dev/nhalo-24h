@@ -10,13 +10,17 @@ import {
   Loader2, 
   AlertCircle,
   DollarSign,
-  MessageSquare
+  MessageSquare,
+  ClipboardCheck,
+  FilePlus2,
+  Banknote
 } from 'lucide-react';
 import { providerJobService } from '../../../services';
-import type { ProviderJobItem } from '../../../types/order';
+import type { ProviderJobItem, ConfirmCashPaymentPayload } from '../../../types/order';
 import type { ProviderContextType } from '../../../layouts/ProviderLayout';
 import { JobDetailModal } from '../components/JobDetailModal';
 import { SubmitQuotationModal } from '../components/SubmitQuotationModal';
+import { SurveyAndChangeQuoteModal } from '../components/SurveyAndChangeQuoteModal';
 import { CompleteJobModal } from '../components/CompleteJobModal';
 import { RejectRequestModal } from '../components/RejectRequestModal';
 import { OrderChatDrawer } from '../../order/components/OrderChatDrawer';
@@ -41,7 +45,14 @@ export function ProviderJobsPage() {
   // Modals state
   const [selectedJob, setSelectedJob] = useState<ProviderJobItem | null>(null);
   const [quotingJob, setQuotingJob] = useState<ProviderJobItem | null>(null);
-  const [completingJob, setCompletingJob] = useState<ProviderJobItem | null>(null);
+  const [surveyOrChangeModal, setSurveyOrChangeModal] = useState<{
+    job: ProviderJobItem;
+    mode: 'SURVEY_FINAL' | 'IN_PROGRESS_CHANGE';
+  } | null>(null);
+  const [completingJob, setCompletingJob] = useState<{
+    job: ProviderJobItem;
+    mode: 'COMPLETE_JOB' | 'CONFIRM_CASH';
+  } | null>(null);
   const [rejectingJob, setRejectingJob] = useState<ProviderJobItem | null>(null);
   const [chatJob, setChatJob] = useState<ProviderJobItem | null>(null);
 
@@ -116,7 +127,7 @@ export function ProviderJobsPage() {
 
   const showNotice = (msg: string) => {
     setActionNotice(msg);
-    setTimeout(() => setActionNotice(null), 3500);
+    setTimeout(() => setActionNotice(null), 4000);
   };
 
   const handleOpenRejectModal = (job: ProviderJobItem) => {
@@ -125,8 +136,13 @@ export function ProviderJobsPage() {
   };
 
   const handleConfirmRejectRequest = async (job: ProviderJobItem, reason: string) => {
-    await providerJobService.rejectRequest(job.requestId, { rejectReason: reason });
-    showNotice('Đã từ chối yêu cầu nhận việc.');
+    if (job.requestStatus === 'ACCEPTED') {
+      await providerJobService.cancelOrder(job.orderId, reason);
+      showNotice('Đã xác nhận hủy công việc theo thỏa thuận.');
+    } else {
+      await providerJobService.rejectRequest(job.requestId, { rejectReason: reason });
+      showNotice('Đã từ chối yêu cầu nhận việc.');
+    }
     setRejectingJob(null);
     loadJobs();
     if (refreshIncomingRequestsCount) {
@@ -134,14 +150,25 @@ export function ProviderJobsPage() {
     }
   };
 
-  const handleOpenCompleteModal = (job: ProviderJobItem) => {
+  const handleOpenCompleteModal = (job: ProviderJobItem, mode: 'COMPLETE_JOB' | 'CONFIRM_CASH' = 'COMPLETE_JOB') => {
     setSelectedJob(null);
-    setCompletingJob(job);
+    setCompletingJob({ job, mode });
   };
 
-  const handleConfirmCompleteOrder = async (orderId: string) => {
-    await providerJobService.completeOrder(orderId);
-    showNotice('Chúc mừng bạn đã hoàn thành công việc và thu tiền thành công!');
+  const handleConfirmCompleteOrder = async (orderId: string, completionNote?: string) => {
+    await providerJobService.completeOrder(orderId, { completionNote });
+    showNotice('Đã gửi yêu cầu nghiệm thu! Chờ khách hàng xác nhận và thanh toán.');
+    setCompletingJob(null);
+    loadJobs();
+  };
+
+  const handleConfirmCashPayment = async (orderId: string, payload: ConfirmCashPaymentPayload) => {
+    await providerJobService.confirmCashPayment(orderId, payload);
+    showNotice(
+      payload.confirmed
+        ? 'Đã xác nhận thu tiền mặt thành công! Đơn hàng đã hoàn tất.'
+        : 'Đã gửi báo cáo chênh lệch tiền mặt lên Quản trị viên để đối soát.'
+    );
     setCompletingJob(null);
     loadJobs();
   };
@@ -163,7 +190,7 @@ export function ProviderJobsPage() {
           <div className="header-info">
             <h1 className="header-title">Quản lý Công việc</h1>
             <p className="header-sub">
-              Nhận các yêu cầu báo giá mới, theo dõi công việc đang làm và xem lịch sử thu nhập.
+              Nhận yêu cầu báo giá, thực hiện khảo sát thực tế, cập nhật vật tư và đối soát thu nhập minh bạch.
             </p>
           </div>
         </div>
@@ -183,7 +210,7 @@ export function ProviderJobsPage() {
             className={`tab-btn ${activeTab === 'in_progress' ? 'active' : ''}`}
             onClick={() => handleTabChange('in_progress')}
           >
-            <span>Việc đang làm</span>
+            <span>Việc đang xử lý (Khảo sát / Thi công / Thu tiền)</span>
           </button>
 
           <button
@@ -191,7 +218,7 @@ export function ProviderJobsPage() {
             className={`tab-btn ${activeTab === 'completed' ? 'active' : ''}`}
             onClick={() => handleTabChange('completed')}
           >
-            <span>Đã hoàn thành</span>
+            <span>Đã kết thúc</span>
           </button>
         </div>
 
@@ -219,7 +246,7 @@ export function ProviderJobsPage() {
               {activeTab === 'requests'
                 ? 'Hiện tại chưa có yêu cầu báo giá mới nào được gửi tới bạn.'
                 : activeTab === 'in_progress'
-                ? 'Bạn không có công việc nào đang thực hiện.'
+                ? 'Bạn không có công việc nào đang khảo sát, thi công hoặc chờ thanh toán.'
                 : 'Bạn chưa hoàn thành công việc nào.'}
             </p>
           </div>
@@ -227,9 +254,20 @@ export function ProviderJobsPage() {
           <>
             <div className="jobs-list">
             {jobs.map((job) => {
-              const isMyJobInProgress = job.requestStatus === 'ACCEPTED' && job.orderStatus === 'IN_PROGRESS';
-              const isMyJobCompleted = job.requestStatus === 'ACCEPTED' && job.orderStatus === 'COMPLETED';
-              const isAssignedToOther = job.requestStatus === 'CANCELED' && (job.orderStatus === 'IN_PROGRESS' || job.orderStatus === 'COMPLETED');
+              const isAssignedToMe = job.requestStatus === 'ACCEPTED';
+              const isAwaitingSurvey = isAssignedToMe && job.orderStatus === 'AWAITING_SURVEY';
+              const isAwaitingCustomerApproval = isAssignedToMe && job.orderStatus === 'AWAITING_CUSTOMER_APPROVAL';
+              const isMyJobInProgress = isAssignedToMe && job.orderStatus === 'IN_PROGRESS';
+              const isAwaitingCompletionConfirm = isAssignedToMe && job.orderStatus === 'AWAITING_COMPLETION_CONFIRMATION';
+              const isDeclinedAfterSurvey = isAssignedToMe && job.orderStatus === 'DECLINED_AFTER_SURVEY';
+              const isMyJobCompleted = isAssignedToMe && job.orderStatus === 'COMPLETED';
+              const isCashPendingConfirmation = isAssignedToMe && job.paymentStatus === 'CASH_PENDING_CONFIRMATION';
+              const isPaymentDisputed = isAssignedToMe && job.paymentStatus === 'PAYMENT_DISPUTED';
+
+              const isAssignedToOther =
+                job.requestStatus === 'CANCELED' &&
+                job.orderStatus !== 'CANCELED' &&
+                job.orderStatus !== 'PENDING_PROVIDER';
               const isOrderCanceled = job.orderStatus === 'CANCELED';
               const isRejected = job.requestStatus === 'REJECTED';
               const isQuoted = job.requestStatus === 'QUOTED' && job.orderStatus === 'PENDING_PROVIDER';
@@ -245,10 +283,26 @@ export function ProviderJobsPage() {
                       <span className="job-code-chip">· {job.orderCode}</span>
                     </div>
 
-                    {isMyJobInProgress ? (
-                      <span className="urgency-badge in-progress">Đang làm</span>
+                    {isCashPendingConfirmation ? (
+                      <span className="urgency-badge quoted" style={{ background: '#fef08a', color: '#854d0e' }}>
+                        Khách đã trả tiền mặt ({(job.customerDeclaredAmount ?? 0).toLocaleString('vi-VN')} đ) — Chờ bạn xác nhận
+                      </span>
+                    ) : isPaymentDisputed ? (
+                      <span className="urgency-badge rejected">Đang chờ Admin đối soát thanh toán</span>
+                    ) : isAwaitingSurvey ? (
+                      <span className="urgency-badge in-progress">Chờ bạn khảo sát & gửi báo giá cuối</span>
+                    ) : isAwaitingCustomerApproval ? (
+                      <span className="urgency-badge quoted">Đã gửi báo giá khảo sát — Chờ khách duyệt</span>
+                    ) : isMyJobInProgress ? (
+                      <span className="urgency-badge in-progress">Đang thi công sửa chữa</span>
+                    ) : isAwaitingCompletionConfirm ? (
+                      <span className="urgency-badge quoted">Chờ khách nghiệm thu & Thanh toán</span>
+                    ) : isDeclinedAfterSurvey ? (
+                      <span className="urgency-badge assigned-other">
+                        Dừng sau khảo sát (Phí KS/Di chuyển: {(job.quotedPrice ?? 0).toLocaleString('vi-VN')} đ)
+                      </span>
                     ) : isMyJobCompleted ? (
-                      <span className="urgency-badge completed">Đã xong</span>
+                      <span className="urgency-badge completed">Đã hoàn thành & Quyết toán</span>
                     ) : isAssignedToOther ? (
                       <span className="urgency-badge assigned-other">Đơn đã có người nhận</span>
                     ) : isOrderCanceled ? (
@@ -304,18 +358,18 @@ export function ProviderJobsPage() {
                   <div className="card-bottom-row">
                     <div className="price-estimate-block">
                       <span className="price-label">
-                        {isMyJobInProgress || isMyJobCompleted
-                          ? 'Giá chốt:'
+                        {isAssignedToMe
+                          ? 'Tổng hóa đơn:'
                           : isAssignedToOther
                           ? (job.quotedPrice ? 'Giá bạn đã báo:' : 'Trạng thái:')
                           : isQuoted
-                          ? 'Giá đã báo:'
+                          ? 'Giá dự kiến đã báo:'
                           : 'Báo giá:'}
                       </span>
                       <span className="price-number">
                         {isAssignedToOther && !job.quotedPrice
                           ? 'Yêu cầu đã đóng'
-                          : job.quotedPrice
+                          : job.quotedPrice !== undefined && job.quotedPrice !== null
                           ? `${job.quotedPrice.toLocaleString('vi-VN')} đ`
                           : 'Chưa báo giá'}
                       </span>
@@ -343,14 +397,48 @@ export function ProviderJobsPage() {
                         </button>
                       )}
 
+                      {(isAwaitingSurvey || isAwaitingCustomerApproval) && (
+                        <button
+                          type="button"
+                          className="btn-quote-feed"
+                          onClick={() => setSurveyOrChangeModal({ job, mode: 'SURVEY_FINAL' })}
+                        >
+                          <ClipboardCheck size={16} />
+                          <span>{isAwaitingSurvey ? 'Báo giá khảo sát' : 'Cập nhật giá KS'}</span>
+                        </button>
+                      )}
+
                       {isMyJobInProgress && (
+                        <>
+                          <button
+                            type="button"
+                            className="btn-detail-feed"
+                            onClick={() => setSurveyOrChangeModal({ job, mode: 'IN_PROGRESS_CHANGE' })}
+                            title="Gửi yêu cầu phát sinh vật tư / công việc"
+                          >
+                            <FilePlus2 size={15} />
+                            <span>Báo phát sinh</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-finish-feed"
+                            onClick={() => handleOpenCompleteModal(job, 'COMPLETE_JOB')}
+                          >
+                            <CheckCircle2 size={16} />
+                            <span>Báo hoàn thành</span>
+                          </button>
+                        </>
+                      )}
+
+                      {isCashPendingConfirmation && (
                         <button
                           type="button"
                           className="btn-finish-feed"
-                          onClick={() => handleOpenCompleteModal(job)}
+                          style={{ background: '#ca8a04' }}
+                          onClick={() => handleOpenCompleteModal(job, 'CONFIRM_CASH')}
                         >
-                          <CheckCircle2 size={16} />
-                          <span>Hoàn thành</span>
+                          <Banknote size={16} />
+                          <span>Xác nhận tiền mặt</span>
                         </button>
                       )}
 
@@ -395,17 +483,42 @@ export function ProviderJobsPage() {
           onOpenChat={(job) => {
             setChatJob(job);
           }}
-          onCompleteOrder={handleOpenCompleteModal}
+          onCompleteOrder={(job) => handleOpenCompleteModal(job, 'COMPLETE_JOB')}
+          onOpenSurveyOrChangeModal={(job, mode) => {
+            setSelectedJob(null);
+            setSurveyOrChangeModal({ job, mode });
+          }}
+          onOpenConfirmCashModal={(job) => handleOpenCompleteModal(job, 'CONFIRM_CASH')}
         />
       )}
 
-      {/* Modal Hoàn thành công việc */}
+      {/* Modal Hoàn thành công việc / Xác nhận tiền mặt */}
       {completingJob && (
         <CompleteJobModal
           isOpen={!!completingJob}
           onClose={() => setCompletingJob(null)}
-          job={completingJob}
+          job={completingJob.job}
+          mode={completingJob.mode}
           onConfirmComplete={handleConfirmCompleteOrder}
+          onConfirmCash={handleConfirmCashPayment}
+        />
+      )}
+
+      {/* Modal Báo giá sau khảo sát / Báo phát sinh vật tư */}
+      {surveyOrChangeModal && (
+        <SurveyAndChangeQuoteModal
+          isOpen={!!surveyOrChangeModal}
+          onClose={() => setSurveyOrChangeModal(null)}
+          job={surveyOrChangeModal.job}
+          mode={surveyOrChangeModal.mode}
+          onSuccess={() => {
+            showNotice(
+              surveyOrChangeModal.mode === 'SURVEY_FINAL'
+                ? 'Đã gửi báo giá cuối sau khảo sát! Chờ khách hàng xác nhận.'
+                : 'Đã gửi yêu cầu phát sinh vật tư/công việc! Chờ khách hàng duyệt.'
+            );
+            loadJobs();
+          }}
         />
       )}
 
@@ -419,7 +532,7 @@ export function ProviderJobsPage() {
         />
       )}
 
-      {/* Modal Gửi báo giá */}
+      {/* Modal Gửi báo giá ban đầu */}
       {quotingJob && (
         <SubmitQuotationModal
           isOpen={!!quotingJob}
