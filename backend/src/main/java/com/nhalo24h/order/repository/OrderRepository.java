@@ -2,6 +2,7 @@ package com.nhalo24h.order.repository;
 
 import com.nhalo24h.order.domain.Order;
 import com.nhalo24h.order.domain.OrderStatus;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,13 +25,19 @@ public interface OrderRepository extends JpaRepository<Order, UUID>, JpaSpecific
 
     Page<Order> findAllByCustomerIdAndStatusOrderByCreatedAtDesc(UUID customerId, OrderStatus status, Pageable pageable);
 
+    Page<Order> findAllByCustomerIdAndStatusInOrderByCreatedAtDesc(UUID customerId, Collection<OrderStatus> statuses, Pageable pageable);
+
     List<Order> findAllByAssignedProviderIdOrderByCreatedAtDesc(UUID providerProfileId);
 
     List<Order> findAllByAssignedProviderIdAndStatusOrderByCreatedAtDesc(UUID providerProfileId, OrderStatus status);
 
+    List<Order> findAllByAssignedProviderIdAndStatusInOrderByCreatedAtDesc(UUID providerProfileId, Collection<OrderStatus> statuses);
+
     Page<Order> findAllByAssignedProviderIdOrderByCreatedAtDesc(UUID providerProfileId, Pageable pageable);
 
     Page<Order> findAllByAssignedProviderIdAndStatusOrderByCreatedAtDesc(UUID providerProfileId, OrderStatus status, Pageable pageable);
+
+    Page<Order> findAllByAssignedProviderIdAndStatusInOrderByCreatedAtDesc(UUID providerProfileId, Collection<OrderStatus> statuses, Pageable pageable);
 
     Optional<Order> findByIdAndCustomerId(UUID id, UUID customerId);
 

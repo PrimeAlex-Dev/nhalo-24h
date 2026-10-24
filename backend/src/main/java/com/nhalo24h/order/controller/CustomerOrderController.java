@@ -5,15 +5,17 @@ import com.nhalo24h.common.error.AppException;
 import com.nhalo24h.common.error.ErrorCode;
 import com.nhalo24h.order.domain.OrderStatus;
 import com.nhalo24h.order.dto.CancelOrderDto;
+import com.nhalo24h.order.dto.ConfirmOnlinePaymentRequest;
 import com.nhalo24h.order.dto.CreateOrderRequest;
 import com.nhalo24h.order.dto.CustomerOrderDetailResponse;
 import com.nhalo24h.order.dto.CustomerOrderSummaryResponse;
+import com.nhalo24h.order.dto.DeclareCashPaymentRequest;
 import com.nhalo24h.order.dto.DispatchOrderRequestsDto;
+import com.nhalo24h.order.dto.OnlinePaymentInitResponse;
 import com.nhalo24h.order.service.CustomerOrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -35,7 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/customer/orders")
 @PreAuthorize("hasRole('CUSTOMER')")
-@Tag(name = "Customer Orders", description = "Các API tạo đơn hàng, quản lý đơn hàng và chọn thợ của khách hàng")
+@Tag(name = "Customer Orders", description = "Các API tạo đơn hàng, quản lý khảo sát, duyệt báo giá, nghiệm thu và thanh toán của khách hàng")
 public class CustomerOrderController {
 
     private final CustomerOrderService customerOrderService;
@@ -45,7 +47,7 @@ public class CustomerOrderController {
     }
 
     @PostMapping
-    @Operation(summary = "Tạo đơn hàng mới", description = "Khách hàng tạo đơn sửa chữa mới từ địa chỉ đã lưu trong sổ địa chỉ, đính kèm ảnh và tùy chọn gửi yêu cầu tới thợ ban đầu.")
+    @Operation(summary = "Tạo đơn hàng mới", description = "Khách hàng tạo đơn sửa chữa/vệ sinh mới từ địa chỉ đã lưu, đính kèm ảnh và tùy chọn gửi yêu cầu tới thợ ban đầu.")
     public ResponseEntity<CustomerOrderDetailResponse> createOrder(
         @AuthenticationPrincipal UserPrincipal principal,
         @Valid @RequestBody CreateOrderRequest request
@@ -68,7 +70,7 @@ public class CustomerOrderController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Xem chi tiết đơn hàng", description = "Xem chi tiết một đơn hàng kèm danh sách toàn bộ báo giá nhận được từ các thợ.")
+    @Operation(summary = "Xem chi tiết đơn hàng", description = "Xem chi tiết đơn hàng kèm 3 nhóm chi phí, lịch sử phiên bản báo giá, bảng kê vật tư, trạng thái thanh toán và nhật ký.")
     public ResponseEntity<CustomerOrderDetailResponse> getOrderDetail(
         @AuthenticationPrincipal UserPrincipal principal,
         @PathVariable UUID id
@@ -91,7 +93,7 @@ public class CustomerOrderController {
     }
 
     @PostMapping("/requests/{requestId}/accept")
-    @Operation(summary = "Chấp nhận báo giá (Chốt thợ)", description = "Khách chọn 1 báo giá ưng ý: hệ thống gán thợ vào đơn, chuyển đơn sang IN_PROGRESS và tự động hủy các báo giá khác.")
+    @Operation(summary = "Chọn thợ & Xác nhận khảo sát / Gói cố định", description = "Khách chọn 1 thợ: xác nhận mức phí khảo sát, phí di chuyển (chuyển sang AWAITING_SURVEY) hoặc vào thẳng IN_PROGRESS nếu là gói giá cố định cam kết.")
     public ResponseEntity<Void> acceptQuotation(
         @AuthenticationPrincipal UserPrincipal principal,
         @PathVariable UUID requestId
@@ -101,8 +103,80 @@ public class CustomerOrderController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/{id}/approve-quote")
+    @Operation(summary = "Đồng ý Báo giá cuối sau khảo sát hoặc Duyệt phát sinh", description = "Khách xác nhận đồng ý mức giá cuối cùng sau khảo sát (chuyển đơn sang IN_PROGRESS) hoặc duyệt yêu cầu phát sinh vật tư/công việc.")
+    public ResponseEntity<CustomerOrderDetailResponse> approveLatestQuote(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable UUID id
+    ) {
+        validatePrincipal(principal);
+        CustomerOrderDetailResponse response = customerOrderService.approveLatestQuoteVersion(principal.getId(), id);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/reject-change")
+    @Operation(summary = "Từ chối khoản phát sinh trong khi sửa", description = "Khách từ chối yêu cầu điều chỉnh phát sinh của thợ, giữ nguyên báo giá đã duyệt trước đó.")
+    public ResponseEntity<CustomerOrderDetailResponse> rejectChangeRequest(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable UUID id,
+        @RequestBody(required = false) CancelOrderDto reasonDto
+    ) {
+        validatePrincipal(principal);
+        String reason = reasonDto != null ? reasonDto.reason() : null;
+        CustomerOrderDetailResponse response = customerOrderService.rejectChangeRequest(principal.getId(), id, reason);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/decline-after-survey")
+    @Operation(summary = "Từ chối sửa sau khi khảo sát", description = "Khách không đồng ý sửa sau khi thợ khảo sát: đơn chuyển sang DECLINED_AFTER_SURVEY, chỉ tính phí khảo sát và phí di chuyển theo thỏa thuận.")
+    public ResponseEntity<CustomerOrderDetailResponse> declineAfterSurvey(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable UUID id,
+        @RequestBody(required = false) CancelOrderDto reasonDto
+    ) {
+        validatePrincipal(principal);
+        String reason = reasonDto != null ? reasonDto.reason() : null;
+        CustomerOrderDetailResponse response = customerOrderService.declineAfterSurvey(principal.getId(), id, reason);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/pay-cash")
+    @Operation(summary = "Khai báo thanh toán tiền mặt (Bước 1)", description = "Khách khai báo số tiền mặt thực tế đã đưa cho thợ, chuyển trạng thái thanh toán sang CASH_PENDING_CONFIRMATION chờ thợ xác nhận.")
+    public ResponseEntity<CustomerOrderDetailResponse> declareCashPayment(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable UUID id,
+        @Valid @RequestBody DeclareCashPaymentRequest request
+    ) {
+        validatePrincipal(principal);
+        CustomerOrderDetailResponse response = customerOrderService.declareCashPayment(principal.getId(), id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/pay-online/init")
+    @Operation(summary = "Khởi tạo giao dịch thanh toán Online", description = "Tạo giao dịch thanh toán trực tuyến với mã đơn và số tiền hóa đơn chính xác.")
+    public ResponseEntity<OnlinePaymentInitResponse> initOnlinePayment(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable UUID id
+    ) {
+        validatePrincipal(principal);
+        OnlinePaymentInitResponse response = customerOrderService.initOnlinePayment(principal.getId(), id);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/pay-online/confirm")
+    @Operation(summary = "Xác nhận kết quả thanh toán Online (Mock Gateway Callback)", description = "Xác nhận kết quả thanh toán từ cổng thanh toán, chuyển trạng thái sang PAID_ONLINE và hoàn tất đơn hàng.")
+    public ResponseEntity<CustomerOrderDetailResponse> confirmOnlinePayment(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable UUID id,
+        @Valid @RequestBody ConfirmOnlinePaymentRequest request
+    ) {
+        validatePrincipal(principal);
+        CustomerOrderDetailResponse response = customerOrderService.confirmOnlinePayment(principal.getId(), id, request);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/{id}/cancel")
-    @Operation(summary = "Hủy đơn hàng", description = "Khách hàng hủy đơn hàng khi chưa hoàn thành công việc.")
+    @Operation(summary = "Hủy đơn hàng", description = "Khách hàng hủy đơn hàng khi chưa chọn thợ (PENDING_PROVIDER). Không cho phép tự hủy khi thợ đang chuẩn bị đến (AWAITING_SURVEY) hoặc đang sửa (IN_PROGRESS).")
     public ResponseEntity<Void> cancelOrder(
         @AuthenticationPrincipal UserPrincipal principal,
         @PathVariable UUID id,
@@ -112,6 +186,19 @@ public class CustomerOrderController {
         String reason = cancelDto != null ? cancelDto.reason() : null;
         customerOrderService.cancelOrder(principal.getId(), id, reason);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/notify-cancel")
+    @Operation(summary = "Gửi thông báo yêu cầu dời hẹn / hủy đơn tới thợ (Phương án A)", description = "Khi thợ đang trên đường đến (AWAITING_SURVEY) hoặc đang xử lý, khách gửi thông báo yêu cầu dời lịch / hủy đơn kèm lý do để thợ chủ động liên hệ trao đổi.")
+    public ResponseEntity<CustomerOrderDetailResponse> notifyCancelRequest(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable UUID id,
+        @RequestBody(required = false) CancelOrderDto reasonDto
+    ) {
+        validatePrincipal(principal);
+        String reason = reasonDto != null ? reasonDto.reason() : null;
+        CustomerOrderDetailResponse response = customerOrderService.notifyCancelRequest(principal.getId(), id, reason);
+        return ResponseEntity.ok(response);
     }
 
     private void validatePrincipal(UserPrincipal principal) {

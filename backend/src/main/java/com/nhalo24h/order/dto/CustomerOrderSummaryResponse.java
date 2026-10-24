@@ -18,8 +18,20 @@ public record CustomerOrderSummaryResponse(
     @Schema(description = "Tên danh mục dịch vụ", example = "Sửa chữa ống nước")
     String categoryName,
 
-    @Schema(description = "Trạng thái đơn hàng", example = "PENDING_PROVIDER")
+    @Schema(description = "Trạng thái công việc của đơn hàng", example = "PENDING_PROVIDER")
     String status,
+
+    @Schema(description = "Trạng thái thanh toán độc lập", example = "UNPAID")
+    String paymentStatus,
+
+    @Schema(description = "Phương thức thanh toán (CASH / ONLINE)")
+    String paymentMethod,
+
+    @Schema(description = "Chế độ quy trình (SURVEY_REQUIRED / COMMITTED_FIXED)")
+    String workflowMode,
+
+    @Schema(description = "Mức độ khẩn cấp (NORMAL / URGENT / EMERGENCY)")
+    String urgencyLevel,
 
     @Schema(description = "Địa chỉ thực hiện", example = "123 Đường 30/4, P. Hưng Lợi, Q. Ninh Kiều, Cần Thơ")
     String addressSnapshot,
@@ -27,8 +39,14 @@ public record CustomerOrderSummaryResponse(
     @Schema(description = "Thời gian mong muốn thực hiện", example = "2026-10-18T14:00:00Z")
     Instant expectedScheduleTime,
 
-    @Schema(description = "Giá chốt (nếu đã chốt thợ)", example = "200000")
+    @Schema(description = "Tổng hóa đơn chốt (nếu đã xác định)", example = "430000")
     Long finalPrice,
+
+    @Schema(description = "Tiền công chốt (VNĐ)", example = "250000")
+    Long finalLaborFee,
+
+    @Schema(description = "Tiền vật tư chốt (VNĐ)", example = "180000")
+    Long finalMaterialsFee,
 
     @Schema(description = "ID thợ được chọn (nếu có)")
     UUID assignedProviderId,

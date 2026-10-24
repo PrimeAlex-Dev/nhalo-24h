@@ -12,17 +12,32 @@ import {
   RefreshCw,
   Info,
   Layers,
-  ArrowRight
+  ArrowRight,
+  AlertTriangle
 } from 'lucide-react';
 import { OrderDetailModal, type GenericOrderItem } from '../components/OrderDetailModal';
 import { Pagination } from '../../../components/common/Pagination';
 import { categoryService, adminOrderService } from '../../../services';
 import type { AdminCategoryItem } from '../types/admin';
-import type { CustomerOrderSummary, OrderStatus } from '../../../types/order';
+import type {
+  CustomerOrderSummary,
+  OrderStatus,
+  ResolveDisputePayload,
+  AdjustInvoicePayload,
+  DismissAbnormalFlagPayload
+} from '../../../types/order';
 import { PATHS } from '../../../routes/paths';
 import './AdminOrdersPage.css';
 
-type OrderTabType = 'ALL' | 'PENDING_PROVIDER' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELED';
+type OrderTabType =
+  | 'ALL'
+  | 'PENDING_PROVIDER'
+  | 'AWAITING_SURVEY'
+  | 'AWAITING_CUSTOMER_APPROVAL'
+  | 'IN_PROGRESS'
+  | 'AWAITING_COMPLETION_CONFIRMATION'
+  | 'COMPLETED'
+  | 'CANCELED';
 
 export function AdminOrdersPage() {
   const navigate = useNavigate();
@@ -43,18 +58,14 @@ export function AdminOrdersPage() {
   const [pageSize] = useState(10);
   const [pageInfo, setPageInfo] = useState({ totalPages: 0, totalElements: 0 });
 
-  // Fetch active categories from backend to populate filter dropdown
   useEffect(() => {
     categoryService.getCategories({ status: 'ACTIVE', size: 100 })
       .then((res) => {
         setCategories(res.content);
       })
-      .catch(() => {
-        // Fallback if backend offline
-      });
+      .catch(() => {});
   }, []);
 
-  // Fetch orders from backend
   const fetchOrders = useCallback(async (isRefresh = false, pageIndex = page) => {
     if (isRefresh) {
       setIsRefreshing(true);
@@ -109,25 +120,23 @@ export function AdminOrdersPage() {
 
   // Status overview counts for current view
   const countPending = orders.filter((o) => o.status === 'PENDING_PROVIDER').length;
-  const countInProgress = orders.filter((o) => o.status === 'IN_PROGRESS').length;
-  const countCompleted = orders.filter((o) => o.status === 'COMPLETED').length;
+  const countInProgress = orders.filter((o) =>
+    ['AWAITING_SURVEY', 'AWAITING_CUSTOMER_APPROVAL', 'IN_PROGRESS', 'AWAITING_COMPLETION_CONFIRMATION'].includes(o.status)
+  ).length;
+  const countCompleted = orders.filter((o) => o.status === 'COMPLETED' || o.status === 'DECLINED_AFTER_SURVEY').length;
   const countCanceled = orders.filter((o) => o.status === 'CANCELED').length;
 
-  // Filtered orders for client-side search refinements
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
-      // Tab filter
       if (activeTab !== 'ALL' && order.status !== activeTab) {
         return false;
       }
 
-      // Category filter (by category name or ID)
       if (categoryFilter !== 'all') {
         const matchesCat = order.categoryId === categoryFilter || order.categoryName?.toLowerCase() === categoryFilter.toLowerCase();
         if (!matchesCat) return false;
       }
 
-      // Search query filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchCode = order.orderCode.toLowerCase().includes(q);
@@ -156,12 +165,44 @@ export function AdminOrdersPage() {
     }
   };
 
+  const handleResolveDispute = async (orderId: string, payload: ResolveDisputePayload) => {
+    const updated = await adminOrderService.resolvePaymentDispute(orderId, payload);
+    if (updated) {
+      setSelectedOrder(updated as unknown as GenericOrderItem);
+    }
+    fetchOrders(true);
+  };
+
+  const handleAdjustInvoice = async (orderId: string, payload: AdjustInvoicePayload) => {
+    const updated = await adminOrderService.adjustInvoice(orderId, payload);
+    if (updated) {
+      setSelectedOrder(updated as unknown as GenericOrderItem);
+    }
+    fetchOrders(true);
+  };
+
+  const handleDismissAbnormalFlag = async (orderId: string, payload: DismissAbnormalFlagPayload) => {
+    const updated = await adminOrderService.dismissAbnormalFlag(orderId, payload);
+    if (updated) {
+      setSelectedOrder(updated as unknown as GenericOrderItem);
+    }
+    fetchOrders(true);
+  };
+
   const getStatusBadge = (status: OrderStatus | string) => {
     switch (status) {
       case 'PENDING_PROVIDER':
-        return <span className="order-chip chip-unassigned">Chờ thợ nhận việc</span>;
+        return <span className="order-chip chip-unassigned">Chờ thợ báo giá</span>;
+      case 'AWAITING_SURVEY':
+        return <span className="order-chip chip-progress">Chờ khảo sát</span>;
+      case 'AWAITING_CUSTOMER_APPROVAL':
+        return <span className="order-chip chip-unassigned">Chờ khách duyệt giá KS</span>;
       case 'IN_PROGRESS':
         return <span className="order-chip chip-progress">Đang thực hiện</span>;
+      case 'AWAITING_COMPLETION_CONFIRMATION':
+        return <span className="order-chip chip-progress">Chờ nghiệm thu & TT</span>;
+      case 'DECLINED_AFTER_SURVEY':
+        return <span className="order-chip chip-cancelled">Dừng sau khảo sát</span>;
       case 'COMPLETED':
         return <span className="order-chip chip-completed">Hoàn thành</span>;
       case 'CANCELED':
@@ -177,10 +218,10 @@ export function AdminOrdersPage() {
       <div className="orders-page-header">
         <div>
           <h2 className="orders-page-title">
-            03. Giám Sát & Điều Phối Đơn Hàng
+            03. Giám Sát Đơn Hàng, Đối Soát Thanh Toán & Hoa Hồng
           </h2>
           <p className="orders-page-sub">
-            Theo dõi tiến độ, tình trạng tiếp nhận đơn và kết nối đối tác thợ kỹ thuật trên toàn hệ thống
+            Theo dõi toàn bộ quy trình Khảo sát - Báo giá 3 nhóm chi phí - Nghiệm thu - Thanh toán Online/Tiền mặt và Hoa hồng nền tảng
           </p>
         </div>
         <div className="orders-header-actions">
@@ -196,7 +237,7 @@ export function AdminOrdersPage() {
       </div>
 
       {/* Tabs navigation matching backend OrderStatus */}
-      <div className="orders-tab-bar">
+      <div className="orders-tab-bar" style={{ flexWrap: 'wrap' }}>
         <button
           type="button"
           className={`orders-tab-btn ${activeTab === 'ALL' ? 'active' : ''}`}
@@ -210,7 +251,23 @@ export function AdminOrdersPage() {
           className={`orders-tab-btn ${activeTab === 'PENDING_PROVIDER' ? 'active' : ''}`}
           onClick={() => handleTabChange('PENDING_PROVIDER')}
         >
-          <Clock size={14} /> Chờ thợ nhận việc {activeTab === 'PENDING_PROVIDER' && pageInfo.totalElements > 0 ? `(${pageInfo.totalElements})` : ''}
+          <Clock size={14} /> Chờ báo giá
+        </button>
+
+        <button
+          type="button"
+          className={`orders-tab-btn ${activeTab === 'AWAITING_SURVEY' ? 'active' : ''}`}
+          onClick={() => handleTabChange('AWAITING_SURVEY')}
+        >
+          Chờ khảo sát
+        </button>
+
+        <button
+          type="button"
+          className={`orders-tab-btn ${activeTab === 'AWAITING_CUSTOMER_APPROVAL' ? 'active' : ''}`}
+          onClick={() => handleTabChange('AWAITING_CUSTOMER_APPROVAL')}
+        >
+          Chờ duyệt giá KS
         </button>
 
         <button
@@ -218,7 +275,15 @@ export function AdminOrdersPage() {
           className={`orders-tab-btn ${activeTab === 'IN_PROGRESS' ? 'active' : ''}`}
           onClick={() => handleTabChange('IN_PROGRESS')}
         >
-          Đang thực hiện {activeTab === 'IN_PROGRESS' && pageInfo.totalElements > 0 ? `(${pageInfo.totalElements})` : ''}
+          Đang thi công
+        </button>
+
+        <button
+          type="button"
+          className={`orders-tab-btn ${activeTab === 'AWAITING_COMPLETION_CONFIRMATION' ? 'active' : ''}`}
+          onClick={() => handleTabChange('AWAITING_COMPLETION_CONFIRMATION')}
+        >
+          Chờ nghiệm thu & TT
         </button>
 
         <button
@@ -226,7 +291,7 @@ export function AdminOrdersPage() {
           className={`orders-tab-btn ${activeTab === 'COMPLETED' ? 'active' : ''}`}
           onClick={() => handleTabChange('COMPLETED')}
         >
-          <CheckCircle2 size={14} /> Hoàn thành {activeTab === 'COMPLETED' && pageInfo.totalElements > 0 ? `(${pageInfo.totalElements})` : ''}
+          <CheckCircle2 size={14} /> Hoàn thành
         </button>
 
         <button
@@ -234,7 +299,7 @@ export function AdminOrdersPage() {
           className={`orders-tab-btn ${activeTab === 'CANCELED' ? 'active' : ''}`}
           onClick={() => handleTabChange('CANCELED')}
         >
-          <XCircle size={14} /> Đã hủy {activeTab === 'CANCELED' && pageInfo.totalElements > 0 ? `(${pageInfo.totalElements})` : ''}
+          <XCircle size={14} /> Đã hủy
         </button>
       </div>
 
@@ -274,11 +339,11 @@ export function AdminOrdersPage() {
       <div className="order-status-bar">
         <div className="status-bar-pill pill-unassigned">
           <span className="bar-count">{countPending}</span>
-          <span className="bar-label">Chờ thợ nhận</span>
+          <span className="bar-label">Chờ báo giá</span>
         </div>
         <div className="status-bar-pill pill-progress">
           <span className="bar-count">{countInProgress}</span>
-          <span className="bar-label">Đang thực hiện</span>
+          <span className="bar-label">Đang xử lý (KS / Thi công / TT)</span>
         </div>
         <div className="status-bar-pill pill-completed">
           <span className="bar-count">{countCompleted}</span>
@@ -294,7 +359,7 @@ export function AdminOrdersPage() {
       <div className="orders-info-callout">
         <Info size={20} className="text-blue-600 flex-shrink-0" />
         <p className="callout-info-text">
-          <strong>Cơ chế điều phối đơn hàng P2P:</strong> Trên nền tảng Nhà Lo 24h, yêu cầu dịch vụ được kết nối trực tiếp giữa Khách hàng và Thợ kỹ thuật đối tác theo quy trình tự động: Khách tạo yêu cầu &rarr; Phát tín hiệu tới thợ khu vực &rarr; Thợ gửi báo giá &rarr; Khách chọn thợ &rarr; Tiến hành công việc. Khi có đơn hàng phát sinh, hệ thống sẽ tự động cập nhật danh sách tại đây.
+          <strong>Cơ chế giám sát 3 nhóm chi phí & Bảo vệ hoa hồng 4 lớp:</strong> Mọi đơn hàng đều lưu lịch sử phiên bản báo giá (Báo giá dự kiến &rarr; Báo giá chốt sau khảo sát &rarr; Phát sinh vật tư). Hoa hồng nền tảng (10%) chỉ tính trên Tiền công thực tế. Các đơn thanh toán tiền mặt lệch hóa đơn hoặc có biến động giá bất thường sẽ gắn cờ cảnh báo để Admin đối soát.
         </p>
       </div>
 
@@ -308,8 +373,8 @@ export function AdminOrdersPage() {
                 <th>Địa Chỉ & Yêu Cầu</th>
                 <th>Thợ Phụ Trách</th>
                 <th>Lịch Hẹn / Tạo Lúc</th>
-                <th>Trạng Thái</th>
-                <th>Chi Phí / Báo Giá</th>
+                <th>Trạng Thái Công Việc & TT</th>
+                <th>Chi Phí & Hoa Hồng</th>
                 <th>Thao Tác</th>
               </tr>
             </thead>
@@ -327,12 +392,12 @@ export function AdminOrdersPage() {
                     <div className="orders-empty-state-box">
                       <FileText size={44} className="mx-auto mb-3 text-slate-300" />
                       <h4 className="empty-state-title">
-                        Chưa có đơn hàng nào cần quản trị viên can thiệp
+                        Chưa có đơn hàng nào trong danh sách này
                       </h4>
                       <p className="empty-state-sub">
                         {categoryFilter !== 'all' || searchQuery.trim() || activeTab !== 'ALL'
                           ? 'Không tìm thấy đơn hàng nào phù hợp với bộ lọc hiện tại.'
-                          : 'Hiện tại chưa có đơn hàng nào phát sinh trên hệ thống hoặc endpoint giám sát tập trung đang được chuẩn bị.'}
+                          : 'Hiện tại chưa có đơn hàng nào phát sinh trên hệ thống.'}
                       </p>
                       <div className="empty-actions-row">
                         <button
@@ -387,7 +452,9 @@ export function AdminOrdersPage() {
                       {ord.assignedProviderName ? (
                         <div className="table-provider-cell">
                           <span className="table-user-name">{ord.assignedProviderName}</span>
-                          <span className="table-user-sub">Đã nhận việc</span>
+                          <span className="table-user-sub">
+                            {ord.workflowMode === 'COMMITTED_FIXED' ? 'Gói cố định' : 'Khảo sát thực tế'}
+                          </span>
                         </div>
                       ) : (
                         <span className="table-unassigned-tag">
@@ -408,18 +475,47 @@ export function AdminOrdersPage() {
                     </td>
 
                     <td>
-                      <div className="table-status-cell">
+                      <div className="table-status-cell" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                         {getStatusBadge(ord.status)}
+                        {ord.paymentStatus && (
+                          <span style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            color: ord.paymentStatus === 'PAYMENT_DISPUTED' ? '#dc2626' : '#475569'
+                          }}>
+                            TT: {ord.paymentStatus}
+                          </span>
+                        )}
+                        {(ord.isFlaggedAbnormal || ord.paymentStatus === 'PAYMENT_DISPUTED') && (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            color: '#b91c1c',
+                            background: '#fef2f2',
+                            padding: '2px 6px',
+                            borderRadius: '4px'
+                          }}>
+                            <AlertTriangle size={11} /> Cần đối soát
+                          </span>
+                        )}
                       </div>
                     </td>
 
                     <td>
-                      <div className="table-price-cell">
+                      <div className="table-price-cell" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                         <span className="table-price-text">
-                          {ord.finalPrice 
+                          {ord.finalPrice !== undefined && ord.finalPrice !== null
                             ? `${ord.finalPrice.toLocaleString('vi-VN')} đ` 
                             : 'Chờ báo giá'}
                         </span>
+                        {ord.commissionAmount !== undefined && ord.commissionAmount > 0 && (
+                          <span style={{ fontSize: '0.73rem', color: '#0f766e', fontWeight: 600 }}>
+                            HH: {ord.commissionAmount.toLocaleString('vi-VN')} đ
+                          </span>
+                        )}
                       </div>
                     </td>
 
@@ -428,7 +524,7 @@ export function AdminOrdersPage() {
                         type="button"
                         className="btn-table-inspect"
                         onClick={() => handleOpenDetail(ord)}
-                        title="Bấm để xem chi tiết đầy đủ"
+                        title="Bấm để xem chi tiết đầy đủ & đối soát"
                       >
                         <Eye size={14} /> Chi tiết
                       </button>
@@ -457,6 +553,9 @@ export function AdminOrdersPage() {
         order={selectedOrder}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onResolveDispute={handleResolveDispute}
+        onAdjustInvoice={handleAdjustInvoice}
+        onDismissAbnormalFlag={handleDismissAbnormalFlag}
       />
     </div>
   );

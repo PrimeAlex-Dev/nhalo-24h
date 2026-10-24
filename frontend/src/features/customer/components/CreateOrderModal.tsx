@@ -11,7 +11,8 @@ import {
   CheckCircle2, 
   Plus, 
   UserCheck,
-  ImageIcon
+  ImageIcon,
+  Zap
 } from 'lucide-react';
 import { 
   customerOrderService, 
@@ -83,6 +84,8 @@ export function CreateOrderModal({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [urgencyLevel, setUrgencyLevel] = useState<'NORMAL' | 'URGENT' | 'EMERGENCY'>('NORMAL');
+  const [serviceMetadata, setServiceMetadata] = useState('');
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('14:00');
   const [contactName, setContactName] = useState('');
@@ -115,6 +118,8 @@ export function CreateOrderModal({
   const resetForm = () => {
     setTitle('');
     setDescription('');
+    setUrgencyLevel('NORMAL');
+    setServiceMetadata('');
     setContactName('');
     setContactPhone('');
     uploadedImages.forEach((img) => {
@@ -343,6 +348,8 @@ export function CreateOrderModal({
         addressId: selectedAddressId,
         title: title.trim(),
         description: description.trim(),
+        urgencyLevel,
+        serviceMetadata: serviceMetadata.trim() || undefined,
         expectedScheduleTime: expectedDateTime,
         contactName: trimmedContactName || undefined,
         contactPhone: trimmedContactPhone || undefined,
@@ -375,9 +382,9 @@ export function CreateOrderModal({
       >
         <div className="create-order-header">
           <div>
-            <h2 className="create-order-title">Đặt lịch sửa chữa & Nhận báo giá</h2>
+            <h2 className="create-order-title">Đặt lịch dịch vụ & Nhận báo giá</h2>
             <p className="create-order-subtitle">
-              Mô tả sự cố để thợ chuyên nghiệp gần bạn nhận định và gửi báo giá minh bạch.
+              Mô tả sự cố hoặc quy mô dịch vụ để thợ chuyên nghiệp gửi báo giá bóc tách 3 nhóm chi phí minh bạch.
             </p>
           </div>
           <button 
@@ -418,7 +425,7 @@ export function CreateOrderModal({
               <div className="form-group-section">
                 <label className="section-label">
                   <MapPin size={16} />
-                  <span>Địa chỉ nơi xảy ra sự cố *</span>
+                  <span>Địa chỉ nơi thực hiện dịch vụ *</span>
                 </label>
                 {addresses.length === 0 ? (
                   <div className="no-address-box">
@@ -454,27 +461,45 @@ export function CreateOrderModal({
                 )}
               </div>
 
-              {/* 2. Chọn danh mục sự cố */}
-              <div className="form-group-section">
-                <label className="section-label">Danh mục dịch vụ *</label>
-                <select 
-                  className="form-select"
-                  value={selectedCategoryId}
-                  onChange={(e) => setSelectedCategoryId(e.target.value)}
-                >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+              {/* 2. Chọn danh mục & Mức độ khẩn cấp */}
+              <div className="form-row-two-col">
+                <div className="form-group-section">
+                  <label className="section-label">Danh mục dịch vụ *</label>
+                  <select 
+                    className="form-select"
+                    value={selectedCategoryId}
+                    onChange={(e) => setSelectedCategoryId(e.target.value)}
+                  >
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group-section">
+                  <label className="section-label">
+                    <Zap size={15} />
+                    <span>Mức độ khẩn cấp</span>
+                  </label>
+                  <select
+                    className="form-select"
+                    value={urgencyLevel}
+                    onChange={(e) => setUrgencyLevel(e.target.value as 'NORMAL' | 'URGENT' | 'EMERGENCY')}
+                  >
+                    <option value="NORMAL">Bình thường (Đặt lịch chuẩn)</option>
+                    <option value="URGENT">Cần xử lý gấp trong ngày</option>
+                    <option value="EMERGENCY">Khẩn cấp (Sự cố rò nước / chập điện)</option>
+                  </select>
+                </div>
               </div>
 
               {/* 3. Tiêu đề & mô tả */}
               <div className="form-group-section">
-                <label className="section-label">Tiêu đề sự cố *</label>
+                <label className="section-label">Tiêu đề yêu cầu *</label>
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Ví dụ: Vòi nước bồn rửa chén bị rò rỉ"
+                  placeholder="Ví dụ: Vòi nước bồn rửa chén bị rò rỉ / Vệ sinh 2 máy lạnh treo tường"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   maxLength={200}
@@ -482,7 +507,7 @@ export function CreateOrderModal({
               </div>
 
               <div className="form-group-section">
-                <label className="section-label">Mô tả chi tiết tình trạng *</label>
+                <label className="section-label">Mô tả chi tiết tình trạng / yêu cầu *</label>
                 <textarea
                   className="form-textarea"
                   rows={3}
@@ -490,6 +515,19 @@ export function CreateOrderModal({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
+              </div>
+
+              <div className="form-group-section">
+                <label className="section-label">Thông số bổ sung (Hãng thiết bị / Công suất / Diện tích - tùy chọn)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="VD: Máy lạnh Daikin Inverter 1.5HP, căn hộ tầng 5 có thang máy..."
+                  value={serviceMetadata}
+                  onChange={(e) => setServiceMetadata(e.target.value)}
+                  maxLength={250}
+                />
+                <span className="field-helper-hint">Giúp thợ chuẩn bị đúng vật tư hoặc gửi gói báo giá cố định chính xác hơn</span>
               </div>
 
               {/* 4. Thời gian mong muốn */}
@@ -569,7 +607,7 @@ export function CreateOrderModal({
                 <div className="section-label-row">
                   <label className="section-label">
                     <ImageIcon size={16} />
-                    <span>Hình ảnh sự cố (tối đa 5 ảnh)</span>
+                    <span>Hình ảnh hiện trạng (tối đa 5 ảnh)</span>
                   </label>
                   <span className="image-counter-badge">{uploadedImages.length}/5 ảnh</span>
                 </div>

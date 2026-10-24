@@ -15,13 +15,20 @@ import {
   Eye,
   ArrowUpDown,
   ChevronDown,
-  ZoomIn
+  ZoomIn,
+  Layers,
+  CreditCard,
+  Banknote,
+  ShieldCheck,
+  FileCheck2,
+  XCircle
 } from 'lucide-react';
 import { customerOrderService } from '../../../services';
-import type { CustomerOrderDetail, QuotationItem } from '../../../types/order';
+import type { CustomerOrderDetail, QuotationItem, OnlinePaymentInitResponse } from '../../../types/order';
 import type { PublicProviderItem } from '../../../services/providerProfileService';
 import { InviteProvidersModal } from './InviteProvidersModal';
 import { CancelOrderModal } from './CancelOrderModal';
+import { CancelSurveyNoticeModal } from './CancelSurveyNoticeModal';
 import { AcceptQuotationModal } from './AcceptQuotationModal';
 import { ProviderQuickViewDrawer } from './ProviderQuickViewDrawer';
 import { AvatarLightboxModal } from '../../../components/common';
@@ -59,6 +66,7 @@ export function CustomerOrderDetailModal({
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [quotingToAccept, setQuotingToAccept] = useState<QuotationItem | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showCancelSurveyModal, setShowCancelSurveyModal] = useState(false);
   const [viewingProvider, setViewingProvider] = useState<PublicProviderItem | null>(null);
   const [quotationSort, setQuotationSort] = useState<QuotationSortOption>('DEFAULT');
   const [avatarLightbox, setAvatarLightbox] = useState<{
@@ -68,9 +76,20 @@ export function CustomerOrderDetailModal({
     badgeText?: string;
   } | null>(null);
 
+  // Payment UI states
+  const [paymentTab, setPaymentTab] = useState<'ONLINE' | 'CASH'>('ONLINE');
+  const [onlineSession, setOnlineSession] = useState<OnlinePaymentInitResponse | null>(null);
+  const [cashDeclaredStr, setCashDeclaredStr] = useState('');
+  const [cashNote, setCashNote] = useState('');
+  const [declineSurveyReason, setDeclineSurveyReason] = useState('');
+  const [showDeclineSurveyBox, setShowDeclineSurveyBox] = useState(false);
+
   useEffect(() => {
     if (isOpen && orderId) {
       setQuotationSort('DEFAULT');
+      setOnlineSession(null);
+      setShowDeclineSurveyBox(false);
+      setDeclineSurveyReason('');
       loadOrderDetail(false);
 
       // Auto-poll order detail every 6 seconds while modal is open
@@ -104,6 +123,9 @@ export function CustomerOrderDetailModal({
       setErrorMsg(null);
       const data = await customerOrderService.getOrderDetail(orderId);
       setOrder(data);
+      if (!silent && data.finalPrice !== undefined && data.finalPrice !== null) {
+        setCashDeclaredStr(data.finalPrice.toLocaleString('vi-VN'));
+      }
     } catch (err: any) {
       if (!silent) {
         setErrorMsg(err.message || 'Không thể tải chi tiết đơn hàng.');
@@ -125,12 +147,141 @@ export function CustomerOrderDetailModal({
     setErrorMsg(null);
     try {
       await customerOrderService.acceptQuotation(quotingToAccept.requestId);
-      setSuccessMsg(`Đã chọn thợ ${quotingToAccept.providerName} thành công! Đơn hàng bắt đầu thực hiện.`);
+      setSuccessMsg(
+        quotingToAccept.quoteMode === 'COMMITTED_FIXED'
+          ? `Đã chọn thợ ${quotingToAccept.providerName} theo gói giá cố định! Đơn hàng bắt đầu thực hiện.`
+          : `Đã chọn thợ ${quotingToAccept.providerName} đến khảo sát thực tế!`
+      );
       await loadOrderDetail();
       if (onOrderUpdated) onOrderUpdated();
     } catch (err: any) {
       setErrorMsg(err.message || 'Không thể chấp nhận báo giá.');
       throw err;
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleApproveLatestQuote = async () => {
+    if (!order) return;
+    try {
+      setActionLoading(true);
+      setErrorMsg(null);
+      await customerOrderService.approveLatestQuote(order.id);
+      setSuccessMsg('Đã duyệt báo giá thành công! Thợ sẽ tiến hành công việc theo mức giá đã chốt.');
+      await loadOrderDetail();
+      if (onOrderUpdated) onOrderUpdated();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Không thể duyệt báo giá.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeclineAfterSurvey = async () => {
+    if (!order) return;
+    try {
+      setActionLoading(true);
+      setErrorMsg(null);
+      await customerOrderService.declineAfterSurvey(
+        order.id,
+        { reason: declineSurveyReason.trim() || 'Khách hàng quyết định không sửa sau khi khảo sát' }
+      );
+      setShowDeclineSurveyBox(false);
+      setSuccessMsg(
+        'Đã xác nhận dừng đơn sau khảo sát. Vui lòng thanh toán Phí khảo sát & Phí di chuyển cho thợ.'
+      );
+      await loadOrderDetail();
+      if (onOrderUpdated) onOrderUpdated();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Không thể từ chối sửa sau khảo sát.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRejectChangeRequest = async () => {
+    if (!order) return;
+    try {
+      setActionLoading(true);
+      setErrorMsg(null);
+      await customerOrderService.rejectChangeRequest(order.id);
+      setSuccessMsg('Đã từ chối khoản phát sinh. Đơn hàng giữ nguyên mức giá đã duyệt trước đó.');
+      await loadOrderDetail();
+      if (onOrderUpdated) onOrderUpdated();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Không thể từ chối yêu cầu phát sinh.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleInitOnlinePayment = async () => {
+    if (!order) return;
+    try {
+      setActionLoading(true);
+      setErrorMsg(null);
+      const session = await customerOrderService.initOnlinePayment(order.id);
+      setOnlineSession(session);
+      if (session.amountToPay === 0) {
+        setSuccessMsg('Hóa đơn 0đ đã được hoàn tất tự động!');
+        await loadOrderDetail();
+        if (onOrderUpdated) onOrderUpdated();
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Không thể khởi tạo giao dịch thanh toán online.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleConfirmMockOnlinePayment = async () => {
+    if (!order || !onlineSession) return;
+    try {
+      setActionLoading(true);
+      setErrorMsg(null);
+      await customerOrderService.confirmOnlinePayment(order.id, {
+        transactionRef: onlineSession.transactionRef,
+        success: true,
+      });
+      setOnlineSession(null);
+      setSuccessMsg('Thanh toán Online thành công! Đơn hàng đã hoàn tất và quyết toán.');
+      await loadOrderDetail();
+      if (onOrderUpdated) onOrderUpdated();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Xác nhận thanh toán Online thất bại.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeclareCashPayment = async () => {
+    if (!order) return;
+    const raw = cashDeclaredStr.replace(/\D/g, '');
+    const declaredAmount = raw ? parseInt(raw, 10) : 0;
+    const invoiceTotal = order.finalPrice ?? 0;
+
+    if (declaredAmount !== invoiceTotal && !cashNote.trim()) {
+      setErrorMsg(
+        `Số tiền bạn khai báo (${declaredAmount.toLocaleString('vi-VN')} đ) khác với hóa đơn (${invoiceTotal.toLocaleString('vi-VN')} đ). Vui lòng nhập lý do giải trình.`
+      );
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      setErrorMsg(null);
+      await customerOrderService.declareCashPayment(order.id, {
+        declaredAmount,
+        note: cashNote.trim() || undefined,
+      });
+      setSuccessMsg(
+        'Đã ghi nhận khai báo thanh toán tiền mặt! Hệ thống đã gửi yêu cầu sang máy của thợ để xác nhận (Bước 2/2).'
+      );
+      await loadOrderDetail();
+      if (onOrderUpdated) onOrderUpdated();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Không thể khai báo thanh toán tiền mặt.');
     } finally {
       setActionLoading(false);
     }
@@ -151,6 +302,23 @@ export function CustomerOrderDetailModal({
       if (onOrderUpdated) onOrderUpdated();
     } catch (err: any) {
       setErrorMsg(err.message || 'Không thể hủy đơn hàng.');
+      throw err;
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSendCancelSurveyNotice = async (reason: string) => {
+    if (!order) return;
+    setActionLoading(true);
+    setErrorMsg(null);
+    try {
+      const updated = await customerOrderService.notifyCancelRequest(order.id, { reason });
+      setOrder(updated);
+      setSuccessMsg('Đã gửi thông báo yêu cầu dời lịch / hủy đơn tới thợ.');
+      if (onOrderUpdated) onOrderUpdated();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Không thể gửi thông báo.');
       throw err;
     } finally {
       setActionLoading(false);
@@ -234,14 +402,20 @@ export function CustomerOrderDetailModal({
     return list;
   }, [order?.quotations, quotationSort]);
 
-  if (!isOpen) return null;
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PENDING_PROVIDER':
         return <span className="status-badge-custom pending">Đang tìm / Chờ báo giá</span>;
+      case 'AWAITING_SURVEY':
+        return <span className="status-badge-custom in-progress">Chờ thợ đến khảo sát</span>;
+      case 'AWAITING_CUSTOMER_APPROVAL':
+        return <span className="status-badge-custom pending">Chờ bạn duyệt giá khảo sát</span>;
       case 'IN_PROGRESS':
         return <span className="status-badge-custom in-progress">Đang sửa chữa</span>;
+      case 'AWAITING_COMPLETION_CONFIRMATION':
+        return <span className="status-badge-custom pending">Chờ nghiệm thu & Thanh toán</span>;
+      case 'DECLINED_AFTER_SURVEY':
+        return <span className="status-badge-custom canceled">Dừng sau khảo sát</span>;
       case 'COMPLETED':
         return <span className="status-badge-custom completed">Đã hoàn thành</span>;
       case 'CANCELED':
@@ -250,6 +424,67 @@ export function CustomerOrderDetailModal({
         return <span className="status-badge-custom">{status}</span>;
     }
   };
+
+  // Tìm phiên bản báo giá đang chờ khách duyệt (POST_SURVEY_FINAL hoặc IN_PROGRESS_CHANGE)
+  const pendingApprovalQuoteVersion = useMemo(() => {
+    if (!order) return null;
+
+    if (order.quoteVersions && order.quoteVersions.length > 0) {
+      // 1. Tìm bản có status PENDING_APPROVAL mới nhất
+      const pending = [...order.quoteVersions].reverse().find(
+        (v) =>
+          v.status === 'PENDING_APPROVAL' &&
+          (v.versionType === 'POST_SURVEY_FINAL' || v.versionType === 'IN_PROGRESS_CHANGE')
+      );
+      if (pending) return pending;
+
+      // 2. Nếu order đang ở AWAITING_CUSTOMER_APPROVAL nhưng bản ghi chưa cập nhật kịp status,
+      // fallback lấy bản POST_SURVEY_FINAL mới nhất hoặc bản cuối cùng
+      if (order.status === 'AWAITING_CUSTOMER_APPROVAL') {
+        const postSurvey = [...order.quoteVersions].reverse().find((v) => v.versionType === 'POST_SURVEY_FINAL');
+        if (postSurvey) return postSurvey;
+        return order.quoteVersions[order.quoteVersions.length - 1];
+      }
+    }
+
+    // 3. Fallback khi order.status là AWAITING_CUSTOMER_APPROVAL nhưng quoteVersions tạm thời rỗng
+    if (order.status === 'AWAITING_CUSTOMER_APPROVAL') {
+      return {
+        id: 'fallback-survey-quote',
+        orderId: order.id,
+        versionNumber: 1,
+        versionType: 'POST_SURVEY_FINAL' as const,
+        quoteMode: order.workflowMode || ('SURVEY_REQUIRED' as const),
+        surveyFee: order.agreedSurveyFee ?? 0,
+        travelFee: order.agreedTravelFee ?? 0,
+        waiveSurveyIfRepaired: order.waiveSurveyIfRepaired ?? true,
+        waiveTravelIfRepaired: order.waiveTravelIfRepaired ?? true,
+        laborFee: order.finalLaborFee ?? 0,
+        materialsFee: order.finalMaterialsFee ?? 0,
+        totalAmount: order.finalPrice ?? ((order.finalLaborFee ?? 0) + (order.finalMaterialsFee ?? 0)),
+        diagnosisOrReason: 'Thợ đã hoàn thành khảo sát thực tế và gửi báo giá chốt công việc',
+        status: 'PENDING_APPROVAL' as const,
+        items: [],
+        createdAt: order.updatedAt || order.createdAt || '',
+      };
+    }
+
+    return null;
+  }, [order]);
+
+  const needsPaymentAction = useMemo(() => {
+    if (!order) return false;
+    const isAwaitingPaymentStatus =
+      order.status === 'AWAITING_COMPLETION_CONFIRMATION' ||
+      order.status === 'DECLINED_AFTER_SURVEY';
+    const isUnpaid =
+      !order.paymentStatus ||
+      order.paymentStatus === 'UNPAID' ||
+      order.paymentStatus === 'PAYMENT_PENDING';
+    return Boolean(isAwaitingPaymentStatus && isUnpaid);
+  }, [order]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="order-detail-backdrop" onClick={onClose}>
@@ -299,7 +534,7 @@ export function CustomerOrderDetailModal({
           </div>
         ) : order ? (
           <div className="order-detail-scroll-body">
-            {/* Assigned Provider Banner if IN_PROGRESS or COMPLETED */}
+            {/* Assigned Provider Banner */}
             {order.assignedProviderId && (
               <div className="assigned-provider-box">
                 <div 
@@ -352,9 +587,11 @@ export function CustomerOrderDetailModal({
                 </div>
                 <div className="assigned-provider-right">
                   <div className="assigned-price-box">
-                    <span className="price-label">Giá chốt:</span>
+                    <span className="price-label">Tổng hóa đơn chốt:</span>
                     <span className="price-val">
-                      {order.finalPrice ? `${order.finalPrice.toLocaleString('vi-VN')} đ` : 'Chưa cập nhật'}
+                      {order.finalPrice !== undefined && order.finalPrice !== null
+                        ? `${order.finalPrice.toLocaleString('vi-VN')} đ`
+                        : 'Chờ báo giá khảo sát'}
                     </span>
                   </div>
                   <button
@@ -373,6 +610,569 @@ export function CustomerOrderDetailModal({
                     <Eye size={14} />
                     <span>Xem hồ sơ</span>
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* ACTION BANNER 1: DUYỆT BÁO GIÁ SAU KHẢO SÁT HOẶC DUYỆT PHÁT SINH */}
+            {pendingApprovalQuoteVersion && (
+              <div style={{
+                padding: '1.1rem',
+                background: '#fffbeb',
+                border: '2px solid #f59e0b',
+                borderRadius: '12px',
+                marginBottom: '1.1rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: '#92400e', fontSize: '0.96rem', marginBottom: '0.5rem' }}>
+                  <FileCheck2 size={20} />
+                  <span>
+                    {pendingApprovalQuoteVersion.versionType === 'POST_SURVEY_FINAL'
+                      ? 'Thợ đã gửi Báo giá cuối sau khảo sát — Chờ bạn xác nhận để bắt đầu sửa'
+                      : 'Thợ gửi yêu cầu điều chỉnh / Phát sinh vật tư trong quá trình làm'}
+                  </span>
+                </div>
+
+                <div style={{
+                  padding: '0.8rem',
+                  background: '#fff',
+                  borderRadius: '8px',
+                  border: '1px solid #fde68a',
+                  fontSize: '0.85rem',
+                  color: '#1e293b',
+                  marginBottom: '0.8rem'
+                }}>
+                  <div style={{ marginBottom: '0.4rem' }}>
+                    <strong>Chẩn đoán / Lý do từ thợ:</strong> {pendingApprovalQuoteVersion.diagnosisOrReason}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Tiền công thợ:</span>
+                      <strong>{pendingApprovalQuoteVersion.laborFee.toLocaleString('vi-VN')} đ</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Tiền vật tư / linh kiện:</span>
+                      <strong>{pendingApprovalQuoteVersion.materialsFee.toLocaleString('vi-VN')} đ</strong>
+                    </div>
+                    {pendingApprovalQuoteVersion.items && pendingApprovalQuoteVersion.items.length > 0 && (
+                      <div style={{
+                        margin: '0.35rem 0',
+                        padding: '0.45rem 0.65rem',
+                        background: '#f8fafc',
+                        borderRadius: '6px',
+                        fontSize: '0.8rem'
+                      }}>
+                        <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>Chi tiết vật tư:</div>
+                        {pendingApprovalQuoteVersion.items.map((item, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>• {item.itemName} ({item.quantity} {item.unit || 'cái'} x {item.unitPrice.toLocaleString('vi-VN')} đ)</span>
+                            <strong>{(item.totalPrice ?? item.quantity * item.unitPrice).toLocaleString('vi-VN')} đ</strong>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      borderTop: '1px dashed #cbd5e1',
+                      paddingTop: '0.35rem',
+                      fontSize: '0.92rem',
+                      color: '#0369a1'
+                    }}>
+                      <strong>Tổng hóa đơn nếu đồng ý sửa:</strong>
+                      <strong>{pendingApprovalQuoteVersion.totalAmount.toLocaleString('vi-VN')} đ</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {!showDeclineSurveyBox ? (
+                  <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={handleApproveLatestQuote}
+                      disabled={actionLoading}
+                      style={{
+                        padding: '0.6rem 1.1rem',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: '#16a34a',
+                        color: '#fff',
+                        fontWeight: 600,
+                        fontSize: '0.86rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem'
+                      }}
+                    >
+                      <CheckCircle2 size={16} />
+                      <span>
+                        {pendingApprovalQuoteVersion.versionType === 'POST_SURVEY_FINAL'
+                          ? 'Đồng ý Báo giá cuối & Tiến hành sửa'
+                          : 'Đồng ý duyệt khoản phát sinh này'}
+                      </span>
+                    </button>
+
+                    {pendingApprovalQuoteVersion.versionType === 'POST_SURVEY_FINAL' ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowDeclineSurveyBox(true)}
+                        disabled={actionLoading}
+                        style={{
+                          padding: '0.6rem 1rem',
+                          borderRadius: '8px',
+                          border: '1px solid #dc2626',
+                          background: '#fff',
+                          color: '#dc2626',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.4rem'
+                        }}
+                      >
+                        <XCircle size={16} />
+                        <span>Không sửa — Chỉ trả phí khảo sát ({((order.agreedSurveyFee ?? 0) + (order.agreedTravelFee ?? 0)).toLocaleString('vi-VN')} đ)</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleRejectChangeRequest}
+                        disabled={actionLoading}
+                        style={{
+                          padding: '0.6rem 1rem',
+                          borderRadius: '8px',
+                          border: '1px solid #dc2626',
+                          background: '#fff',
+                          color: '#dc2626',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Từ chối khoản phát sinh này
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: '0.75rem',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem'
+                  }}>
+                    <div style={{ fontSize: '0.82rem', color: '#991b1b', fontWeight: 600 }}>
+                      Xác nhận dừng đơn sau khảo sát: Bạn sẽ thanh toán Phí khảo sát ({(order.agreedSurveyFee ?? 0).toLocaleString('vi-VN')} đ) + Phí di chuyển ({(order.agreedTravelFee ?? 0).toLocaleString('vi-VN')} đ) = {((order.agreedSurveyFee ?? 0) + (order.agreedTravelFee ?? 0)).toLocaleString('vi-VN')} đ cho thợ.
+                    </div>
+                    <input
+                      type="text"
+                      value={declineSurveyReason}
+                      onChange={(e) => setDeclineSurveyReason(e.target.value)}
+                      placeholder="Nhập lý do không tiếp tục sửa (VD: Chi phí thay linh kiện cao hơn dự kiến)..."
+                      style={{
+                        padding: '0.5rem 0.7rem',
+                        borderRadius: '6px',
+                        border: '1px solid #fca5a5',
+                        fontSize: '0.84rem'
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={handleDeclineAfterSurvey}
+                        disabled={actionLoading}
+                        style={{
+                          padding: '0.45rem 0.9rem',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: '#dc2626',
+                          color: '#fff',
+                          fontWeight: 600,
+                          fontSize: '0.82rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Xác nhận dừng sửa
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowDeclineSurveyBox(false)}
+                        style={{
+                          padding: '0.45rem 0.9rem',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          background: '#fff',
+                          fontSize: '0.82rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Quay lại
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ACTION BANNER 2: NGHIỆM THU & THANH TOÁN (ONLINE MOCK GATEWAY / TIỀN MẶT 2 BƯỚC) */}
+            {needsPaymentAction && (
+              <div style={{
+                padding: '1.15rem',
+                background: '#f0f9ff',
+                border: '2px solid #0284c7',
+                borderRadius: '12px',
+                marginBottom: '1.1rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: '#0369a1', fontSize: '0.98rem', marginBottom: '0.4rem' }}>
+                  <CreditCard size={20} />
+                  <span>
+                    {order.status === 'DECLINED_AFTER_SURVEY'
+                      ? 'Thanh toán Phí Khảo sát & Di chuyển cho thợ'
+                      : 'Nghiệm thu hoàn thành & Thanh toán hóa đơn'}
+                  </span>
+                </div>
+
+                {order.completionNote && (
+                  <div style={{
+                    padding: '0.6rem 0.8rem',
+                    background: '#fff',
+                    borderRadius: '8px',
+                    border: '1px solid #bae6fd',
+                    fontSize: '0.83rem',
+                    color: '#0f172a',
+                    marginBottom: '0.75rem'
+                  }}>
+                    <strong>Báo cáo bàn giao & Bảo hành từ thợ:</strong> "{order.completionNote}"
+                  </div>
+                )}
+
+                <div style={{
+                  padding: '0.75rem 0.9rem',
+                  background: '#fff',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  fontSize: '0.84rem',
+                  marginBottom: '0.85rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.25rem'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Phí khảo sát áp dụng:</span>
+                    <strong>{(order.appliedSurveyFee ?? 0).toLocaleString('vi-VN')} đ</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Phí di chuyển áp dụng:</span>
+                    <strong>{(order.appliedTravelFee ?? 0).toLocaleString('vi-VN')} đ</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Tiền công thực hiện:</span>
+                    <strong>{(order.finalLaborFee ?? 0).toLocaleString('vi-VN')} đ</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Tiền vật tư / linh kiện:</span>
+                    <strong>{(order.finalMaterialsFee ?? 0).toLocaleString('vi-VN')} đ</strong>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    borderTop: '1px dashed #cbd5e1',
+                    paddingTop: '0.35rem',
+                    marginTop: '0.2rem',
+                    fontSize: '0.96rem',
+                    color: '#0369a1'
+                  }}>
+                    <strong>Tổng số tiền cần thanh toán:</strong>
+                    <strong>{(order.finalPrice ?? 0).toLocaleString('vi-VN')} đ</strong>
+                  </div>
+                </div>
+
+                {/* Chọn Phương thức thanh toán */}
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.85rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentTab('ONLINE')}
+                    style={{
+                      flex: 1,
+                      padding: '0.6rem',
+                      borderRadius: '8px',
+                      border: paymentTab === 'ONLINE' ? '2px solid #0284c7' : '1px solid #cbd5e1',
+                      background: paymentTab === 'ONLINE' ? '#e0f2fe' : '#fff',
+                      color: paymentTab === 'ONLINE' ? '#0369a1' : '#475569',
+                      fontWeight: 600,
+                      fontSize: '0.84rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.4rem'
+                    }}
+                  >
+                    <CreditCard size={16} />
+                    <span>Thanh toán Online (Khuyên dùng)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentTab('CASH')}
+                    style={{
+                      flex: 1,
+                      padding: '0.6rem',
+                      borderRadius: '8px',
+                      border: paymentTab === 'CASH' ? '2px solid #16a34a' : '1px solid #cbd5e1',
+                      background: paymentTab === 'CASH' ? '#dcfce7' : '#fff',
+                      color: paymentTab === 'CASH' ? '#166534' : '#475569',
+                      fontWeight: 600,
+                      fontSize: '0.84rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.4rem'
+                    }}
+                  >
+                    <Banknote size={16} />
+                    <span>Tiền mặt (Xác nhận 2 bước)</span>
+                  </button>
+                </div>
+
+                {paymentTab === 'ONLINE' ? (
+                  <div style={{
+                    padding: '0.85rem',
+                    background: '#fff',
+                    borderRadius: '8px',
+                    border: '1px solid #bae6fd'
+                  }}>
+                    {!onlineSession ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: '#334155' }}>
+                          Thanh toán qua cổng điện tử NhaLoPay giúp xác nhận tự động ngay lập tức, bảo vệ quyền lợi bảo hành của bạn.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleInitOnlinePayment}
+                          disabled={actionLoading}
+                          style={{
+                            padding: '0.65rem 1.2rem',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: '#0284c7',
+                            color: '#fff',
+                            fontWeight: 600,
+                            fontSize: '0.88rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {actionLoading ? 'Đang khởi tạo...' : `Thanh toán Online ${(order.finalPrice ?? 0).toLocaleString('vi-VN')} đ`}
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                        <div style={{ fontSize: '0.84rem', color: '#0369a1', fontWeight: 700 }}>
+                          Cổng thanh toán giả lập (NhaLoPay Mock Gateway)
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: '#475569' }}>
+                          Mã giao dịch: <strong>{onlineSession.transactionRef}</strong> · Số tiền: <strong>{onlineSession.amountToPay.toLocaleString('vi-VN')} đ</strong>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleConfirmMockOnlinePayment}
+                          disabled={actionLoading}
+                          style={{
+                            padding: '0.65rem 1.2rem',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: '#16a34a',
+                            color: '#fff',
+                            fontWeight: 600,
+                            fontSize: '0.88rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem'
+                          }}
+                        >
+                          <CheckCircle2 size={17} />
+                          <span>{actionLoading ? 'Đang xử lý...' : 'Xác nhận Thanh toán Online Thành công'}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: '0.85rem',
+                    background: '#fff',
+                    borderRadius: '8px',
+                    border: '1px solid #bbf7d0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.6rem'
+                  }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: '#1e293b' }}>
+                        Số tiền mặt thực tế bạn đã đưa cho thợ (VNĐ)
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={cashDeclaredStr}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/\D/g, '');
+                          setCashDeclaredStr(raw ? parseInt(raw, 10).toLocaleString('vi-VN') : '');
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem 0.75rem',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '0.9rem',
+                          fontWeight: 600
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: '#1e293b' }}>
+                        Ghi chú / Lý do giải trình (Bắt buộc nếu số tiền khác hóa đơn {(order.finalPrice ?? 0).toLocaleString('vi-VN')} đ)
+                      </label>
+                      <input
+                        type="text"
+                        value={cashNote}
+                        onChange={(e) => setCashNote(e.target.value)}
+                        placeholder="Nhập ghi chú thanh toán..."
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem 0.75rem',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '0.84rem'
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDeclareCashPayment}
+                      disabled={actionLoading}
+                      style={{
+                        padding: '0.65rem 1.2rem',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: '#16a34a',
+                        color: '#fff',
+                        fontWeight: 600,
+                        fontSize: '0.86rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {actionLoading ? 'Đang gửi xác nhận...' : 'Khai báo đã trả tiền mặt (Chờ thợ xác nhận)'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Payment Status Banner if Cash Pending or Disputed */}
+            {order.paymentStatus === 'CASH_PENDING_CONFIRMATION' && (
+              <div style={{
+                padding: '0.85rem 1rem',
+                background: '#fefce8',
+                border: '1px solid #fde047',
+                borderRadius: '10px',
+                marginBottom: '1rem',
+                fontSize: '0.84rem',
+                color: '#854d0e'
+              }}>
+                <strong>⏳ Đang chờ thợ xác nhận tiền mặt (Bước 2/2):</strong> Bạn đã khai báo thanh toán <strong>{(order.customerDeclaredAmount ?? 0).toLocaleString('vi-VN')} đ</strong> tiền mặt. Đơn hàng sẽ hoàn tất ngay khi thợ bấm xác nhận đã nhận tiền.
+              </div>
+            )}
+
+            {order.paymentStatus === 'PAYMENT_DISPUTED' && (
+              <div style={{
+                padding: '0.85rem 1rem',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '10px',
+                marginBottom: '1rem',
+                fontSize: '0.84rem',
+                color: '#991b1b'
+              }}>
+                <strong>⚠️ Đang chờ Quản trị viên đối soát thanh toán:</strong> {order.disputeReason || 'Có chênh lệch số tiền khai báo giữa hai bên.'}
+              </div>
+            )}
+
+            {/* 3-Group Financial Breakdown & Quote Versions History */}
+            {order.assignedProviderId && (
+              <div style={{
+                padding: '0.9rem 1rem',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '10px',
+                marginBottom: '1rem',
+                fontSize: '0.84rem'
+              }}>
+                <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Layers size={15} />
+                  <span>Bóc tách 3 nhóm chi phí & Lịch sử báo giá</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', color: '#334155' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>1. Phí khảo sát đã thỏa thuận:</span>
+                    <span>
+                      <strong>{(order.agreedSurveyFee ?? 0).toLocaleString('vi-VN')} đ</strong>
+                      {order.waiveSurveyIfRepaired ? ' (Miễn phí khi sửa)' : ''}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>2. Phí di chuyển đã thỏa thuận:</span>
+                    <span>
+                      <strong>{(order.agreedTravelFee ?? 0).toLocaleString('vi-VN')} đ</strong>
+                      {order.waiveTravelIfRepaired ? ' (Miễn phí khi sửa)' : ''}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>3a. Tiền công thực hiện:</span>
+                    <strong>{(order.finalLaborFee ?? 0).toLocaleString('vi-VN')} đ</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>3b. Tiền vật tư / linh kiện:</span>
+                    <strong>{(order.finalMaterialsFee ?? 0).toLocaleString('vi-VN')} đ</strong>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    borderTop: '1px dashed #cbd5e1',
+                    paddingTop: '0.35rem',
+                    marginTop: '0.15rem',
+                    fontWeight: 700,
+                    color: '#0f172a'
+                  }}>
+                    <span>Tổng hóa đơn ({order.paymentStatus}):</span>
+                    <span>{(order.finalPrice ?? 0).toLocaleString('vi-VN')} đ</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {order.status === 'AWAITING_SURVEY' && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.75rem',
+                padding: '0.9rem 1.1rem',
+                background: '#fffbeb',
+                border: '1.5px solid #fde68a',
+                borderRadius: '12px',
+                marginBottom: '1.15rem'
+              }}>
+                <AlertTriangle size={18} style={{ color: '#d97706', flexShrink: 0, marginTop: '0.15rem' }} />
+                <div style={{ fontSize: '0.84rem', color: '#92400e', lineHeight: 1.45 }}>
+                  <strong>Thợ đang chuẩn bị đồ nghề & di chuyển tới khảo sát theo lịch hẹn.</strong>
+                  <div>
+                    Để bảo vệ quyền lợi của thợ, hệ thống không cho phép hủy tự do 1 chạm lúc này. Nếu bạn có việc đột xuất cần dời lịch hoặc hủy đơn, vui lòng bấm nút <strong>Cần dời lịch / Hủy hẹn</strong> ở chân trang hoặc liên hệ trực tiếp cho thợ.
+                  </div>
                 </div>
               </div>
             )}
@@ -413,6 +1213,11 @@ export function CustomerOrderDetailModal({
             <div className="detail-desc-box">
               <h4 className="box-heading">Mô tả sự cố</h4>
               <p className="desc-text">{order.description}</p>
+              {order.serviceMetadata && (
+                <p style={{ marginTop: '0.35rem', fontSize: '0.82rem', color: '#475569' }}>
+                  <strong>Thông số bổ sung:</strong> {order.serviceMetadata}
+                </p>
+              )}
             </div>
 
             {/* Images */}
@@ -437,7 +1242,7 @@ export function CustomerOrderDetailModal({
                     Danh sách Báo giá từ Thợ ({order.quotations ? order.quotations.length : 0})
                   </h4>
                   {order.status === 'PENDING_PROVIDER' && (
-                    <span className="quotation-guide-tag">Chọn 1 báo giá ưng ý để chốt việc</span>
+                    <span className="quotation-guide-tag">So sánh 3 nhóm chi phí & Chọn 1 thợ ưng ý</span>
                   )}
                 </div>
 
@@ -546,11 +1351,31 @@ export function CustomerOrderDetailModal({
                                 <h5 className="pro-name">{q.providerName}</h5>
                                 <span className="pro-headline">{q.providerHeadline || 'Thợ chuyên nghiệp'}</span>
                               </div>
-                              {q.pricePerHour && q.pricePerHour > 0 && (
-                                <span className="pro-ref-price">
-                                  Đơn giá tham khảo: {q.pricePerHour.toLocaleString('vi-VN')} đ/giờ
-                                </span>
-                              )}
+                              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginTop: '0.2rem' }}>
+                                {q.quoteMode === 'COMMITTED_FIXED' ? (
+                                  <span style={{
+                                    padding: '0.1rem 0.45rem',
+                                    borderRadius: '999px',
+                                    fontSize: '0.7rem',
+                                    background: '#dcfce7',
+                                    color: '#166534',
+                                    fontWeight: 600
+                                  }}>
+                                    Gói giá cố định
+                                  </span>
+                                ) : (
+                                  <span style={{
+                                    padding: '0.1rem 0.45rem',
+                                    borderRadius: '999px',
+                                    fontSize: '0.7rem',
+                                    background: '#e0f2fe',
+                                    color: '#0369a1',
+                                    fontWeight: 600
+                                  }}>
+                                    Cần khảo sát thực tế
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -558,7 +1383,9 @@ export function CustomerOrderDetailModal({
                           <div className="quote-price-col">
                             {isQuoted ? (
                               <>
-                                <span className="quote-badge-label">Giá báo:</span>
+                                <span className="quote-badge-label">
+                                  {q.quoteMode === 'COMMITTED_FIXED' ? 'Giá cam kết:' : 'Tổng dự kiến:'}
+                                </span>
                                 <span className="quote-amount-highlight">
                                   {q.quotedPrice?.toLocaleString('vi-VN')} đ
                                 </span>
@@ -575,10 +1402,47 @@ export function CustomerOrderDetailModal({
                           </div>
                         </div>
 
+                        {/* 3-Group Breakdown inside Quotation Card */}
+                        {(isQuoted || isAccepted) && (
+                          <div style={{
+                            marginTop: '0.6rem',
+                            padding: '0.55rem 0.75rem',
+                            background: '#f8fafc',
+                            borderRadius: '8px',
+                            border: '1px solid #e2e8f0',
+                            fontSize: '0.79rem',
+                            color: '#334155',
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                            gap: '0.35rem 0.75rem'
+                          }}>
+                            <div>
+                              • Phí khảo sát: <strong>{(q.surveyFee ?? 0).toLocaleString('vi-VN')} đ</strong>
+                              {q.waiveSurveyIfRepaired ? ' (Miễn khi sửa)' : ''}
+                            </div>
+                            <div>
+                              • Phí di chuyển: <strong>{(q.travelFee ?? 0).toLocaleString('vi-VN')} đ</strong>
+                              {q.waiveTravelIfRepaired ? ' (Miễn khi sửa)' : ''}
+                            </div>
+                            <div>
+                              • Tiền công dự kiến: <strong>{(q.estimatedLaborFee ?? 0).toLocaleString('vi-VN')} đ</strong>
+                            </div>
+                            <div>
+                              • Tiền vật tư dự kiến: <strong>{(q.estimatedMaterialsFee ?? 0).toLocaleString('vi-VN')} đ</strong>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Note & Arrival Time */}
                         {q.providerNote && (
                           <div className="quote-note-row">
-                            <strong>Ghi chú từ thợ:</strong> {q.providerNote}
+                            <strong>Nhận định từ thợ:</strong> {q.providerNote}
+                          </div>
+                        )}
+                        {q.scopeAndConditions && (
+                          <div className="quote-note-row" style={{ marginTop: '0.25rem', color: '#166534' }}>
+                            <ShieldCheck size={13} style={{ display: 'inline', marginRight: '4px' }} />
+                            <strong>Phạm vi cam kết:</strong> {q.scopeAndConditions}
                           </div>
                         )}
                         {q.estimatedArrivalTime && (
@@ -595,7 +1459,6 @@ export function CustomerOrderDetailModal({
 
                         {/* Quotation Action Buttons */}
                         <div className="quotation-card-actions">
-                          {/* Profile quick-view button */}
                           <button
                             type="button"
                             className="btn-quote-profile"
@@ -616,7 +1479,6 @@ export function CustomerOrderDetailModal({
                             <span>Xem hồ sơ</span>
                           </button>
 
-                          {/* Chat button always visible to talk with provider */}
                           <button
                             type="button"
                             className="btn-quote-chat"
@@ -635,7 +1497,6 @@ export function CustomerOrderDetailModal({
                             <span>Nhắn tin trao đổi</span>
                           </button>
 
-                          {/* Accept button only if QUOTED and order is PENDING_PROVIDER */}
                           {isQuoted && order.status === 'PENDING_PROVIDER' && (
                             <button
                               type="button"
@@ -644,7 +1505,11 @@ export function CustomerOrderDetailModal({
                               disabled={actionLoading}
                             >
                               <CheckCircle2 size={16} />
-                              <span>Chấp nhận giá & Chọn thợ này</span>
+                              <span>
+                                {q.quoteMode === 'COMMITTED_FIXED'
+                                  ? 'Chốt gói cố định & Chọn thợ'
+                                  : 'Chốt điều kiện KS & Chọn thợ'}
+                              </span>
                             </button>
                           )}
                         </div>
@@ -669,6 +1534,22 @@ export function CustomerOrderDetailModal({
               >
                 <Ban size={15} />
                 <span>Hủy đơn hàng</span>
+              </button>
+            )}
+            {order.status === 'AWAITING_SURVEY' && (
+              <button 
+                type="button" 
+                className="btn-cancel-this-order"
+                style={{
+                  borderColor: '#f59e0b',
+                  backgroundColor: '#fffbeb',
+                  color: '#b45309'
+                }}
+                onClick={() => setShowCancelSurveyModal(true)}
+                disabled={actionLoading}
+              >
+                <AlertTriangle size={15} />
+                <span>Cần dời lịch / Hủy hẹn</span>
               </button>
             )}
             <button type="button" className="btn-close-modal" onClick={onClose}>
@@ -714,6 +1595,33 @@ export function CustomerOrderDetailModal({
           orderCode={order?.orderCode}
           orderTitle={order?.title}
           onConfirmCancel={handleConfirmCancelOrder}
+        />
+      )}
+
+      {/* Cancel Survey Notice Modal (Phương án A) */}
+      {showCancelSurveyModal && order && (
+        <CancelSurveyNoticeModal
+          isOpen={showCancelSurveyModal}
+          onClose={() => setShowCancelSurveyModal(false)}
+          orderCode={order.orderCode}
+          orderTitle={order.title}
+          providerName={order.assignedProviderName || undefined}
+          providerPhone={order.assignedProviderPhone}
+          scheduledTime={order.expectedScheduleTime}
+          onOpenChat={() => {
+            const assignedQuote = order.quotations?.find(q => q.status === 'ACCEPTED') || order.quotations?.[0];
+            if (assignedQuote) {
+              onOpenChat(
+                assignedQuote.requestId,
+                order.assignedProviderName || 'Thợ đảm nhận',
+                order.assignedProviderAvatar,
+                assignedQuote.providerHeadline,
+                assignedQuote.quotedPrice,
+                order.title
+              );
+            }
+          }}
+          onSendNotify={handleSendCancelSurveyNotice}
         />
       )}
 

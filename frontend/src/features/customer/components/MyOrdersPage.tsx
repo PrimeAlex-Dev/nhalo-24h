@@ -139,8 +139,16 @@ export function MyOrdersPage() {
     switch (status) {
       case 'PENDING_PROVIDER':
         return <span className="order-status-badge status-pending">Chờ thợ báo giá</span>;
+      case 'AWAITING_SURVEY':
+        return <span className="order-status-badge status-in-progress">Chờ thợ khảo sát</span>;
+      case 'AWAITING_CUSTOMER_APPROVAL':
+        return <span className="order-status-badge status-pending">Chờ bạn duyệt giá KS</span>;
       case 'IN_PROGRESS':
         return <span className="order-status-badge status-in-progress">Đang thực hiện</span>;
+      case 'AWAITING_COMPLETION_CONFIRMATION':
+        return <span className="order-status-badge status-pending">Chờ nghiệm thu & Thanh toán</span>;
+      case 'DECLINED_AFTER_SURVEY':
+        return <span className="order-status-badge status-canceled">Dừng sau khảo sát</span>;
       case 'COMPLETED':
         return <span className="order-status-badge status-completed">Hoàn thành</span>;
       case 'CANCELED':
@@ -157,7 +165,7 @@ export function MyOrdersPage() {
         <div className="orders-header-row">
           <div className="orders-header-text">
             <h1 className="orders-page-title">Đơn hàng của tôi</h1>
-            <p className="orders-page-subtitle">Theo dõi các đơn sửa chữa, xem báo giá của thợ và lịch sử hoàn tất.</p>
+            <p className="orders-page-subtitle">Theo dõi các đơn sửa chữa, khảo sát báo giá, nghiệm thu và thanh toán minh bạch.</p>
           </div>
           <Link to={PATHS.CUSTOMER.ROOT} className="orders-header-back-home" title="Trở về trang chủ">
             <ArrowLeft size={15} />
@@ -188,7 +196,7 @@ export function MyOrdersPage() {
             className={`filter-tab-btn ${activeTab === 'IN_PROGRESS' ? 'active' : ''}`}
             onClick={() => handleTabChange('IN_PROGRESS')}
           >
-            Đang làm
+            Đang xử lý (Khảo sát / Sửa / Thanh toán)
           </button>
           <button 
             type="button" 
@@ -331,15 +339,31 @@ export function MyOrdersPage() {
                           <span>Đã nhận {order.quotationCount} báo giá từ các thợ — Bấm để so sánh</span>
                         </div>
                       )}
+
+                      {order.status === 'AWAITING_CUSTOMER_APPROVAL' && (
+                        <div className="quotation-received-pill" style={{ background: '#fef3c7', color: '#92400e' }}>
+                          <Bell size={12} />
+                          <span>Thợ đã gửi báo giá cuối sau khảo sát — Bấm để xem & duyệt</span>
+                        </div>
+                      )}
+
+                      {order.status === 'AWAITING_COMPLETION_CONFIRMATION' && (
+                        <div className="quotation-received-pill" style={{ background: '#e0f2fe', color: '#0369a1' }}>
+                          <Bell size={12} />
+                          <span>Thợ đã báo hoàn thành — Bấm để nghiệm thu & Thanh toán</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Right section: Price + Chevron */}
                   <div className="order-card-right">
                     <div className="order-price-group">
-                      <span className="price-title">Giá dịch vụ:</span>
+                      <span className="price-title">Tổng hóa đơn:</span>
                       <span className="order-price-value">
-                        {order.finalPrice ? `${order.finalPrice.toLocaleString('vi-VN')} đ` : 'Chờ báo giá'}
+                        {order.finalPrice !== undefined && order.finalPrice !== null
+                          ? `${order.finalPrice.toLocaleString('vi-VN')} đ`
+                          : 'Chờ báo giá'}
                       </span>
                     </div>
                     <ChevronRight size={20} className="order-chevron-icon" />

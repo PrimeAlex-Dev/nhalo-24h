@@ -1,8 +1,18 @@
 import { request } from './apiClient';
-import type { CustomerOrderDetail, CustomerOrderSummary, OrderStatus } from '../types/order';
+import type {
+  CustomerOrderDetail,
+  CustomerOrderSummary,
+  OrderStatus,
+  PaymentStatus,
+  ResolveDisputePayload,
+  AdjustInvoicePayload,
+  DismissAbnormalFlagPayload,
+} from '../types/order';
 
 export interface AdminOrderQuery {
   status?: OrderStatus | 'ALL';
+  paymentStatus?: PaymentStatus | 'ALL';
+  flaggedOnly?: boolean;
   categoryId?: string;
   search?: string;
   page?: number;
@@ -20,14 +30,18 @@ export interface AdminOrderResponse {
 export const adminOrderService = {
   /**
    * Lấy danh sách đơn hàng cho Quản trị viên
-   * Nếu backend chưa cung cấp endpoint quản trị /api/v1/admin/orders,
-   * hàm bắt lỗi và trả về danh sách rỗng để UI render trạng thái thông báo sạch sẽ.
    */
   async getOrders(params: AdminOrderQuery = {}): Promise<AdminOrderResponse> {
     try {
       const query = new URLSearchParams();
       if (params.status && params.status !== 'ALL') {
         query.append('status', params.status);
+      }
+      if (params.paymentStatus && params.paymentStatus !== 'ALL') {
+        query.append('paymentStatus', params.paymentStatus);
+      }
+      if (params.flaggedOnly) {
+        query.append('flaggedOnly', 'true');
       }
       if (params.categoryId && params.categoryId !== 'all') {
         query.append('categoryId', params.categoryId);
@@ -79,7 +93,6 @@ export const adminOrderService = {
         size: params.size ?? 10,
       };
     } catch {
-      // Backend chưa có endpoint admin orders -> trả về rỗng an toàn
       return {
         content: [],
         totalElements: 0,
@@ -101,5 +114,44 @@ export const adminOrderService = {
     } catch {
       return null;
     }
+  },
+
+  /**
+   * Quản trị viên đối soát và giải quyết đơn tranh chấp thanh toán
+   */
+  async resolvePaymentDispute(
+    orderId: string,
+    payload: ResolveDisputePayload
+  ): Promise<CustomerOrderDetail> {
+    return request<CustomerOrderDetail>(`/api/v1/admin/orders/${orderId}/resolve-payment`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Quản trị viên điều chỉnh hóa đơn hòa giải trước thanh toán (khách chưa trả tiền)
+   */
+  async adjustInvoice(
+    orderId: string,
+    payload: AdjustInvoicePayload
+  ): Promise<CustomerOrderDetail> {
+    return request<CustomerOrderDetail>(`/api/v1/admin/orders/${orderId}/adjust-invoice`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Quản trị viên xác minh và gỡ bỏ cờ cảnh báo bất thường
+   */
+  async dismissAbnormalFlag(
+    orderId: string,
+    payload: DismissAbnormalFlagPayload
+  ): Promise<CustomerOrderDetail> {
+    return request<CustomerOrderDetail>(`/api/v1/admin/orders/${orderId}/dismiss-abnormal-flag`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 };
