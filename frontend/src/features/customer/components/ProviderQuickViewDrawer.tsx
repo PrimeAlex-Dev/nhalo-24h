@@ -13,10 +13,12 @@ import {
   UserCheck, 
   ShieldCheck, 
   MessageSquareQuote,
-  Loader2
+  Loader2,
+  ZoomIn
 } from 'lucide-react';
 import type { PublicProviderItem } from '../../../services/providerProfileService';
 import { providerProfileService } from '../../../services';
+import { AvatarLightboxModal } from '../../../components/common';
 import './ProviderQuickViewDrawer.css';
 
 export interface ProviderQuickViewDrawerProps {
@@ -50,6 +52,7 @@ export function ProviderQuickViewDrawer({
 }: ProviderQuickViewDrawerProps) {
   const [detailProvider, setDetailProvider] = useState<PublicProviderItem | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [showAvatarLightbox, setShowAvatarLightbox] = useState(false);
 
   useEffect(() => {
     if (isOpen && provider) {
@@ -165,7 +168,16 @@ export function ProviderQuickViewDrawer({
           <div className="quick-view-hero-card">
             <div className="quick-view-avatar-wrap">
               {current.avatar ? (
-                <img src={current.avatar} alt={current.name} className="quick-view-avatar" />
+                <div 
+                  className="quick-view-avatar-clickable"
+                  onClick={() => setShowAvatarLightbox(true)}
+                  title="Nhấp để phóng to xem rõ mặt thợ"
+                >
+                  <img src={current.avatar} alt={current.name} className="quick-view-avatar" />
+                  <span className="quick-view-avatar-zoom-badge" aria-hidden="true">
+                    <ZoomIn size={12} />
+                  </span>
+                </div>
               ) : (
                 <div className="quick-view-avatar-fallback">
                   {current.name.charAt(0).toUpperCase()}
@@ -372,6 +384,17 @@ export function ProviderQuickViewDrawer({
           </div>
         </div>
       </div>
+
+      {/* Lightbox phóng to ảnh đại diện thợ */}
+      <AvatarLightboxModal
+        isOpen={showAvatarLightbox}
+        onClose={() => setShowAvatarLightbox(false)}
+        imageUrl={current.avatar}
+        name={current.name}
+        role={current.headline || current.company}
+        verified={current.verified}
+        badgeText="Xem chi tiết ảnh thợ"
+      />
     </div>
   );
 }

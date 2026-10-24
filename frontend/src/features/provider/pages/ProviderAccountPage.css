@@ -98,19 +98,54 @@
 .provider-profile-avatar-box {
   position: relative;
   flex-shrink: 0;
+  width: 76px;
+  height: 76px;
+}
+
+.provider-profile-avatar-interactive {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.provider-profile-avatar-interactive:hover .provider-profile-avatar-img {
+  transform: scale(1.06);
+}
+
+.avatar-hover-zoom-hint {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.provider-profile-avatar-interactive:hover .avatar-hover-zoom-hint {
+  opacity: 1;
 }
 
 .provider-profile-avatar-img {
-  width: 72px;
-  height: 72px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid #1D6AE5;
+  display: block;
+  transition: transform 0.2s ease;
 }
 
 .provider-profile-avatar-placeholder {
-  width: 72px;
-  height: 72px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
   background: #EFF6FF;
   color: #1D6AE5;
@@ -122,19 +157,108 @@
   border: 3px solid #1D6AE5;
 }
 
-.provider-verified-check {
+.avatar-loading-overlay {
   position: absolute;
-  bottom: 0;
-  right: 0;
-  background: #059669;
-  color: #FFFFFF;
+  inset: 0;
   border-radius: 50%;
-  width: 22px;
-  height: 22px;
+  background: rgba(15, 23, 42, 0.65);
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #FFFFFF;
+  z-index: 5;
+}
+
+.avatar-upload-trigger-btn {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #1D6AE5;
+  color: #FFFFFF;
   border: 2px solid #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(29, 106, 229, 0.35);
+  transition: all 0.2s ease;
+  z-index: 4;
+}
+
+.avatar-upload-trigger-btn:hover:not(:disabled) {
+  background: #1555C0;
+  transform: scale(1.08);
+}
+
+.avatar-upload-trigger-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.avatar-upload-trigger-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.provider-profile-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.provider-profile-name-row h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0;
+}
+
+.provider-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #059669;
+  color: #FFFFFF;
+  flex-shrink: 0;
+}
+
+.provider-profile-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.provider-avatar-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #FEE2E2;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.provider-avatar-remove-btn:hover:not(:disabled) {
+  background: #FCA5A5;
+  color: #991B1B;
+}
+
+.provider-avatar-remove-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .provider-profile-info h2 {

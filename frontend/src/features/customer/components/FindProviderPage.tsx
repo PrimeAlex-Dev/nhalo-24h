@@ -13,7 +13,8 @@ import {
   UserX,
   ArrowLeft,
   Home,
-  Send
+  Send,
+  ZoomIn
 } from 'lucide-react';
 import { providerCategoryFilters, mockCategories } from '../data/customerMockData';
 import { 
@@ -23,8 +24,10 @@ import {
   type PublicProviderItem 
 } from '../../../services';
 import type { CustomerOrderSummary } from '../../../types/order';
+import type { ProviderItem } from '../types/customer';
 import { CreateOrderModal } from './CreateOrderModal';
 import { SelectOrderForProviderModal } from './SelectOrderForProviderModal';
+import { AvatarLightboxModal } from '../../../components/common';
 
 export function FindProviderPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -44,6 +47,7 @@ export function FindProviderPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [pendingOrders, setPendingOrders] = useState<CustomerOrderSummary[]>([]);
   const [checkingOrders, setCheckingOrders] = useState(false);
+  const [lightboxProvider, setLightboxProvider] = useState<ProviderItem | null>(null);
 
   const categoryParam = searchParams.get('category');
 
@@ -308,22 +312,36 @@ export function FindProviderPage() {
             <div key={provider.id} className="provider-card">
               {/* Card Header */}
               <div className="provider-card-header">
-                <Link
-                  to={`/customer/providers/${provider.id}`}
-                  className="provider-avatar-link"
-                >
-                  {provider.avatar ? (
+                {provider.avatar ? (
+                  <div
+                    className="provider-avatar-zoom-trigger"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setLightboxProvider(provider);
+                    }}
+                    title="Nhấp để phóng to xem rõ mặt thợ"
+                  >
                     <img
                       src={provider.avatar}
                       alt={provider.name}
                       className="provider-avatar"
                     />
-                  ) : (
+                    <span className="provider-avatar-zoom-badge" aria-hidden="true">
+                      <ZoomIn size={12} />
+                    </span>
+                  </div>
+                ) : (
+                  <Link
+                    to={`/customer/providers/${provider.id}`}
+                    className="provider-avatar-link"
+                    title={`Xem hồ sơ ${provider.name}`}
+                  >
                     <div className="provider-avatar-letter-placeholder">
                       {provider.name.charAt(0).toUpperCase()}
                     </div>
-                  )}
-                </Link>
+                  </Link>
+                )}
 
                 <div className="provider-primary-info">
                   <div className="provider-name-row">
@@ -471,6 +489,17 @@ export function FindProviderPage() {
           }}
         />
       )}
+
+      {/* Phóng to xem ảnh thợ trực tiếp đè lên trang danh sách */}
+      <AvatarLightboxModal
+        isOpen={!!lightboxProvider}
+        onClose={() => setLightboxProvider(null)}
+        imageUrl={lightboxProvider?.avatar}
+        name={lightboxProvider?.name || ''}
+        role={lightboxProvider?.company || lightboxProvider?.category || ''}
+        verified={lightboxProvider?.verified}
+        badgeText="Nhận diện thợ"
+      />
     </div>
   );
 }

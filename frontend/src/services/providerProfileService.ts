@@ -88,6 +88,27 @@ export const providerProfileService = {
   },
 
   /**
+   * Tải lên ảnh đại diện thợ (1-chạm, lưu file và xóa ảnh cũ tự động)
+   */
+  async uploadAvatar(file: File): Promise<ProviderProfileData> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<ProviderProfileData>('/api/v1/provider/profile/me/avatar', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  /**
+   * Xóa ảnh đại diện thợ và xóa file ảnh trên máy chủ
+   */
+  async deleteAvatar(): Promise<ProviderProfileData> {
+    return request<ProviderProfileData>('/api/v1/provider/profile/me/avatar', {
+      method: 'DELETE',
+    });
+  },
+
+  /**
    * Cập nhật danh mục dịch vụ thợ đảm nhận
    */
   async updateMyCategories(categoryIds: string[]): Promise<ProviderProfileData> {

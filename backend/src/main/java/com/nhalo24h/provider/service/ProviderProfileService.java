@@ -12,6 +12,7 @@ import com.nhalo24h.provider.dto.PublicProviderResponse;
 import com.nhalo24h.provider.dto.UpdateProviderProfileRequest;
 import com.nhalo24h.provider.repository.ProviderCategoryRepository;
 import com.nhalo24h.provider.repository.ProviderProfileRepository;
+import com.nhalo24h.storage.service.StorageService;
 import com.nhalo24h.user.domain.User;
 import com.nhalo24h.user.repository.UserRepository;
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ProviderProfileService {
@@ -31,17 +33,20 @@ public class ProviderProfileService {
     private final ProviderProfileRepository providerProfileRepository;
     private final ProviderCategoryRepository providerCategoryRepository;
     private final ServiceCategoryRepository serviceCategoryRepository;
+    private final StorageService storageService;
 
     public ProviderProfileService(
         UserRepository userRepository,
         ProviderProfileRepository providerProfileRepository,
         ProviderCategoryRepository providerCategoryRepository,
-        ServiceCategoryRepository serviceCategoryRepository
+        ServiceCategoryRepository serviceCategoryRepository,
+        StorageService storageService
     ) {
         this.userRepository = userRepository;
         this.providerProfileRepository = providerProfileRepository;
         this.providerCategoryRepository = providerCategoryRepository;
         this.serviceCategoryRepository = serviceCategoryRepository;
+        this.storageService = storageService;
     }
 
     @Transactional
@@ -72,7 +77,13 @@ public class ProviderProfileService {
             .orElseGet(() -> new ProviderProfile(user));
 
         if (request.avatarUrl() != null) {
-            profile.setAvatarUrl(request.avatarUrl().trim().isEmpty() ? null : request.avatarUrl().trim());
+            String newAvatarUrl = request.avatarUrl().trim().isEmpty() ? null : request.avatarUrl().trim();
+            if (!Objects.equals(profile.getAvatarUrl(), newAvatarUrl)) {
+                if (profile.getAvatarUrl() != null && !profile.getAvatarUrl().isBlank()) {
+                    storageService.deleteFile(profile.getAvatarUrl());
+                }
+                profile.setAvatarUrl(newAvatarUrl);
+            }
         }
         if (request.headline() != null) {
             profile.setHeadline(request.headline().trim().isEmpty() ? null : request.headline().trim());
@@ -114,6 +125,50 @@ public class ProviderProfileService {
 
         syncCategories(profile, categoryIds != null ? categoryIds : Collections.emptyList());
         profile = providerProfileRepository.findById(profile.getId()).orElse(profile);
+
+        return mapToProviderProfileResponse(user, profile);
+    }
+
+    @Transactional
+    public ProviderProfileResponse uploadAvatar(UUID userId, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_INPUT, "Vui lòng chọn một file ảnh đại diện để tải lên");
+        }
+
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy thông tin người dùng"));
+
+        ProviderProfile profile = providerProfileRepository.findByUserId(userId)
+            .orElseGet(() -> providerProfileRepository.save(new ProviderProfile(user)));
+
+        // Xóa avatar cũ nếu có để dọn dẹp rác ổ đĩa
+        String oldAvatarUrl = profile.getAvatarUrl();
+        if (oldAvatarUrl != null && !oldAvatarUrl.isBlank()) {
+            storageService.deleteFile(oldAvatarUrl);
+        }
+
+        // Lưu ảnh mới vào thư mục con "avatars"
+        String newAvatarUrl = storageService.storeFile(file, "avatars");
+        profile.setAvatarUrl(newAvatarUrl);
+        profile = providerProfileRepository.save(profile);
+
+        return mapToProviderProfileResponse(user, profile);
+    }
+
+    @Transactional
+    public ProviderProfileResponse deleteAvatar(UUID userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy thông tin người dùng"));
+
+        ProviderProfile profile = providerProfileRepository.findByUserId(userId)
+            .orElseGet(() -> providerProfileRepository.save(new ProviderProfile(user)));
+
+        String oldAvatarUrl = profile.getAvatarUrl();
+        if (oldAvatarUrl != null && !oldAvatarUrl.isBlank()) {
+            storageService.deleteFile(oldAvatarUrl);
+            profile.setAvatarUrl(null);
+            profile = providerProfileRepository.save(profile);
+        }
 
         return mapToProviderProfileResponse(user, profile);
     }
