@@ -14,7 +14,8 @@ import {
   UserPlus,
   Eye,
   ArrowUpDown,
-  ChevronDown
+  ChevronDown,
+  ZoomIn
 } from 'lucide-react';
 import { customerOrderService } from '../../../services';
 import type { CustomerOrderDetail, QuotationItem } from '../../../types/order';
@@ -23,6 +24,7 @@ import { InviteProvidersModal } from './InviteProvidersModal';
 import { CancelOrderModal } from './CancelOrderModal';
 import { AcceptQuotationModal } from './AcceptQuotationModal';
 import { ProviderQuickViewDrawer } from './ProviderQuickViewDrawer';
+import { AvatarLightboxModal } from '../../../components/common';
 import './CustomerOrderDetailModal.css';
 
 interface CustomerOrderDetailModalProps {
@@ -59,6 +61,12 @@ export function CustomerOrderDetailModal({
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [viewingProvider, setViewingProvider] = useState<PublicProviderItem | null>(null);
   const [quotationSort, setQuotationSort] = useState<QuotationSortOption>('DEFAULT');
+  const [avatarLightbox, setAvatarLightbox] = useState<{
+    imageUrl: string;
+    name: string;
+    role: string;
+    badgeText?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (isOpen && orderId) {
@@ -307,7 +315,24 @@ export function CustomerOrderDetailModal({
                   title="Nhấp để xem chi tiết hồ sơ & đánh giá thợ"
                 >
                   {order.assignedProviderAvatar ? (
-                    <img src={order.assignedProviderAvatar} alt={order.assignedProviderName} className="assigned-avatar" />
+                    <div 
+                      className="avatar-zoomable-wrapper"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAvatarLightbox({
+                          imageUrl: order.assignedProviderAvatar!,
+                          name: order.assignedProviderName || 'Thợ đảm nhận',
+                          role: order.categoryName ? `Thợ chuyên trách: ${order.categoryName}` : 'Thợ đảm nhận đơn hàng',
+                          badgeText: 'Thợ phụ trách đơn này'
+                        });
+                      }}
+                      title="Nhấp để phóng to xem rõ mặt thợ"
+                    >
+                      <img src={order.assignedProviderAvatar} alt={order.assignedProviderName} className="assigned-avatar" />
+                      <span className="avatar-zoom-badge" aria-hidden="true">
+                        <ZoomIn size={12} />
+                      </span>
+                    </div>
                   ) : (
                     <div className="assigned-avatar-fallback">
                       {order.assignedProviderName ? order.assignedProviderName.charAt(0).toUpperCase() : 'T'}
@@ -493,7 +518,24 @@ export function CustomerOrderDetailModal({
                             title="Nhấp để xem chi tiết hồ sơ & đánh giá thợ"
                           >
                             {q.providerAvatar ? (
-                              <img src={q.providerAvatar} alt={q.providerName} className="pro-avatar" />
+                              <div 
+                                className="avatar-zoomable-wrapper"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAvatarLightbox({
+                                    imageUrl: q.providerAvatar!,
+                                    name: q.providerName,
+                                    role: q.providerHeadline || 'Thợ gửi báo giá',
+                                    badgeText: 'Thợ gửi báo giá'
+                                  });
+                                }}
+                                title="Nhấp để phóng to xem rõ mặt thợ"
+                              >
+                                <img src={q.providerAvatar} alt={q.providerName} className="pro-avatar" />
+                                <span className="avatar-zoom-badge" aria-hidden="true">
+                                  <ZoomIn size={11} />
+                                </span>
+                              </div>
                             ) : (
                               <div className="pro-avatar-fallback">
                                 {q.providerName ? q.providerName.charAt(0).toUpperCase() : 'T'}
@@ -685,6 +727,17 @@ export function CustomerOrderDetailModal({
           (order.assignedProviderId === viewingProvider.id || order.assignedProviderId === viewingProvider.userId)
         )}
         isAlreadyInvited={true}
+      />
+
+      {/* In-place Avatar Lightbox Overlay */}
+      <AvatarLightboxModal
+        isOpen={!!avatarLightbox}
+        onClose={() => setAvatarLightbox(null)}
+        imageUrl={avatarLightbox?.imageUrl}
+        name={avatarLightbox?.name || ''}
+        role={avatarLightbox?.role || ''}
+        badgeText={avatarLightbox?.badgeText || 'Nhận diện thợ'}
+        verified={true}
       />
     </div>
   );

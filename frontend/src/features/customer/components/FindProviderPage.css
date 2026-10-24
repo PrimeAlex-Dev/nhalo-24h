@@ -256,6 +256,52 @@
   margin-bottom: 14px;
 }
 
+.provider-avatar-zoom-trigger {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  border-radius: 14px;
+  cursor: zoom-in;
+  flex-shrink: 0;
+}
+
+.provider-avatar-zoom-trigger .provider-avatar {
+  width: 62px;
+  height: 62px;
+  border-radius: 14px;
+  object-fit: cover;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: block;
+}
+
+.provider-avatar-zoom-trigger:hover .provider-avatar {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(29, 106, 229, 0.25);
+}
+
+.provider-avatar-zoom-badge {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  background: #1D6AE5;
+  color: #FFFFFF;
+  border: 1.5px solid #FFFFFF;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  pointer-events: none;
+}
+
+.provider-avatar-zoom-trigger:hover .provider-avatar-zoom-badge {
+  transform: scale(1.2);
+  background: #1555C0;
+}
+
 .provider-avatar-link {
   display: block;
   flex-shrink: 0;

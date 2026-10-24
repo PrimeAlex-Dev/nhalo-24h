@@ -60,8 +60,9 @@ export async function request<T>(endpoint: string, options: RequestInit = {}): P
   const url = `${BASE_URL}${endpoint}`;
 
   const token = getAuthToken();
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const requestHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
     Accept: 'application/json',
     ...((options.headers as Record<string, string>) || {}),
   };

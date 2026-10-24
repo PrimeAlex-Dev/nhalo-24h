@@ -15,7 +15,8 @@ import {
   ArrowLeftRight,
   CheckCircle2,
   X,
-  Loader2
+  Loader2,
+  ZoomIn
 } from 'lucide-react';
 import { PATHS } from '../../../routes/paths';
 import { providerProfileService, customerOrderService, type PublicProviderItem } from '../../../services';
@@ -23,6 +24,7 @@ import type { CustomerOrderSummary } from '../../../types/order';
 import type { ProviderItem } from '../types/customer';
 import { CreateOrderModal } from './CreateOrderModal';
 import { SelectOrderForProviderModal } from './SelectOrderForProviderModal';
+import { AvatarLightboxModal } from '../../../components/common';
 
 export function ProviderProfilePage() {
   const { providerId } = useParams<{ providerId: string }>();
@@ -36,6 +38,7 @@ export function ProviderProfilePage() {
   const [checkingOrders, setCheckingOrders] = useState(false);
   const [realProvider, setRealProvider] = useState<PublicProviderItem | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [showAvatarLightbox, setShowAvatarLightbox] = useState<boolean>(false);
 
   useEffect(() => {
     let ignore = false;
@@ -211,11 +214,21 @@ export function ProviderProfilePage() {
             {/* Header Card */}
             <div className="profile-header-card">
               {provider.avatar ? (
-                <img
-                  src={provider.avatar}
-                  alt={provider.name}
-                  className="profile-avatar-img"
-                />
+                <div 
+                  className="profile-avatar-zoomable-wrap"
+                  onClick={() => setShowAvatarLightbox(true)}
+                  title="Nhấp để phóng to xem rõ mặt thợ"
+                >
+                  <img
+                    src={provider.avatar}
+                    alt={provider.name}
+                    className="profile-avatar-img"
+                  />
+                  <div className="profile-avatar-zoom-overlay">
+                    <ZoomIn size={16} />
+                    <span>Xem ảnh</span>
+                  </div>
+                </div>
               ) : (
                 <div className="profile-avatar-letter-placeholder">
                   {provider.name.charAt(0).toUpperCase()}
@@ -496,6 +509,17 @@ export function ProviderProfilePage() {
           }}
         />
       )}
+
+      {/* Phóng to xem ảnh đại diện đối tác */}
+      <AvatarLightboxModal
+        isOpen={showAvatarLightbox}
+        onClose={() => setShowAvatarLightbox(false)}
+        imageUrl={provider.avatar}
+        name={provider.name}
+        role={provider.company}
+        verified={provider.verified}
+        badgeText="Hồ sơ thợ đối tác"
+      />
     </div>
   );
 }

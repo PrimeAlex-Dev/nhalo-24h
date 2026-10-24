@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Check, 
   MapPin, 
@@ -13,7 +13,10 @@ import {
   CheckCircle2,
   Loader2,
   Save,
-  RotateCcw
+  RotateCcw,
+  Camera,
+  Trash2,
+  ZoomIn
 } from 'lucide-react';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { PATHS } from '../../../routes/paths';
@@ -25,6 +28,7 @@ import {
   type ProviderProfileData,
   type AdminCategoryItem
 } from '../../../services';
+import { ConfirmModal, AvatarLightboxModal } from '../../../components/common';
 import './ProviderAccountPage.css';
 
 export function ProviderAccountPage() {
@@ -40,8 +44,14 @@ export function ProviderAccountPage() {
   const [availableCategories, setAvailableCategories] = useState<AdminCategoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState<boolean>(false);
+  const [deletingAvatar, setDeletingAvatar] = useState<boolean>(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState<boolean>(false);
+  const [showAvatarLightbox, setShowAvatarLightbox] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form edit state
   const [headline, setHeadline] = useState<string>('');
@@ -189,6 +199,72 @@ export function ProviderAccountPage() {
     }
   };
 
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset value so user can re-select the same file if needed
+    e.target.value = '';
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('Định dạng ảnh không được hỗ trợ. Vui lòng chọn ảnh JPG, PNG hoặc WEBP.');
+      return;
+    }
+
+    const maxSizeBytes = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSizeBytes) {
+      setError('Dung lượng ảnh vượt quá 5MB. Vui lòng chọn ảnh có kích thước nhỏ hơn.');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setError(null);
+    setSuccessNotice(null);
+
+    try {
+      const updated = await providerProfileService.uploadAvatar(file);
+      setProfile(updated);
+      if (setParentProfile) {
+        setParentProfile(updated);
+      }
+      setSuccessNotice('Ảnh đại diện đã được cập nhật thành công!');
+      setTimeout(() => setSuccessNotice(null), 4000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Tải lên ảnh đại diện thất bại. Vui lòng thử lại.';
+      setError(msg);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleOpenDeleteModal = () => {
+    if (!profile?.avatarUrl) return;
+    setShowDeleteConfirmModal(true);
+  };
+
+  const handleConfirmDeleteAvatar = async () => {
+    setDeletingAvatar(true);
+    setError(null);
+    setSuccessNotice(null);
+
+    try {
+      const updated = await providerProfileService.deleteAvatar();
+      setProfile(updated);
+      if (setParentProfile) {
+        setParentProfile(updated);
+      }
+      setShowDeleteConfirmModal(false);
+      setSuccessNotice('Đã gỡ bỏ ảnh đại diện thành công!');
+      setTimeout(() => setSuccessNotice(null), 4000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gỡ ảnh đại diện thất bại. Vui lòng thử lại.';
+      setError(msg);
+    } finally {
+      setDeletingAvatar(false);
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate(PATHS.AUTH.LOGIN);
@@ -238,29 +314,79 @@ export function ProviderAccountPage() {
             <div className="provider-profile-card">
               <div className="provider-profile-avatar-box">
                 {displayAvatar ? (
-                  <img 
-                    src={displayAvatar} 
-                    alt={profile?.fullName || 'Avatar'} 
-                    className="provider-profile-avatar-img"
-                  />
+                  <div 
+                    className="provider-profile-avatar-interactive"
+                    onClick={() => setShowAvatarLightbox(true)}
+                    title="Nhấp để phóng to xem rõ ảnh đại diện"
+                  >
+                    <img 
+                      src={displayAvatar} 
+                      alt={profile?.fullName || 'Avatar'} 
+                      className="provider-profile-avatar-img"
+                    />
+                    <div className="avatar-hover-zoom-hint" title="Xem ảnh lớn">
+                      <ZoomIn size={16} />
+                    </div>
+                  </div>
                 ) : (
                   <div className="provider-profile-avatar-placeholder">
                     {initialLetter}
                   </div>
                 )}
-                <div className="provider-verified-check" title="Đối tác đã kích hoạt tài khoản">
-                  <Check size={14} strokeWidth={3} />
-                </div>
+
+                {uploadingAvatar && (
+                  <div className="avatar-loading-overlay">
+                    <Loader2 size={24} className="spin-icon" />
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  className="avatar-upload-trigger-btn"
+                  title="Thay đổi ảnh đại diện (JPG, PNG, WEBP tối đa 5MB)"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                  aria-label="Tải lên ảnh đại diện"
+                >
+                  <Camera size={14} />
+                </button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  style={{ display: 'none' }}
+                  onChange={handleAvatarFileChange}
+                />
               </div>
 
               <div className="provider-profile-info">
-                <h2>{profile?.fullName || user?.fullName || 'Thợ đối tác'}</h2>
+                <div className="provider-profile-name-row">
+                  <h2>{profile?.fullName || user?.fullName || 'Thợ đối tác'}</h2>
+                  <span className="provider-verified-badge" title="Đối tác đã kích hoạt tài khoản">
+                    <Check size={12} strokeWidth={3} />
+                  </span>
+                </div>
                 <p className="provider-profile-role">
                   {headline || 'Thợ Kỹ Thuật Độc Lập'}
                 </p>
-                <div className="provider-profile-rating-pill">
-                  <span>★ 5.0</span>
-                  <span>(Mới tham gia)</span>
+                <div className="provider-profile-sub-row">
+                  <div className="provider-profile-rating-pill">
+                    <span>★ 5.0</span>
+                    <span>(Mới tham gia)</span>
+                  </div>
+                  {displayAvatar && (
+                    <button
+                      type="button"
+                      className="provider-avatar-remove-btn"
+                      onClick={handleOpenDeleteModal}
+                      disabled={uploadingAvatar || deletingAvatar}
+                      title="Gỡ ảnh đại diện"
+                    >
+                      <Trash2 size={12} />
+                      <span>Gỡ ảnh</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -517,6 +643,31 @@ export function ProviderAccountPage() {
           </div>
         </div>
       )}
+
+      {/* Modal xác nhận gỡ ảnh chuyên nghiệp */}
+      <ConfirmModal
+        isOpen={showDeleteConfirmModal}
+        onClose={() => setShowDeleteConfirmModal(false)}
+        onConfirm={handleConfirmDeleteAvatar}
+        title="Gỡ bỏ ảnh đại diện"
+        message="Bạn có chắc chắn muốn gỡ bỏ ảnh đại diện hiện tại? File ảnh sẽ được xóa hoàn toàn khỏi máy chủ và hồ sơ của bạn sẽ quay về chữ cái mặc định."
+        confirmText="Xác nhận gỡ ảnh"
+        cancelText="Hủy bỏ"
+        confirmVariant="danger"
+        icon="trash"
+        loading={deletingAvatar}
+      />
+
+      {/* Modal phóng to xem ảnh đại diện đè lên trang hiện tại */}
+      <AvatarLightboxModal
+        isOpen={showAvatarLightbox}
+        onClose={() => setShowAvatarLightbox(false)}
+        imageUrl={displayAvatar}
+        name={profile?.fullName || user?.fullName || 'Thợ đối tác'}
+        role={headline || 'Thợ Kỹ Thuật Độc Lập'}
+        verified={true}
+        badgeText="Ảnh đại diện của bạn"
+      />
     </div>
   );
 }

@@ -12,12 +12,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class LocalStorageService implements StorageService {
+
+    private static final Logger log = LoggerFactory.getLogger(LocalStorageService.class);
 
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
         "image/jpeg",
@@ -78,6 +82,43 @@ public class LocalStorageService implements StorageService {
             }
         }
         return urls;
+    }
+
+    @Override
+    public void deleteFile(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return;
+        }
+
+        try {
+            String relativePath = null;
+            if (fileUrl.contains("/uploads/")) {
+                relativePath = fileUrl.substring(fileUrl.indexOf("/uploads/") + "/uploads/".length());
+            } else {
+                String cleanBaseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+                if (fileUrl.startsWith(cleanBaseUrl)) {
+                    relativePath = fileUrl.substring(cleanBaseUrl.length());
+                    if (relativePath.startsWith("/")) {
+                        relativePath = relativePath.substring(1);
+                    }
+                }
+            }
+
+            if (relativePath != null && !relativePath.isBlank()) {
+                Path rootUploadDir = Paths.get(uploadDir).toAbsolutePath().normalize();
+                Path targetPath = rootUploadDir.resolve(relativePath).normalize();
+
+                // Ngăn chặn Path Traversal vulnerability
+                if (targetPath.startsWith(rootUploadDir)) {
+                    boolean deleted = Files.deleteIfExists(targetPath);
+                    if (deleted) {
+                        log.info("Đã xóa file tĩnh cũ khỏi ổ đĩa: {}", targetPath);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Không thể xóa file cũ '{}': {}", fileUrl, e.getMessage());
+        }
     }
 
     private void validateFile(MultipartFile file) {

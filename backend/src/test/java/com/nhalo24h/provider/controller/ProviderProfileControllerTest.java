@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -186,5 +187,68 @@ class ProviderProfileControllerTest {
                 .content(objectMapper.writeValueAsString(List.of(cat1.getId(), cat2.getId()))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.categories", hasSize(2)));
+    }
+
+    @Test
+    @DisplayName("Thợ tải lên ảnh đại diện thành công và dọn dẹp file cũ")
+    void uploadMyAvatar_ShouldUploadAndCleanOldAvatar() throws Exception {
+        createProviderUser("tho_avatar@example.com", "Password123");
+        String token = loginAndGetToken("tho_avatar@example.com", "Password123");
+
+        MockMultipartFile file1 = new MockMultipartFile(
+            "file",
+            "avatar1.png",
+            "image/png",
+            "fake-image-bytes-1".getBytes()
+        );
+
+        // Upload avatar lần 1
+        mockMvc.perform(multipart("/api/v1/provider/profile/me/avatar")
+                .file(file1)
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.avatarUrl", notNullValue()))
+            .andExpect(jsonPath("$.avatarUrl", containsString("/avatars/")));
+
+        // Upload avatar lần 2 thay thế
+        MockMultipartFile file2 = new MockMultipartFile(
+            "file",
+            "avatar2.jpg",
+            "image/jpeg",
+            "fake-image-bytes-2".getBytes()
+        );
+
+        mockMvc.perform(multipart("/api/v1/provider/profile/me/avatar")
+                .file(file2)
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.avatarUrl", notNullValue()))
+            .andExpect(jsonPath("$.avatarUrl", containsString(".jpg")));
+    }
+
+    @Test
+    @DisplayName("Thợ gỡ ảnh đại diện thành công")
+    void deleteMyAvatar_ShouldClearAvatarUrl() throws Exception {
+        createProviderUser("tho_del_avatar@example.com", "Password123");
+        String token = loginAndGetToken("tho_del_avatar@example.com", "Password123");
+
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "avatar_temp.png",
+            "image/png",
+            "fake-image-bytes".getBytes()
+        );
+
+        mockMvc.perform(multipart("/api/v1/provider/profile/me/avatar")
+                .file(file)
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.avatarUrl", notNullValue()));
+
+        // Gỡ avatar
+        mockMvc.perform(delete("/api/v1/provider/profile/me/avatar")
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.avatarUrl", nullValue()));
     }
 }

@@ -13,7 +13,8 @@ import {
   Inbox,
   Bell,
   Home,
-  ArrowLeft
+  ArrowLeft,
+  ZoomIn
 } from 'lucide-react';
 import { customerOrderService } from '../../../services';
 import type { CustomerOrderSummary, OrderStatus } from '../../../types/order';
@@ -21,6 +22,7 @@ import { CreateOrderModal } from './CreateOrderModal';
 import { CustomerOrderDetailModal } from './CustomerOrderDetailModal';
 import { OrderChatDrawer } from '../../order/components/OrderChatDrawer';
 import { Pagination } from '../../../components/common/Pagination';
+import { AvatarLightboxModal } from '../../../components/common';
 
 type OrderTabFilter = 'ALL' | OrderStatus;
 
@@ -46,6 +48,11 @@ export function MyOrdersPage() {
   const [chatPartnerHeadline, setChatPartnerHeadline] = useState<string | undefined>();
   const [chatQuotedPrice, setChatQuotedPrice] = useState<number | undefined>();
   const [chatOrderTitle, setChatOrderTitle] = useState<string | undefined>();
+  const [avatarLightbox, setAvatarLightbox] = useState<{
+    imageUrl: string;
+    name: string;
+    role: string;
+  } | null>(null);
 
   useEffect(() => {
     loadOrders(false, page);
@@ -258,11 +265,27 @@ export function MyOrdersPage() {
                   {/* Left section: Avatar + Details */}
                   <div className="order-card-left">
                     {order.assignedProviderAvatar ? (
-                      <img
-                        src={order.assignedProviderAvatar}
-                        alt={order.assignedProviderName}
-                        className="order-provider-avatar"
-                      />
+                      <div
+                        className="order-provider-avatar-zoom-trigger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAvatarLightbox({
+                            imageUrl: order.assignedProviderAvatar!,
+                            name: order.assignedProviderName || 'Thợ đảm nhận',
+                            role: 'Thợ phụ trách đơn hàng'
+                          });
+                        }}
+                        title="Nhấp để phóng to xem rõ mặt thợ"
+                      >
+                        <img
+                          src={order.assignedProviderAvatar}
+                          alt={order.assignedProviderName}
+                          className="order-provider-avatar"
+                        />
+                        <span className="order-avatar-zoom-badge" aria-hidden="true">
+                          <ZoomIn size={11} />
+                        </span>
+                      </div>
                     ) : order.assignedProviderName ? (
                       <div className="order-provider-avatar-fallback">
                         {order.assignedProviderName.charAt(0).toUpperCase()}
@@ -376,6 +399,17 @@ export function MyOrdersPage() {
           currentUserRole="CUSTOMER"
         />
       )}
+
+      {/* Lightbox phóng to ảnh thợ trực tiếp đè lên trang danh sách đơn */}
+      <AvatarLightboxModal
+        isOpen={!!avatarLightbox}
+        onClose={() => setAvatarLightbox(null)}
+        imageUrl={avatarLightbox?.imageUrl}
+        name={avatarLightbox?.name || ''}
+        role={avatarLightbox?.role || ''}
+        badgeText="Thợ phụ trách đơn"
+        verified={true}
+      />
     </div>
   );
 }

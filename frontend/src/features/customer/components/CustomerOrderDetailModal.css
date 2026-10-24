@@ -180,6 +180,49 @@
   text-decoration: underline;
 }
 
+/* Zoomable Avatar Elements */
+.avatar-zoomable-wrapper {
+  position: relative;
+  display: inline-flex;
+  cursor: zoom-in;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.avatar-zoomable-wrapper .assigned-avatar,
+.avatar-zoomable-wrapper .pro-avatar {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.avatar-zoomable-wrapper:hover .assigned-avatar,
+.avatar-zoomable-wrapper:hover .pro-avatar {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.avatar-zoom-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: #1D6AE5;
+  color: #FFFFFF;
+  border: 1.5px solid #FFFFFF;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  pointer-events: none;
+}
+
+.avatar-zoomable-wrapper:hover .avatar-zoom-badge {
+  transform: scale(1.2);
+  background: #1555C0;
+}
+
 .assigned-avatar {
   width: 48px;
   height: 48px;
