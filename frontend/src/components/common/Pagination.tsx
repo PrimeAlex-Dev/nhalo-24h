@@ -34,13 +34,12 @@ export const Pagination: React.FC<PaginationProps> = ({
   disabled = false,
   className = '',
 }) => {
-  // Nếu không có bản ghi nào hoặc totalPages <= 0 -> Ẩn thanh phân trang
-  if (totalPages <= 0 || (totalElements !== undefined && totalElements === 0)) {
-    return null;
-  }
-
   // Tính toán dải số trang hiển thị (kèm dấu ...)
   const pageNumbers = useMemo(() => {
+    if (totalPages <= 0 || (totalElements !== undefined && totalElements === 0)) {
+      return [];
+    }
+
     const pages: (number | '...')[] = [];
     const maxVisible = 5;
 
@@ -78,7 +77,12 @@ export const Pagination: React.FC<PaginationProps> = ({
     }
 
     return pages;
-  }, [currentPage, totalPages]);
+  }, [currentPage, totalPages, totalElements]);
+
+  // Nếu không có bản ghi nào hoặc totalPages <= 0 -> Ẩn thanh phân trang
+  if (totalPages <= 0 || (totalElements !== undefined && totalElements === 0)) {
+    return null;
+  }
 
   // Tính toán khoảng bản ghi đang hiển thị: ví dụ 1 - 15
   const fromRecord = pageSize !== undefined ? currentPage * pageSize + 1 : undefined;
