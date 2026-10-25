@@ -84,8 +84,22 @@ export function AdminDisputesPage() {
     setSelectedReport(report);
     setResolveStatus(report.status === 'PENDING' ? 'INVESTIGATING' : report.status);
     setResolvePenaltyType(report.penaltyType || 'NONE');
-    setResolvePenaltyAmount(report.penaltyAmount ? String(report.penaltyAmount) : '200000');
+    setResolvePenaltyAmount(
+      report.penaltyAmount && report.penaltyAmount > 0 
+        ? Number(report.penaltyAmount).toLocaleString('vi-VN') 
+        : '200.000'
+    );
     setResolveAdminNotes(report.adminNotes || '');
+  };
+
+  const handlePenaltyAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    if (!raw) {
+      setResolvePenaltyAmount('');
+      return;
+    }
+    const num = parseInt(raw, 10);
+    setResolvePenaltyAmount(num.toLocaleString('vi-VN'));
   };
 
   const handleCloseResolveModal = () => {
@@ -385,7 +399,7 @@ export function AdminDisputesPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitResolve}>
+            <form onSubmit={handleSubmitResolve} className="resolve-modal-form">
               <div className="resolve-modal-body">
                 {/* Summary of Complaint */}
                 <div className="dispute-summary-box">
@@ -480,8 +494,8 @@ export function AdminDisputesPage() {
                             type="text"
                             className="form-input-text"
                             value={resolvePenaltyAmount}
-                            onChange={(e) => setResolvePenaltyAmount(e.target.value)}
-                            placeholder="Ví dụ: 200000"
+                            onChange={handlePenaltyAmountChange}
+                            placeholder="Ví dụ: 200.000"
                             required
                           />
                           <div className="penalty-quick-presets">
@@ -490,7 +504,7 @@ export function AdminDisputesPage() {
                                 key={amt}
                                 type="button"
                                 className="btn-preset-pill"
-                                onClick={() => setResolvePenaltyAmount(amt)}
+                                onClick={() => setResolvePenaltyAmount(Number(amt).toLocaleString('vi-VN'))}
                               >
                                 {Number(amt).toLocaleString('vi-VN')}đ
                               </button>
