@@ -5,8 +5,10 @@ import {
   Calendar, 
   Clock, 
   Phone, 
-  CheckCircle2, 
-  AlertTriangle, 
+  CheckCircle2,
+  Copy,
+  Check,
+AlertTriangle, 
   MessageSquare, 
   Loader2,
   Ban, 
@@ -79,6 +81,15 @@ export function CustomerOrderDetailModal({
   // Payment UI states
   const [paymentTab, setPaymentTab] = useState<'ONLINE' | 'CASH'>('ONLINE');
   const [onlineSession, setOnlineSession] = useState<OnlinePaymentInitResponse | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const handleCopyText = (text: string, fieldName: string) => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(null), 2000);
+    }
+  };
   const [cashDeclaredStr, setCashDeclaredStr] = useState('');
   const [cashNote, setCashNote] = useState('');
   const [declineSurveyReason, setDeclineSurveyReason] = useState('');
@@ -970,35 +981,132 @@ export function CustomerOrderDetailModal({
                         </button>
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                        <div style={{ fontSize: '0.84rem', color: '#0369a1', fontWeight: 700 }}>
-                          Cổng thanh toán giả lập (NhaLoPay Mock Gateway)
+                      <div className="vietqr-payment-container">
+                        <div className="vietqr-header-row">
+                          <div className="vietqr-title-box">
+                            <span className="vietqr-badge-live">VIETQR NAPAS 24/7</span>
+                            <h4 className="vietqr-heading">Quét mã QR để Thanh toán</h4>
+                          </div>
+                          <span className="vietqr-timer">⏱️ 15:00</span>
                         </div>
-                        <div style={{ fontSize: '0.8rem', color: '#475569' }}>
-                          Mã giao dịch: <strong>{onlineSession.transactionRef}</strong> · Số tiền: <strong>{onlineSession.amountToPay.toLocaleString('vi-VN')} đ</strong>
+
+                        <div className="vietqr-content-grid">
+                          {/* QR Column */}
+                          <div className="vietqr-qr-col">
+                            <div className="vietqr-img-wrapper">
+                              <img
+                                src={
+                                  onlineSession.qrImageUrl ||
+                                  `https://img.vietqr.io/image/MB-0786871062-compact2.png?amount=${onlineSession.amountToPay}&addInfo=${encodeURIComponent(
+                                    onlineSession.transferContent || ('NHALO ' + (order.orderCode || ''))
+                                  )}&accountName=NGUYEN%20THANH%20HUY`
+                                }
+                                alt="Mã VietQR Thanh toán"
+                                className="vietqr-qr-img"
+                              />
+                            </div>
+                            <p className="vietqr-qr-subtext">
+                              Mở App Ngân hàng bất kỳ (MB, Vietcombank, Techcombank, MoMo...) quét mã chuyển tiền
+                            </p>
+                          </div>
+
+                          {/* Info Column */}
+                          <div className="vietqr-info-col">
+                            <div className="vietqr-info-row">
+                              <span className="info-label">Ngân hàng thụ hưởng</span>
+                              <div className="info-val-wrap">
+                                <span className="info-val-bold">{onlineSession.bankName || 'MB Bank (Quân Đội)'}</span>
+                              </div>
+                            </div>
+
+                            <div className="vietqr-info-row">
+                              <span className="info-label">Số tài khoản</span>
+                              <div className="info-val-wrap">
+                                <span className="info-val-mono">{onlineSession.accountNumber || '0786871062'}</span>
+                                <button
+                                  type="button"
+                                  className="vietqr-copy-btn"
+                                  onClick={() => handleCopyText(onlineSession.accountNumber || '0786871062', 'accountNumber')}
+                                  title="Sao chép số tài khoản"
+                                >
+                                  {copiedField === 'accountNumber' ? <Check size={13} color="#16a34a" /> : <Copy size={13} />}
+                                  <span>{copiedField === 'accountNumber' ? 'Đã chép' : 'Chép'}</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="vietqr-info-row">
+                              <span className="info-label">Chủ tài khoản</span>
+                              <div className="info-val-wrap">
+                                <span className="info-val-bold">{onlineSession.accountName || 'NGUYEN THANH HUY'}</span>
+                              </div>
+                            </div>
+
+                            <div className="vietqr-info-row highlight">
+                              <span className="info-label">Số tiền cần trả</span>
+                              <div className="info-val-wrap">
+                                <span className="info-val-price">{onlineSession.amountToPay.toLocaleString('vi-VN')} đ</span>
+                                <button
+                                  type="button"
+                                  className="vietqr-copy-btn"
+                                  onClick={() => handleCopyText(onlineSession.amountToPay.toString(), 'amount')}
+                                  title="Sao chép số tiền"
+                                >
+                                  {copiedField === 'amount' ? <Check size={13} color="#16a34a" /> : <Copy size={13} />}
+                                  <span>{copiedField === 'amount' ? 'Đã chép' : 'Chép'}</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="vietqr-info-row highlight">
+                              <span className="info-label">Nội dung CK</span>
+                              <div className="info-val-wrap">
+                                <span className="info-val-mono">{onlineSession.transferContent || ('NHALO ' + (order.orderCode || ''))}</span>
+                                <button
+                                  type="button"
+                                  className="vietqr-copy-btn"
+                                  onClick={() => handleCopyText(onlineSession.transferContent || ('NHALO ' + (order.orderCode || '')), 'content')}
+                                  title="Sao chép nội dung"
+                                >
+                                  {copiedField === 'content' ? <Check size={13} color="#16a34a" /> : <Copy size={13} />}
+                                  <span>{copiedField === 'content' ? 'Đã chép' : 'Chép'}</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="vietqr-caution-note">
+                              ⚠️ Vui lòng giữ nguyên nội dung chuyển khoản để hệ thống xác nhận tự động.
+                            </div>
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={handleConfirmMockOnlinePayment}
-                          disabled={actionLoading}
-                          style={{
-                            padding: '0.65rem 1.2rem',
-                            borderRadius: '8px',
-                            border: 'none',
-                            background: '#16a34a',
-                            color: '#fff',
-                            fontWeight: 600,
-                            fontSize: '0.88rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.4rem'
-                          }}
-                        >
-                          <CheckCircle2 size={17} />
-                          <span>{actionLoading ? 'Đang xử lý...' : 'Xác nhận Thanh toán Online Thành công'}</span>
-                        </button>
+
+                        {/* Sandbox Test Action Box */}
+                        <div className="vietqr-sandbox-box">
+                          <div className="vietqr-sandbox-tip">
+                            ⚡ <strong>Chế độ Kiểm thử (Sandbox Demo):</strong> Bạn có thể mở App ngân hàng thật quét kiểm tra thông tin, sau đó bấm nút bên dưới để hoàn tất đơn mà không tốn tiền thật.
+                          </div>
+
+                          <div className="vietqr-action-btn-row">
+                            <button
+                              type="button"
+                              onClick={handleConfirmMockOnlinePayment}
+                              disabled={actionLoading}
+                              className="btn-confirm-sandbox-pay"
+                            >
+                              <CheckCircle2 size={16} />
+                              <span>{actionLoading ? 'Đang kích hoạt quyết toán...' : '⚡ Giả lập Chuyển khoản Thành công (Sandbox 1-Click)'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setOnlineSession(null)}
+                              disabled={actionLoading}
+                              className="btn-cancel-pay-session"
+                            >
+                              Hủy phiên
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

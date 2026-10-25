@@ -37,6 +37,7 @@ export const PATHS = {
     ROOT: '/admin',
     DASHBOARD: '/admin/dashboard',
     ORDERS: '/admin/orders',
+    FINANCIAL: '/admin/financial',
     USERS: '/admin/users',
     SERVICES: '/admin/services',
   },
@@ -53,4 +54,3 @@ export function getRoleDashboardPath(role?: string): string {
       return PATHS.CUSTOMER.ROOT;
   }
 }
-

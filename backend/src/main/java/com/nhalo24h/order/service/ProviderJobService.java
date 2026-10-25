@@ -29,6 +29,8 @@ import com.nhalo24h.order.repository.OrderRepository;
 import com.nhalo24h.order.repository.OrderRequestRepository;
 import com.nhalo24h.provider.domain.ProviderProfile;
 import com.nhalo24h.provider.repository.ProviderProfileRepository;
+import com.nhalo24h.wallet.domain.WalletStatus;
+import com.nhalo24h.wallet.repository.ProviderWalletRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -48,6 +50,7 @@ public class ProviderJobService {
     private final OrderQuoteVersionRepository orderQuoteVersionRepository;
     private final OrderAuditLogRepository orderAuditLogRepository;
     private final ProviderProfileRepository providerProfileRepository;
+    private final ProviderWalletRepository walletRepository;
 
     public ProviderJobService(
         OrderRepository orderRepository,
@@ -55,7 +58,8 @@ public class ProviderJobService {
         OrderImageRepository orderImageRepository,
         OrderQuoteVersionRepository orderQuoteVersionRepository,
         OrderAuditLogRepository orderAuditLogRepository,
-        ProviderProfileRepository providerProfileRepository
+        ProviderProfileRepository providerProfileRepository,
+        ProviderWalletRepository walletRepository
     ) {
         this.orderRepository = orderRepository;
         this.orderRequestRepository = orderRequestRepository;
@@ -63,11 +67,27 @@ public class ProviderJobService {
         this.orderQuoteVersionRepository = orderQuoteVersionRepository;
         this.orderAuditLogRepository = orderAuditLogRepository;
         this.providerProfileRepository = providerProfileRepository;
+        this.walletRepository = walletRepository;
     }
 
     @Transactional(readOnly = true)
     public int getPendingRequestsCount(UUID providerUserId) {
         ProviderProfile profile = getProviderProfileByUserId(providerUserId);
+
+        // Kiểm tra điều kiện ví thợ (ký quỹ & trạng thái bảo hành rút cọc)
+        walletRepository.findByProviderProfileId(profile.getId()).ifPresent(wallet -> {
+            if (!wallet.isEligibleToAcceptOrders()) {
+                if (wallet.getStatus() == WalletStatus.FROZEN_COOLING) {
+                    throw new AppException(ErrorCode.CONFLICT,
+                            "Bạn đang trong thời hạn 20 ngày chờ rút ký quỹ rời sàn, không thể gửi báo giá hoặc nhận thêm việc mới.");
+                }
+                if (wallet.getStatus() == WalletStatus.DEPOSIT_DEFICIT || wallet.getDepositBalance() < wallet.getDepositTarget()) {
+                    throw new AppException(ErrorCode.CONFLICT,
+                            "Số dư ký quỹ của bạn đang dưới định mức 2.000.000đ. Vui lòng liên hệ Admin nạp bù để tiếp tục nhận việc.");
+                }
+                throw new AppException(ErrorCode.CONFLICT, "Ví của bạn hiện đang bị khóa nhận đơn mới.");
+            }
+        });
         return orderRequestRepository.countPendingIncomingRequests(profile.getId());
     }
 

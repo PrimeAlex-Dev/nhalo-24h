@@ -2,6 +2,7 @@ export { AdminDashboardPage } from './pages/AdminDashboardPage';
 export { AdminOrdersPage } from './pages/AdminOrdersPage';
 export { AdminUsersPage } from './pages/AdminUsersPage';
 export { AdminServicesPage } from './pages/AdminServicesPage';
+export { AdminFinancialPage } from './pages/AdminFinancialPage';
 export { AdminKpiCards } from './components/AdminKpiCards';
 export { OrderDetailModal } from './components/OrderDetailModal';
 export { UserDetailModal } from './components/UserDetailModal';

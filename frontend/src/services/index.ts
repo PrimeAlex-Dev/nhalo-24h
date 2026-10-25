@@ -10,3 +10,5 @@ export * from './providerJobService';
 export * from './orderChatService';
 export * from './adminOrderService';
 export * from './fileService';
+export * from './providerWalletService';
+export * from './adminFinancialService';

@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.UUID;
 
-@Schema(description = "Thông tin khởi tạo giao dịch thanh toán trực tuyến (Mock Gateway)")
+@Schema(description = "Thông tin khởi tạo giao dịch thanh toán trực tuyến (VietQR NAPAS & Sandbox)")
 public record OnlinePaymentInitResponse(
     UUID orderId,
     String orderCode,
@@ -16,6 +16,12 @@ public record OnlinePaymentInitResponse(
     Long appliedTravelFee,
     String paymentStatus,
     String gatewayProvider,
-    Instant createdAt
+    Instant createdAt,
+    String bankId,
+    String bankName,
+    String accountNumber,
+    String accountName,
+    String qrImageUrl,
+    String transferContent
 ) {
 }

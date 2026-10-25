@@ -16,7 +16,8 @@ import {
   AdminDashboardPage, 
   AdminOrdersPage, 
   AdminUsersPage,
-  AdminServicesPage
+  AdminServicesPage,
+  AdminFinancialPage
 } from '../features/admin';
 import { PATHS } from './paths';
 import { ProtectedRoute, GuestRoute } from './AuthGuards';
@@ -183,6 +184,10 @@ const router = createBrowserRouter([
       {
         path: 'services',
         element: <AdminServicesPage />,
+      },
+      {
+        path: 'financial',
+        element: <AdminFinancialPage />,
       },
     ],
   },

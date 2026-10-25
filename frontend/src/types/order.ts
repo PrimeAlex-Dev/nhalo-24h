@@ -157,6 +157,12 @@ export interface OnlinePaymentInitResponse {
   paymentStatus: PaymentStatus;
   gatewayProvider: string;
   createdAt: string;
+  bankId?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountName?: string;
+  qrImageUrl?: string;
+  transferContent?: string;
 }
 
 export interface ConfirmOnlinePaymentPayload {
