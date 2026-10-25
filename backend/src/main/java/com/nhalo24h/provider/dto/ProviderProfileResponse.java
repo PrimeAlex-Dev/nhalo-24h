@@ -46,6 +46,12 @@ public record ProviderProfileResponse(
     @Schema(description = "Danh sách danh mục dịch vụ thợ nhận làm")
     List<ProviderCategoryDto> categories,
 
+    @Schema(description = "Điểm đánh giá trung bình", example = "4.9")
+    Double ratingAverage,
+
+    @Schema(description = "Tổng số lượt đánh giá", example = "12")
+    Integer reviewCount,
+
     @Schema(description = "Thời gian tạo hồ sơ")
     Instant createdAt,
 

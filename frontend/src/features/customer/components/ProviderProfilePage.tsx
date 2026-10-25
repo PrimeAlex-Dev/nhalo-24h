@@ -16,14 +16,17 @@ import {
   CheckCircle2,
   X,
   Loader2,
-  ZoomIn
+  ZoomIn,
+  ShieldAlert
 } from 'lucide-react';
 import { PATHS } from '../../../routes/paths';
-import { providerProfileService, customerOrderService, type PublicProviderItem } from '../../../services';
+import { providerProfileService, customerOrderService, reviewService, type PublicProviderItem } from '../../../services';
 import type { CustomerOrderSummary } from '../../../types/order';
+import type { ReviewItem, ProviderRatingSummary } from '../../../types/review';
 import type { ProviderItem } from '../types/customer';
 import { CreateOrderModal } from './CreateOrderModal';
 import { SelectOrderForProviderModal } from './SelectOrderForProviderModal';
+import { ReportProviderModal } from './ReportProviderModal';
 import { AvatarLightboxModal } from '../../../components/common';
 
 export function ProviderProfilePage() {
@@ -39,6 +42,13 @@ export function ProviderProfilePage() {
   const [realProvider, setRealProvider] = useState<PublicProviderItem | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [showAvatarLightbox, setShowAvatarLightbox] = useState<boolean>(false);
+
+  // Reviews & Rating states
+  const [realReviews, setRealReviews] = useState<ReviewItem[]>([]);
+  const [ratingSummary, setRatingSummary] = useState<ProviderRatingSummary | null>(null);
+  const [starFilter, setStarFilter] = useState<number | undefined>(undefined);
+  const [showReportModal, setShowReportModal] = useState<boolean>(false);
+  const [reportSuccessMsg, setReportSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -68,6 +78,18 @@ export function ProviderProfilePage() {
     };
   }, [providerId]);
 
+  useEffect(() => {
+    if (!realProvider?.id) return;
+    reviewService.getRatingSummary(realProvider.id).then(setRatingSummary).catch(() => null);
+  }, [realProvider?.id]);
+
+  useEffect(() => {
+    if (!realProvider?.id) return;
+    reviewService.getPublicReviews(realProvider.id, starFilter).then((res) => {
+      setRealReviews(res.content);
+    }).catch(() => setRealReviews([]));
+  }, [realProvider?.id, starFilter]);
+
   // Derive provider: prioritize real data from database; fallback to mock data
   const provider: ProviderItem | undefined = useMemo(() => {
     if (realProvider) {
@@ -75,13 +97,16 @@ export function ProviderProfilePage() {
         ? realProvider.categories.map((c) => c.name)
         : [realProvider.category || 'Dịch vụ chuyên nghiệp'];
 
+      const effectiveRating = ratingSummary?.averageRating ?? realProvider.rating ?? 5.0;
+      const effectiveCount = ratingSummary?.totalReviews ?? realProvider.reviewsCount ?? 0;
+
       return {
         id: realProvider.id,
         name: realProvider.name,
         verified: realProvider.verified ?? true,
         company: realProvider.headline || realProvider.company || 'Nhà Lo 24h Pro',
-        rating: realProvider.rating || 5.0,
-        reviewsCount: realProvider.reviewsCount || 0,
+        rating: effectiveRating,
+        reviewsCount: effectiveCount,
         distance: realProvider.distance || '1.8 km',
         pricePerHour: realProvider.pricePerHour || 150000,
         category: realProvider.category || 'Dịch vụ chuyên nghiệp',
@@ -200,6 +225,23 @@ export function ProviderProfilePage() {
               type="button"
               className="toast-close-btn"
               onClick={() => setIsBooked(false)}
+              aria-label="Đóng thông báo"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
+
+        {reportSuccessMsg && (
+          <div className="booking-toast-alert" style={{ background: '#ecfdf5', borderColor: '#a7f3d0', color: '#065f46' }} role="alert">
+            <CheckCircle2 size={18} className="toast-icon" />
+            <div className="toast-content">
+              <strong>Đã gửi khiếu nại!</strong> Ban Quản trị NhaLo24h sẽ tiến hành đối soát và liên hệ bạn trong vòng 24h.
+            </div>
+            <button
+              type="button"
+              className="toast-close-btn"
+              onClick={() => setReportSuccessMsg(null)}
               aria-label="Đóng thông báo"
             >
               <X size={15} />
@@ -366,45 +408,146 @@ export function ProviderProfilePage() {
                       />
                     ))}
                   </div>
-                  <span className="summary-score">{provider.rating}</span>
+                  <span className="summary-score">{(provider.rating || 5.0).toFixed(1)}</span>
                   <span className="summary-dot">·</span>
                   <span className="summary-count">{provider.reviewsCount} đánh giá</span>
                 </div>
               </div>
 
+              {/* Rating Breakdown Bar Widget */}
+              {ratingSummary && ratingSummary.totalReviews > 0 && (
+                <div className="rating-breakdown-widget">
+                  {[5, 4, 3, 2, 1].map((s) => {
+                    const count = (ratingSummary as any)[`star${s}Count`] || 0;
+                    const percent = ratingSummary.totalReviews > 0 ? (count / ratingSummary.totalReviews) * 100 : 0;
+                    return (
+                      <div key={s} className="breakdown-row" onClick={() => setStarFilter(starFilter === s ? undefined : s)}>
+                        <span className="breakdown-star-label">{s} sao</span>
+                        <div className="breakdown-bar-track">
+                          <div className="breakdown-bar-fill" style={{ width: `${percent}%` }} />
+                        </div>
+                        <span className="breakdown-count-val">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Star Filter Tabs */}
+              <div className="review-filter-chips">
+                <button
+                  type="button"
+                  className={`review-chip-btn ${starFilter === undefined ? 'active' : ''}`}
+                  onClick={() => setStarFilter(undefined)}
+                >
+                  Tất cả ({ratingSummary?.totalReviews ?? provider.reviewsCount})
+                </button>
+                {[5, 4, 3, 2, 1].map((s) => {
+                  const count = ratingSummary ? (ratingSummary as any)[`star${s}Count`] || 0 : 0;
+                  return (
+                    <button
+                      type="button"
+                      key={s}
+                      className={`review-chip-btn ${starFilter === s ? 'active' : ''}`}
+                      onClick={() => setStarFilter(starFilter === s ? undefined : s)}
+                    >
+                      {s} sao ({count})
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Reviews List */}
               <div className="reviews-list">
-                {(provider.reviews || []).map((review) => (
-                  <div key={review.id} className="review-card">
-                    <div className="review-card-header">
-                      <div className="reviewer-info-left">
-                        <div className="reviewer-avatar-circle">
-                          {review.avatarLetter}
-                        </div>
-                        <div className="reviewer-text-meta">
-                          <h4 className="reviewer-name">{review.author}</h4>
-                          <span className="review-service-time">
-                            {review.service} · {review.date}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="reviewer-stars-right">
-                        {Array.from({ length: 5 }).map((_, idx) => (
-                          <Star
-                            key={idx}
-                            size={14}
-                            fill={idx < review.rating ? '#F59E0B' : '#E2E8F0'}
-                            stroke={idx < review.rating ? '#F59E0B' : '#E2E8F0'}
-                            className="review-star"
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <p className="review-comment-text">{review.comment}</p>
+                {realReviews.length === 0 ? (
+                  <div className="empty-reviews-box">
+                    <p>Chưa có đánh giá nào {starFilter ? `ở mức ${starFilter} sao` : ''} từ khách hàng.</p>
                   </div>
-                ))}
+                ) : (
+                  realReviews.map((review) => {
+                    const initialLetter = review.customerName ? review.customerName.charAt(0).toUpperCase() : 'K';
+                    return (
+                      <div key={review.id} className="review-card">
+                        <div className="review-card-header">
+                          <div className="reviewer-info-left">
+                            <div className="reviewer-avatar-circle">
+                              {review.customerAvatar ? (
+                                <img src={review.customerAvatar} alt={review.customerName} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                              ) : (
+                                initialLetter
+                              )}
+                            </div>
+                            <div className="reviewer-text-meta">
+                              <h4 className="reviewer-name">{review.customerName}</h4>
+                              <span className="review-service-time">
+                                {review.orderTitle || 'Dịch vụ hoàn tất'} · {new Date(review.createdAt).toLocaleDateString('vi-VN')}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="reviewer-stars-right">
+                            {Array.from({ length: 5 }).map((_, idx) => (
+                              <Star
+                                key={idx}
+                                size={14}
+                                fill={idx < review.rating ? '#F59E0B' : '#E2E8F0'}
+                                stroke={idx < review.rating ? '#F59E0B' : '#E2E8F0'}
+                                className="review-star"
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Quick Tags */}
+                        {review.tags && review.tags.length > 0 && (
+                          <div className="review-tags-strip">
+                            {review.tags.map((tag, idx) => (
+                              <span key={idx} className="review-tag-badge">{tag}</span>
+                            ))}
+                          </div>
+                        )}
+
+                        {review.comment && <p className="review-comment-text">"{review.comment}"</p>}
+
+                        {/* Review Images */}
+                        {review.images && review.images.length > 0 && (
+                          <div className="review-images-strip">
+                            {review.images.map((imgUrl, idx) => (
+                              <img key={idx} src={imgUrl} alt={`Ảnh nghiệm thu ${idx + 1}`} className="review-thumb-img" />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Provider Reply */}
+                        {review.providerReply && (
+                          <div className="review-provider-reply-box">
+                            <div className="reply-box-header">
+                              <strong>Phản hồi từ thợ ({provider.name}):</strong>
+                              {review.providerRepliedAt && (
+                                <span className="reply-box-date">
+                                  {new Date(review.providerRepliedAt).toLocaleDateString('vi-VN')}
+                                </span>
+                              )}
+                            </div>
+                            <p className="reply-box-text">"{review.providerReply}"</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Report profile link */}
+              <div className="report-profile-footer">
+                <button
+                  type="button"
+                  className="btn-report-profile"
+                  onClick={() => setShowReportModal(true)}
+                >
+                  <ShieldAlert size={14} />
+                  <span>Báo cáo sự cố hoặc phản ánh vi phạm về thợ này</span>
+                </button>
               </div>
             </div>
           </div>
@@ -520,6 +663,21 @@ export function ProviderProfilePage() {
         verified={provider.verified}
         badgeText="Hồ sơ thợ đối tác"
       />
+
+      {/* Báo cáo sự cố / khiếu nại thợ */}
+      {showReportModal && provider && (
+        <ReportProviderModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          providerId={provider.id}
+          providerName={provider.name}
+          providerAvatar={provider.avatar}
+          onSuccess={() => {
+            setReportSuccessMsg('Đã gửi khiếu nại lên Quản trị viên đối soát!');
+            setTimeout(() => setReportSuccessMsg(null), 4000);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -3,6 +3,8 @@ export { AdminOrdersPage } from './pages/AdminOrdersPage';
 export { AdminUsersPage } from './pages/AdminUsersPage';
 export { AdminServicesPage } from './pages/AdminServicesPage';
 export { AdminFinancialPage } from './pages/AdminFinancialPage';
+export { AdminDisputesPage } from './pages/AdminDisputesPage';
+export { AdminReviewsPage } from './pages/AdminReviewsPage';
 export { AdminKpiCards } from './components/AdminKpiCards';
 export { OrderDetailModal } from './components/OrderDetailModal';
 export { UserDetailModal } from './components/UserDetailModal';

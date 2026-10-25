@@ -23,15 +23,20 @@ AlertTriangle,
   Banknote,
   ShieldCheck,
   FileCheck2,
-  XCircle
+  XCircle,
+  Star,
+  ShieldAlert
 } from 'lucide-react';
-import { customerOrderService } from '../../../services';
+import { customerOrderService, reviewService } from '../../../services';
 import type { CustomerOrderDetail, QuotationItem, OnlinePaymentInitResponse } from '../../../types/order';
+import type { ReviewItem } from '../../../types/review';
 import type { PublicProviderItem } from '../../../services/providerProfileService';
 import { InviteProvidersModal } from './InviteProvidersModal';
 import { CancelOrderModal } from './CancelOrderModal';
 import { CancelSurveyNoticeModal } from './CancelSurveyNoticeModal';
 import { AcceptQuotationModal } from './AcceptQuotationModal';
+import { SubmitReviewModal } from './SubmitReviewModal';
+import { ReportProviderModal } from './ReportProviderModal';
 import { ProviderQuickViewDrawer } from './ProviderQuickViewDrawer';
 import { AvatarLightboxModal } from '../../../components/common';
 import './CustomerOrderDetailModal.css';
@@ -95,6 +100,11 @@ export function CustomerOrderDetailModal({
   const [declineSurveyReason, setDeclineSurveyReason] = useState('');
   const [showDeclineSurveyBox, setShowDeclineSurveyBox] = useState(false);
 
+  // Review & Dispute Report states
+  const [existingReview, setExistingReview] = useState<ReviewItem | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState<boolean>(false);
+  const [showReportModal, setShowReportModal] = useState<boolean>(false);
+
   useEffect(() => {
     if (isOpen && orderId) {
       setQuotationSort('DEFAULT');
@@ -136,6 +146,11 @@ export function CustomerOrderDetailModal({
       setOrder(data);
       if (!silent && data.finalPrice !== undefined && data.finalPrice !== null) {
         setCashDeclaredStr(data.finalPrice.toLocaleString('vi-VN'));
+      }
+      if (data.status === 'COMPLETED') {
+        reviewService.getReviewByOrder(data.id).then(setExistingReview).catch(() => setExistingReview(null));
+      } else {
+        setExistingReview(null);
       }
     } catch (err: any) {
       if (!silent) {
@@ -1264,6 +1279,114 @@ export function CustomerOrderDetailModal({
               </div>
             )}
 
+            {/* Review & Report Section for Completed Orders */}
+            {order.status === 'COMPLETED' && (
+              <div className="order-completed-review-box">
+                {!existingReview ? (
+                  <div className="review-prompt-card">
+                    <div className="review-prompt-header">
+                      <div className="star-icon-wrap">⭐</div>
+                      <div>
+                        <h4 className="prompt-title">Đơn hàng đã hoàn thành xuất sắc!</h4>
+                        <p className="prompt-sub">
+                          Hãy chia sẻ trải nghiệm và đánh giá chất lượng thi công của thợ <strong>{order.assignedProviderName}</strong> để giúp cộng đồng nhé!
+                        </p>
+                      </div>
+                    </div>
+                    <div className="review-prompt-actions">
+                      <button
+                        type="button"
+                        className="btn-open-review"
+                        onClick={() => setShowReviewModal(true)}
+                      >
+                        <Star size={16} fill="#fff" />
+                        <span>Đánh giá thợ ngay</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-open-report"
+                        onClick={() => setShowReportModal(true)}
+                        title="Báo cáo sự cố hoặc vi phạm nếu thợ không thực hiện đúng cam kết"
+                      >
+                        <AlertTriangle size={15} />
+                        <span>Báo cáo sự cố</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="review-submitted-card">
+                    <div className="submitted-header">
+                      <div className="submitted-title-row">
+                        <CheckCircle2 size={18} color="#16a34a" />
+                        <span className="submitted-title">Đánh giá của bạn về dịch vụ:</span>
+                      </div>
+                      <div className="submitted-stars">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            size={16}
+                            fill={s <= existingReview.rating ? '#f59e0b' : '#e2e8f0'}
+                            stroke={s <= existingReview.rating ? '#f59e0b' : '#cbd5e1'}
+                          />
+                        ))}
+                        <span className="rating-score-text">({existingReview.rating}/5 sao)</span>
+                      </div>
+                    </div>
+
+                    {existingReview.tags && existingReview.tags.length > 0 && (
+                      <div className="submitted-tags-row">
+                        {existingReview.tags.map((t, i) => (
+                          <span key={i} className="submitted-tag-chip">{t}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    {existingReview.comment && (
+                      <p className="submitted-comment">"{existingReview.comment}"</p>
+                    )}
+
+                    {existingReview.images && existingReview.images.length > 0 && (
+                      <div className="submitted-images-row">
+                        {existingReview.images.map((img, i) => (
+                          <img key={i} src={img} alt="Ảnh nghiệm thu" className="submitted-thumb" />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Provider Reply if any */}
+                    {existingReview.providerReply && (
+                      <div className="submitted-provider-reply">
+                        <div className="reply-header">
+                          <strong>Phản hồi từ thợ ({order.assignedProviderName}):</strong>
+                          {existingReview.providerRepliedAt && (
+                            <span className="reply-date">
+                              {new Date(existingReview.providerRepliedAt).toLocaleDateString('vi-VN')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="reply-content">"{existingReview.providerReply}"</p>
+                      </div>
+                    )}
+
+                    <div className="submitted-footer-row">
+                      <span className="privacy-note">
+                        {existingReview.isAnonymous ? 'Đang hiển thị ở chế độ ẩn danh' : 'Đang hiển thị công khai'}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn-dispute-after-complete"
+                        onClick={() => setShowReportModal(true)}
+                        title="Báo cáo vi phạm nếu phát sinh lỗi sau sửa chữa"
+                      >
+                        <ShieldAlert size={14} />
+                        <span>Khiếu nại / Báo cáo sự cố</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {order.status === 'AWAITING_SURVEY' && (
               <div style={{
                 display: 'flex',
@@ -1755,6 +1878,42 @@ export function CustomerOrderDetailModal({
         badgeText={avatarLightbox?.badgeText || 'Nhận diện thợ'}
         verified={true}
       />
+
+      {/* Submit Review Modal */}
+      {showReviewModal && order && order.assignedProviderId && (
+        <SubmitReviewModal
+          isOpen={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          orderId={order.id}
+          orderCode={order.orderCode}
+          orderTitle={order.title}
+          providerName={order.assignedProviderName || 'Thợ đảm nhận'}
+          providerAvatar={order.assignedProviderAvatar}
+          onSuccess={() => {
+            setSuccessMsg('Cảm ơn bạn đã gửi đánh giá dịch vụ!');
+            loadOrderDetail(false);
+            if (onOrderUpdated) onOrderUpdated();
+          }}
+        />
+      )}
+
+      {/* Report Provider Modal */}
+      {showReportModal && order && (
+        <ReportProviderModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          providerId={order.assignedProviderId || ''}
+          providerName={order.assignedProviderName || 'Thợ đảm nhận'}
+          providerAvatar={order.assignedProviderAvatar}
+          orderId={order.id}
+          orderCode={order.orderCode}
+          onSuccess={() => {
+            setSuccessMsg('Đã gửi khiếu nại lên Quản trị viên. Chúng tôi sẽ liên hệ đối soát trong 24h!');
+            loadOrderDetail(false);
+            if (onOrderUpdated) onOrderUpdated();
+          }}
+        />
+      )}
     </div>
   );
 }

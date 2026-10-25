@@ -21,6 +21,8 @@ export interface ProviderProfileData {
   serviceArea?: string | null;
   isAvailable: boolean;
   categories: ProviderCategoryItem[];
+  ratingAverage?: number;
+  reviewCount?: number;
   createdAt?: string;
   updatedAt?: string;
 }
