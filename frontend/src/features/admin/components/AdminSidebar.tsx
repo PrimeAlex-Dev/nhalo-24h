@@ -4,6 +4,7 @@ import {
   ShoppingBag, 
   Users, 
   Layers,
+  CircleDollarSign,
   ArrowLeftRight, 
   LogOut, 
   X,
@@ -95,6 +96,15 @@ export function AdminSidebar({
                   {backlogOrdersCount}
                 </span>
               )}
+            </NavLink>
+
+            <NavLink
+              to={PATHS.ADMIN.FINANCIAL}
+              className={({ isActive }) => `sidebar-nav-item ${isActive ? 'is-active' : ''}`}
+              onClick={onClose}
+            >
+              <CircleDollarSign size={20} className="nav-icon" />
+              <span className="nav-label">Tài chính & Đối soát</span>
             </NavLink>
 
             <NavLink

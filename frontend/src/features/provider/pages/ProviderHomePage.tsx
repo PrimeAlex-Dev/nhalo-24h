@@ -8,10 +8,13 @@ import {
   AlertCircle,
   MapPin,
   Briefcase,
-  Loader2
+  Loader2,
+  Wallet,
+  ShieldCheck
 } from 'lucide-react';
 import { PATHS } from '../../../routes/paths';
-import { providerJobService } from '../../../services';
+import { providerJobService, providerWalletService } from '../../../services';
+import type { ProviderWalletResponse } from '../../../types/wallet';
 import type { ProviderJobItem } from '../../../types/order';
 import { useAuth } from '../../auth';
 import type { ProviderContextType } from '../../../layouts/ProviderLayout';
@@ -29,6 +32,7 @@ export function ProviderHomePage() {
   const [incomingRequests, setIncomingRequests] = useState<ProviderJobItem[]>([]);
   const [inProgressOrders, setInProgressOrders] = useState<ProviderJobItem[]>([]);
   const [completedOrders, setCompletedOrders] = useState<ProviderJobItem[]>([]);
+  const [wallet, setWallet] = useState<ProviderWalletResponse | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -38,16 +42,23 @@ export function ProviderHomePage() {
         if (!silent) {
           setLoading(true);
         }
-        const [requestsRes, inProgressRes, completedRes] = await Promise.all([
+        const [requestsRes, inProgressRes, completedRes, walletRes] = await Promise.all([
           providerJobService.getIncomingRequests(undefined, 0, 10),
           providerJobService.getAssignedOrders('IN_PROGRESS', 0, 10),
           providerJobService.getAssignedOrders('COMPLETED', 0, 10),
+          providerWalletService.getMyWallet().catch((err) => {
+            console.warn('Could not load wallet in ProviderHomePage:', err);
+            return null;
+          }),
         ]);
 
         if (!ignore) {
           setIncomingRequests(requestsRes.content);
           setInProgressOrders(inProgressRes.content);
           setCompletedOrders(completedRes.content);
+          if (walletRes) {
+            setWallet(walletRes);
+          }
         }
       } catch (err) {
         console.warn('Could not load provider dashboard data:', err);
@@ -97,8 +108,20 @@ export function ProviderHomePage() {
   );
   const newJobsCount = pendingRequests.length;
   const todayJobsCount = inProgressOrders.length;
-  const completedCount = completedOrders.length;
-  const todayEarnings = completedOrders.reduce((sum, ord) => sum + (ord.quotedPrice || 0), 0);
+
+  const isWalletLocked = wallet?.status === 'FROZEN_COOLING' || wallet?.status === 'DEPOSIT_DEFICIT';
+
+  const handleToggleWorkStatus = () => {
+    if (wallet?.status === 'FROZEN_COOLING') {
+      alert('Bạn đã gửi yêu cầu rút ký quỹ rời sàn. Hệ thống tạm khóa nhận việc trong 20 ngày để bảo vệ quyền lợi bảo hành của khách hàng.');
+      return;
+    }
+    if (wallet?.status === 'DEPOSIT_DEFICIT') {
+      alert('Ký quỹ của bạn đang dưới định mức 2.000.000 đ. Vui lòng liên hệ Admin nạp bù cọc để tiếp tục nhận việc.');
+      return;
+    }
+    toggleOnline();
+  };
 
   // Real matching jobs from incoming requests: Chỉ lấy các yêu cầu đang mở (chờ báo giá hoặc đã báo giá)
   const actionableRequests = incomingRequests.filter(
@@ -128,31 +151,61 @@ export function ProviderHomePage() {
         <div className="provider-home-left-col">
           {/* 2. Work Status Card */}
           <div 
-            className="provider-status-card"
-            onClick={toggleOnline}
+            className={`provider-status-card ${isWalletLocked ? 'locked' : ''}`}
+            onClick={handleToggleWorkStatus}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleOnline(); }}
-            title="Nhấn để bật / tắt trạng thái nhận việc"
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleToggleWorkStatus(); }}
+            title={isWalletLocked ? 'Tài khoản đang bị khóa nhận việc' : 'Nhấn để bật / tắt trạng thái nhận việc'}
           >
             <div className="provider-status-left">
-              <div className={`provider-status-icon-box ${isOnline ? 'online' : 'offline'}`}>
+              <div className={`provider-status-icon-box ${!isWalletLocked && isOnline ? 'online' : 'offline'}`}>
                 <Power size={22} strokeWidth={2.5} />
               </div>
               <div>
                 <h2 className="provider-status-title">Trạng thái nhận việc</h2>
-                <p className={`provider-status-desc ${isOnline ? 'online' : 'offline'}`}>
-                  {isOnline ? 'Đang sẵn sàng nhận việc' : 'Tạm ngưng nhận việc'}
+                <p className={`provider-status-desc ${!isWalletLocked && isOnline ? 'online' : 'offline'}`}>
+                  {wallet?.status === 'FROZEN_COOLING'
+                    ? 'Đang khóa nhận việc (20 ngày bảo hành chờ rút cọc)'
+                    : wallet?.status === 'DEPOSIT_DEFICIT'
+                    ? 'Tạm ngưng nhận việc (Thiếu cọc dưới 2.000.000 đ)'
+                    : isOnline
+                    ? 'Đang sẵn sàng nhận việc'
+                    : 'Tạm ngưng nhận việc'}
                 </p>
               </div>
             </div>
 
-            <div className={`provider-status-pill ${isOnline ? 'online' : 'offline'}`}>
-              {isOnline ? 'Sẵn sàng' : 'Tạm ngưng'}
+            <div className={`provider-status-pill ${!isWalletLocked && isOnline ? 'online' : 'offline'}`}>
+              {wallet?.status === 'FROZEN_COOLING'
+                ? 'Tạm khóa (20 ngày)'
+                : wallet?.status === 'DEPOSIT_DEFICIT'
+                ? 'Hụt cọc'
+                : isOnline
+                ? 'Sẵn sàng'
+                : 'Tạm ngưng'}
             </div>
           </div>
 
-          {!isOnline && (
+          {wallet?.status === 'FROZEN_COOLING' && (
+            <div className="provider-offline-alert" style={{ background: '#fef3c7', borderColor: '#fde68a', color: '#92400e' }}>
+              <AlertCircle size={18} />
+              <span>
+                Bạn đã gửi yêu cầu rút ký quỹ rời sàn. Hệ thống tạm khóa nhận việc mới trong 20 ngày để bảo vệ quyền lợi bảo hành của khách hàng.
+              </span>
+            </div>
+          )}
+
+          {wallet?.status === 'DEPOSIT_DEFICIT' && (
+            <div className="provider-offline-alert" style={{ background: '#fee2e2', borderColor: '#fca5a5', color: '#991b1b' }}>
+              <AlertCircle size={18} />
+              <span>
+                Ký quỹ của bạn đang dưới định mức 2.000.000 đ. Vui lòng liên hệ Admin nạp bù cọc để tiếp tục nhận việc.
+              </span>
+            </div>
+          )}
+
+          {!isWalletLocked && !isOnline && (
             <div className="provider-offline-alert">
               <AlertCircle size={18} />
               <span>Bạn đang ở chế độ Tạm ngưng nhận việc. Bật Sẵn sàng để nhận đơn hàng mới.</span>
@@ -188,14 +241,22 @@ export function ProviderHomePage() {
           <Link to={PATHS.PROVIDER.EARNINGS} className="provider-quick-earning-banner">
             <div>
               <div className="provider-earning-left-sub">
-                {completedCount > 0 ? `Thu nhập (${completedCount} đơn hoàn thành)` : 'Thu nhập hôm nay'}
+                <Wallet size={15} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '5px' }} />
+                <span>Số dư thu nhập khả dụng</span>
               </div>
               <div className="provider-earning-left-val">
-                {loading ? '...' : `${todayEarnings.toLocaleString('vi-VN')} đ`}
+                {loading ? '...' : `${(wallet?.availableBalance ?? 0).toLocaleString('vi-VN')} đ`}
+              </div>
+              <div className="provider-earning-deposit-sub">
+                <ShieldCheck size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />
+                <span>
+                  Ký quỹ: {(wallet?.depositBalance ?? 2000000).toLocaleString('vi-VN')} đ
+                  {wallet?.status === 'DEPOSIT_DEFICIT' ? ' (⚠️ Thiếu cọc)' : ' (Đủ cọc)'}{completedOrders.length > 0 ? ` • ${completedOrders.length} đơn đã xong` : ''}
+                </span>
               </div>
             </div>
             <div className="provider-earning-right-btn">
-              <span>Xem ví</span>
+              <span>Xem ví & Rút tiền</span>
               <ArrowRight size={14} />
             </div>
           </Link>

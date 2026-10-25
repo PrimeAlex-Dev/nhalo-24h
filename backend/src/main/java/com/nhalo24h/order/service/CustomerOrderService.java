@@ -39,6 +39,9 @@ import com.nhalo24h.user.domain.CustomerAddress;
 import com.nhalo24h.user.domain.User;
 import com.nhalo24h.user.repository.CustomerAddressRepository;
 import com.nhalo24h.user.repository.UserRepository;
+import com.nhalo24h.wallet.service.WalletService;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -62,6 +65,7 @@ public class CustomerOrderService {
     private final CustomerAddressRepository customerAddressRepository;
     private final ServiceCategoryRepository serviceCategoryRepository;
     private final ProviderProfileRepository providerProfileRepository;
+    private final WalletService walletService;
 
     public CustomerOrderService(
         OrderRepository orderRepository,
@@ -72,7 +76,8 @@ public class CustomerOrderService {
         UserRepository userRepository,
         CustomerAddressRepository customerAddressRepository,
         ServiceCategoryRepository serviceCategoryRepository,
-        ProviderProfileRepository providerProfileRepository
+        ProviderProfileRepository providerProfileRepository,
+        WalletService walletService
     ) {
         this.orderRepository = orderRepository;
         this.orderImageRepository = orderImageRepository;
@@ -83,6 +88,7 @@ public class CustomerOrderService {
         this.customerAddressRepository = customerAddressRepository;
         this.serviceCategoryRepository = serviceCategoryRepository;
         this.providerProfileRepository = providerProfileRepository;
+        this.walletService = walletService;
     }
 
     @Transactional
@@ -154,6 +160,12 @@ public class CustomerOrderService {
         if (request.initialProviderIds() != null && !request.initialProviderIds().isEmpty()) {
             for (UUID providerId : request.initialProviderIds()) {
                 providerProfileRepository.findById(providerId).ifPresent(provider -> {
+                    if (provider.getIsAvailable() != null && !provider.getIsAvailable()) {
+                        return;
+                    }
+                    if (!walletService.isProviderEligibleToAcceptOrders(provider.getId())) {
+                        return;
+                    }
                     if (!orderRequestRepository.existsByOrderIdAndProviderId(savedOrder.getId(), provider.getId())) {
                         OrderRequest orderRequest = new OrderRequest(savedOrder, provider);
                         orderRequestRepository.save(orderRequest);
@@ -280,6 +292,12 @@ public class CustomerOrderService {
             if (!orderRequestRepository.existsByOrderIdAndProviderId(order.getId(), providerId)) {
                 ProviderProfile provider = providerProfileRepository.findById(providerId).orElse(null);
                 if (provider != null) {
+                    if (provider.getIsAvailable() != null && !provider.getIsAvailable()) {
+                        continue;
+                    }
+                    if (!walletService.isProviderEligibleToAcceptOrders(provider.getId())) {
+                        continue;
+                    }
                     OrderRequest orderRequest = new OrderRequest(order, provider);
                     orderRequestRepository.save(orderRequest);
                     addedCount++;
@@ -325,6 +343,9 @@ public class CustomerOrderService {
         if (chosenRequest.getStatus() != OrderRequestStatus.QUOTED) {
             throw new AppException(ErrorCode.INVALID_INPUT, "Chỉ có thể chấp nhận yêu cầu đã được thợ gửi báo giá");
         }
+
+        // Kiểm tra thợ có đang đủ điều kiện nhận việc (không bị rút cọc 20 ngày hay hụt cọc)
+        walletService.validateProviderCanAcceptOrders(chosenRequest.getProvider().getId());
 
         String oldStatus = order.getStatus().name();
 
@@ -649,6 +670,18 @@ public class CustomerOrderService {
             "Khởi tạo giao dịch thanh toán Online mã " + txnRef + " với số tiền " + savedOrder.getFinalPrice() + "đ"
         );
 
+        String bankId = "MB";
+        String bankName = "Ngân hàng TMCP Quân Đội (MB Bank)";
+        String accountNumber = "0786871062";
+        String accountName = "NGUYEN THANH HUY";
+        String transferContent = "NHALO " + (savedOrder.getOrderCode() != null ? savedOrder.getOrderCode() : txnRef);
+
+        long amount = savedOrder.getFinalPrice() != null ? savedOrder.getFinalPrice() : 0L;
+        String qrImageUrl = "https://img.vietqr.io/image/MB-0786871062-compact2.png?amount="
+                + amount
+                + "&addInfo=" + URLEncoder.encode(transferContent, StandardCharsets.UTF_8)
+                + "&accountName=" + URLEncoder.encode(accountName, StandardCharsets.UTF_8);
+
         return new OnlinePaymentInitResponse(
             savedOrder.getId(),
             savedOrder.getOrderCode(),
@@ -659,8 +692,14 @@ public class CustomerOrderService {
             savedOrder.getAppliedSurveyFee(),
             savedOrder.getAppliedTravelFee(),
             savedOrder.getPaymentStatus().name(),
-            "NHALO24H_MOCK_GATEWAY",
-            Instant.now()
+            "VIETQR_NAPAS_MBBANK",
+            Instant.now(),
+            bankId,
+            bankName,
+            accountNumber,
+            accountName,
+            qrImageUrl,
+            transferContent
         );
     }
 
@@ -697,6 +736,7 @@ public class CustomerOrderService {
                 order.setStatus(OrderStatus.COMPLETED);
             }
             Order savedOrder = orderRepository.save(order);
+            walletService.processOrderRevenueDistribution(savedOrder);
 
             recordAuditLog(
                 savedOrder,

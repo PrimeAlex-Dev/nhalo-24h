@@ -15,7 +15,8 @@ import {
   FilePlus2,
   Banknote
 } from 'lucide-react';
-import { providerJobService } from '../../../services';
+import { providerJobService, providerWalletService } from '../../../services';
+import type { ProviderWalletResponse } from '../../../types/wallet';
 import type { ProviderJobItem, ConfirmCashPaymentPayload } from '../../../types/order';
 import type { ProviderContextType } from '../../../layouts/ProviderLayout';
 import { JobDetailModal } from '../components/JobDetailModal';
@@ -36,6 +37,27 @@ export function ProviderJobsPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [wallet, setWallet] = useState<ProviderWalletResponse | null>(null);
+
+  useEffect(() => {
+    providerWalletService.getMyWallet().then(setWallet).catch(() => null);
+  }, []);
+
+  const handleOpenQuoting = (job: ProviderJobItem) => {
+    if (wallet && !wallet.eligibleToAcceptOrders) {
+      if (wallet.status === 'FROZEN_COOLING') {
+        alert('Bạn đang trong thời hạn 20 ngày chờ rút ký quỹ rời sàn, hệ thống đã khóa gửi báo giá và nhận việc mới.');
+        return;
+      }
+      if (wallet.status === 'DEPOSIT_DEFICIT') {
+        alert('Số dư ký quỹ của bạn đang dưới định mức 2.000.000 đ. Vui lòng liên hệ Admin nạp bù cọc để tiếp tục nhận việc.');
+        return;
+      }
+      alert('Tài khoản của bạn hiện đang bị khóa nhận đơn mới.');
+      return;
+    }
+    setQuotingJob(job);
+  };
 
   // Pagination State (5 jobs per page)
   const [page, setPage] = useState(0);
@@ -194,6 +216,31 @@ export function ProviderJobsPage() {
             </p>
           </div>
         </div>
+
+        {wallet && !wallet.eligibleToAcceptOrders && (
+          <div
+            style={{
+              padding: '0.85rem 1.15rem',
+              borderRadius: '10px',
+              marginBottom: '1.25rem',
+              background: wallet.status === 'FROZEN_COOLING' ? '#fef3c7' : '#fee2e2',
+              border: `1px solid ${wallet.status === 'FROZEN_COOLING' ? '#fde68a' : '#fca5a5'}`,
+              color: wallet.status === 'FROZEN_COOLING' ? '#92400e' : '#991b1b',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              fontSize: '0.86rem',
+              fontWeight: 600,
+            }}
+          >
+            <AlertCircle size={20} style={{ flexShrink: 0 }} />
+            <span>
+              {wallet.status === 'FROZEN_COOLING'
+                ? 'Bạn đang trong thời hạn 20 ngày chờ rút ký quỹ rời sàn. Hệ thống tạm khóa nhận việc và gửi báo giá mới để đảm bảo nghĩa vụ bảo hành cho khách hàng.'
+                : 'Số dư ký quỹ của bạn đang dưới định mức 2.000.000 đ. Vui lòng nạp bù cọc để tiếp tục nhận việc mới.'}
+            </span>
+          </div>
+        )}
 
         {/* Status Tab Navigation */}
         <div className="jobs-tab-nav">
@@ -390,7 +437,10 @@ export function ProviderJobsPage() {
                         <button
                           type="button"
                           className="btn-quote-feed"
-                          onClick={() => setQuotingJob(job)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenQuoting(job);
+                          }}
                         >
                           <DollarSign size={16} />
                           <span>Báo giá</span>
@@ -477,7 +527,7 @@ export function ProviderJobsPage() {
           onClose={() => setSelectedJob(null)}
           onOpenQuoteModal={(job) => {
             setSelectedJob(null);
-            setQuotingJob(job);
+            handleOpenQuoting(job);
           }}
           onRejectRequest={handleOpenRejectModal}
           onOpenChat={(job) => {

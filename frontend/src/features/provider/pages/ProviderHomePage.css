@@ -250,6 +250,15 @@
 
 .provider-earning-left-val {
   font-size: 1.45rem;
+}
+
+.provider-earning-deposit-sub {
+  margin-top: 4px;
+  font-size: 0.74rem;
+  color: #BAE6FD;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
   font-weight: 800;
   letter-spacing: -0.01em;
 }

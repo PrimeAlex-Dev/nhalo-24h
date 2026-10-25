@@ -15,6 +15,7 @@ import com.nhalo24h.provider.repository.ProviderProfileRepository;
 import com.nhalo24h.storage.service.StorageService;
 import com.nhalo24h.user.domain.User;
 import com.nhalo24h.user.repository.UserRepository;
+import com.nhalo24h.wallet.service.WalletService;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -34,19 +35,22 @@ public class ProviderProfileService {
     private final ProviderCategoryRepository providerCategoryRepository;
     private final ServiceCategoryRepository serviceCategoryRepository;
     private final StorageService storageService;
+    private final WalletService walletService;
 
     public ProviderProfileService(
         UserRepository userRepository,
         ProviderProfileRepository providerProfileRepository,
         ProviderCategoryRepository providerCategoryRepository,
         ServiceCategoryRepository serviceCategoryRepository,
-        StorageService storageService
+        StorageService storageService,
+        WalletService walletService
     ) {
         this.userRepository = userRepository;
         this.providerProfileRepository = providerProfileRepository;
         this.providerCategoryRepository = providerCategoryRepository;
         this.serviceCategoryRepository = serviceCategoryRepository;
         this.storageService = storageService;
+        this.walletService = walletService;
     }
 
     @Transactional
@@ -101,6 +105,9 @@ public class ProviderProfileService {
             profile.setServiceArea(request.serviceArea().trim().isEmpty() ? null : request.serviceArea().trim());
         }
         if (request.isAvailable() != null) {
+            if (Boolean.TRUE.equals(request.isAvailable())) {
+                walletService.validateProviderCanAcceptOrders(profile.getId());
+            }
             profile.setIsAvailable(request.isAvailable());
         }
 

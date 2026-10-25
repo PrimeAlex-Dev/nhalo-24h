@@ -893,3 +893,249 @@
     justify-content: center;
   }
 }
+
+
+/* ==========================================================================
+   VIETQR NAPAS 24/7 PAYMENT BOX
+   ========================================================================== */
+.vietqr-payment-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  background: #ffffff;
+}
+
+.vietqr-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+}
+
+.vietqr-title-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.vietqr-badge-live {
+  display: inline-flex;
+  align-items: center;
+  background: #0284c7;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+
+.vietqr-heading {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vietqr-timer {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #d97706;
+  background: #fef3c7;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.vietqr-content-grid {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 640px) {
+  .vietqr-content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vietqr-qr-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: #f8fafc;
+  padding: 0.65rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.vietqr-img-wrapper {
+  width: 100%;
+  max-width: 180px;
+  background: #fff;
+  padding: 0.35rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.vietqr-qr-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+}
+
+.vietqr-qr-subtext {
+  margin: 0.5rem 0 0;
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.vietqr-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.vietqr-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.55rem;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #f1f5f9;
+}
+
+.vietqr-info-row.highlight {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.vietqr-info-row .info-label {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.vietqr-info-row .info-val-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.vietqr-info-row .info-val-bold {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.vietqr-info-row .info-val-mono {
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: monospace, sans-serif;
+  color: #0284c7;
+}
+
+.vietqr-info-row .info-val-price {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #16a34a;
+}
+
+.vietqr-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vietqr-copy-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.vietqr-caution-note {
+  font-size: 0.73rem;
+  color: #b45309;
+  background: #fffbeb;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px dashed #fde68a;
+  line-height: 1.4;
+}
+
+.vietqr-sandbox-box {
+  margin-top: 0.25rem;
+  padding: 0.65rem 0.75rem;
+  background: #f0f9ff;
+  border-radius: 8px;
+  border: 1px solid #bae6fd;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.vietqr-sandbox-tip {
+  font-size: 0.74rem;
+  color: #0369a1;
+  line-height: 1.4;
+}
+
+.vietqr-action-btn-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-confirm-sandbox-pay {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-confirm-sandbox-pay:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.btn-confirm-sandbox-pay:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.btn-cancel-pay-session {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-cancel-pay-session:hover {
+  background: #e2e8f0;
+}
