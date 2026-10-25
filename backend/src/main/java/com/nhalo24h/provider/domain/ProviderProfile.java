@@ -54,6 +54,15 @@ public class ProviderProfile {
     @Column(name = "is_available", nullable = false)
     private Boolean isAvailable = true;
 
+    @Column(name = "rating_average", nullable = false)
+    private Double ratingAverage = 5.0;
+
+    @Column(name = "review_count", nullable = false)
+    private Integer reviewCount = 0;
+
+    @Column(name = "report_count", nullable = false)
+    private Integer reportCount = 0;
+
     @OneToMany(mappedBy = "providerProfile", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ProviderCategory> providerCategories = new HashSet<>();
 
@@ -87,6 +96,15 @@ public class ProviderProfile {
         }
         if (this.isAvailable == null) {
             this.isAvailable = true;
+        }
+        if (this.ratingAverage == null) {
+            this.ratingAverage = 5.0;
+        }
+        if (this.reviewCount == null) {
+            this.reviewCount = 0;
+        }
+        if (this.reportCount == null) {
+            this.reportCount = 0;
         }
     }
 
@@ -189,6 +207,30 @@ public class ProviderProfile {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Double getRatingAverage() {
+        return ratingAverage;
+    }
+
+    public void setRatingAverage(Double ratingAverage) {
+        this.ratingAverage = ratingAverage;
+    }
+
+    public Integer getReviewCount() {
+        return reviewCount;
+    }
+
+    public void setReviewCount(Integer reviewCount) {
+        this.reviewCount = reviewCount;
+    }
+
+    public Integer getReportCount() {
+        return reportCount;
+    }
+
+    public void setReportCount(Integer reportCount) {
+        this.reportCount = reportCount;
     }
 
     @Override

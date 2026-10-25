@@ -1,0 +1,11 @@
+package com.nhalo24h.report.domain;
+
+public enum ReportReasonType {
+    OVERCHARGING_OR_OFF_PLATFORM,
+    POOR_QUALITY_OR_DAMAGE,
+    NO_SHOW_OR_ABANDONMENT,
+    UNPROFESSIONAL_BEHAVIOR,
+    WARRANTY_REFUSAL,
+    FRAUD_OR_DISHONEST,
+    OTHER
+}

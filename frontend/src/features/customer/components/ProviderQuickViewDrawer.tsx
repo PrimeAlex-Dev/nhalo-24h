@@ -17,7 +17,8 @@ import {
   ZoomIn
 } from 'lucide-react';
 import type { PublicProviderItem } from '../../../services/providerProfileService';
-import { providerProfileService } from '../../../services';
+import { providerProfileService, reviewService } from '../../../services';
+import type { ReviewItem } from '../../../types/review';
 import { AvatarLightboxModal } from '../../../components/common';
 import './ProviderQuickViewDrawer.css';
 
@@ -29,16 +30,6 @@ export interface ProviderQuickViewDrawerProps {
   isAlreadyInvited?: boolean;
   isAssigned?: boolean;
   onToggleSelect?: (providerId: string) => void;
-}
-
-interface SampleReview {
-  id: string;
-  author: string;
-  avatarLetter: string;
-  service: string;
-  date: string;
-  rating: number;
-  comment: string;
 }
 
 export function ProviderQuickViewDrawer({
@@ -53,14 +44,15 @@ export function ProviderQuickViewDrawer({
   const [detailProvider, setDetailProvider] = useState<PublicProviderItem | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [showAvatarLightbox, setShowAvatarLightbox] = useState(false);
+  const [realReviews, setRealReviews] = useState<ReviewItem[]>([]);
 
   useEffect(() => {
     if (isOpen && provider) {
       setDetailProvider(provider);
-      // Fetch freshest details in background if needed
       loadFreshestData(provider.id);
     } else {
       setDetailProvider(null);
+      setRealReviews([]);
     }
   }, [isOpen, provider]);
 
@@ -71,6 +63,9 @@ export function ProviderQuickViewDrawer({
       if (data) {
         setDetailProvider(data);
       }
+      reviewService.getPublicReviews(providerId, undefined, 0, 4)
+        .then((res) => setRealReviews(res.content))
+        .catch(() => setRealReviews([]));
     } catch {
       // Keep existing provider data if API is slow or fails
     } finally {
@@ -85,36 +80,6 @@ export function ProviderQuickViewDrawer({
   const skills = (current.categories && current.categories.length > 0)
     ? current.categories.map((c) => c.name)
     : [current.category || 'Dịch vụ chuyên nghiệp', 'Khảo sát & Báo giá tại chỗ', 'Bảo hành uy tín'];
-
-  const sampleReviews: SampleReview[] = [
-    {
-      id: 'rev-1',
-      author: 'Nguyễn Văn Hùng',
-      avatarLetter: 'H',
-      service: current.category || 'Sửa chữa tại nhà',
-      date: '3 ngày trước',
-      rating: 5,
-      comment: 'Thợ đến rất đúng giờ, kiểm tra kỹ lưỡng và giải thích rõ ràng chi phí trước khi làm. Tay nghề giỏi và dọn dẹp sạch sẽ sau khi sửa xong.',
-    },
-    {
-      id: 'rev-2',
-      author: 'Trần Thị Mai',
-      avatarLetter: 'M',
-      service: current.category || 'Dịch vụ kỹ thuật',
-      date: '1 tuần trước',
-      rating: 5,
-      comment: 'Rất hài lòng với thái độ phục vụ. Báo giá trung thực, sửa chữa dứt điểm lỗi rò rỉ mà thợ trước không xử lý được. 5 sao cho tay nghề!',
-    },
-    {
-      id: 'rev-3',
-      author: 'Lê Minh Tuấn',
-      avatarLetter: 'T',
-      service: current.category || 'Bảo dưỡng thiết bị',
-      date: '2 tuần trước',
-      rating: 5,
-      comment: 'Giá cả hợp lý, tác phong lịch sự. Làm việc nhanh chóng, có bảo hành đàng hoàng. Chắc chắn sẽ tiếp tục ủng hộ anh thợ!',
-    },
-  ];
 
   return (
     <div className="quick-view-backdrop" onClick={onClose}>
@@ -309,32 +274,63 @@ export function ProviderQuickViewDrawer({
             </div>
 
             <div className="quick-view-reviews-list">
-              {sampleReviews.map((rev) => (
-                <div key={rev.id} className="quick-view-review-card">
-                  <div className="review-card-top">
-                    <div className="reviewer-info">
-                      <div className="reviewer-avatar">{rev.avatarLetter}</div>
-                      <div>
-                        <h5 className="reviewer-name">{rev.author}</h5>
-                        <span className="review-meta-line">{rev.service} · {rev.date}</span>
-                      </div>
-                    </div>
-
-                    <div className="reviewer-stars">
-                      {Array.from({ length: 5 }).map((_, idx) => (
-                        <Star
-                          key={idx}
-                          size={13}
-                          fill={idx < rev.rating ? '#F59E0B' : '#E2E8F0'}
-                          stroke={idx < rev.rating ? '#F59E0B' : '#E2E8F0'}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <p className="review-comment">{rev.comment}</p>
+              {realReviews.length === 0 ? (
+                <div style={{ padding: '1rem', textAlign: 'center', color: '#64748b', fontSize: '0.84rem' }}>
+                  Chưa có nhận xét nào được gửi cho thợ này.
                 </div>
-              ))}
+              ) : (
+                realReviews.map((rev) => {
+                  const initialLetter = rev.customerName ? rev.customerName.charAt(0).toUpperCase() : 'K';
+                  return (
+                    <div key={rev.id} className="quick-view-review-card">
+                      <div className="review-card-top">
+                        <div className="reviewer-info">
+                          <div className="reviewer-avatar">
+                            {rev.customerAvatar ? (
+                              <img src={rev.customerAvatar} alt={rev.customerName} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                            ) : (
+                              initialLetter
+                            )}
+                          </div>
+                          <div>
+                            <h5 className="reviewer-name">{rev.customerName}</h5>
+                            <span className="review-meta-line">{rev.orderTitle || 'Dịch vụ'} · {new Date(rev.createdAt).toLocaleDateString('vi-VN')}</span>
+                          </div>
+                        </div>
+
+                        <div className="reviewer-stars">
+                          {Array.from({ length: 5 }).map((_, idx) => (
+                            <Star
+                              key={idx}
+                              size={13}
+                              fill={idx < rev.rating ? '#F59E0B' : '#E2E8F0'}
+                              stroke={idx < rev.rating ? '#F59E0B' : '#E2E8F0'}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {rev.tags && rev.tags.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', margin: '4px 0' }}>
+                          {rev.tags.map((t, idx) => (
+                            <span key={idx} style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#ecfdf5', color: '#047857', borderRadius: '10px' }}>
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {rev.comment && <p className="review-comment">"{rev.comment}"</p>}
+
+                      {rev.providerReply && (
+                        <div style={{ marginTop: '6px', padding: '6px 8px', background: '#f0f9ff', borderLeft: '2px solid #0284c7', fontSize: '0.76rem', color: '#0369a1' }}>
+                          <strong>Thợ phản hồi:</strong> "{rev.providerReply}"
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

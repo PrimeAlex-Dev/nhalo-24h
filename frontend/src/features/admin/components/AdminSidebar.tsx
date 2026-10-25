@@ -8,7 +8,9 @@ import {
   ArrowLeftRight, 
   LogOut, 
   X,
-  ExternalLink
+  ExternalLink,
+  ShieldAlert,
+  Star
 } from 'lucide-react';
 import { useAuth } from '../../auth';
 import { PATHS } from '../../../routes/paths';
@@ -128,6 +130,24 @@ export function AdminSidebar({
             >
               <Layers size={20} className="nav-icon" />
               <span className="nav-label">Danh mục dịch vụ</span>
+            </NavLink>
+
+            <NavLink
+              to={PATHS.ADMIN.DISPUTES}
+              className={({ isActive }) => `sidebar-nav-item ${isActive ? 'is-active' : ''}`}
+              onClick={onClose}
+            >
+              <ShieldAlert size={20} className="nav-icon" />
+              <span className="nav-label">Khiếu nại & Tranh chấp</span>
+            </NavLink>
+
+            <NavLink
+              to={PATHS.ADMIN.REVIEWS}
+              className={({ isActive }) => `sidebar-nav-item ${isActive ? 'is-active' : ''}`}
+              onClick={onClose}
+            >
+              <Star size={20} className="nav-icon" />
+              <span className="nav-label">Kiểm duyệt Đánh giá</span>
             </NavLink>
           </nav>
 

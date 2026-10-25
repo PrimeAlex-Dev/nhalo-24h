@@ -16,7 +16,10 @@ import {
   RotateCcw,
   Camera,
   Trash2,
-  ZoomIn
+  ZoomIn,
+  Star,
+  MessageSquare,
+  Calendar
 } from 'lucide-react';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { PATHS } from '../../../routes/paths';
@@ -25,10 +28,13 @@ import type { ProviderContextType } from '../../../layouts/ProviderLayout';
 import { 
   providerProfileService, 
   categoryService,
+  reviewService,
   type ProviderProfileData,
   type AdminCategoryItem
 } from '../../../services';
+import type { ReviewItem } from '../../../types/review';
 import { ConfirmModal, AvatarLightboxModal } from '../../../components/common';
+import { ProviderReplyModal } from '../components/ProviderReplyModal';
 import './ProviderAccountPage.css';
 
 export function ProviderAccountPage() {
@@ -60,6 +66,33 @@ export function ProviderAccountPage() {
   const [pricePerHour, setPricePerHour] = useState<string>('');
   const [serviceArea, setServiceArea] = useState<string>('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+
+  // Tab state: 'profile' | 'reviews'
+  const [activeTab, setActiveTab] = useState<'profile' | 'reviews'>('profile');
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState<boolean>(false);
+  const [reviewsTotal, setReviewsTotal] = useState<number>(0);
+  const [selectedReviewForReply, setSelectedReviewForReply] = useState<ReviewItem | null>(null);
+  const [showReplyModal, setShowReplyModal] = useState<boolean>(false);
+
+  const loadReviews = async () => {
+    setReviewsLoading(true);
+    try {
+      const res = await reviewService.getMyReviews(0, 50);
+      setReviews(res.content || []);
+      setReviewsTotal(res.totalElements || 0);
+    } catch (err) {
+      console.error('Failed to load provider reviews:', err);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'reviews') {
+      loadReviews();
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     let ignore = false;
@@ -371,9 +404,14 @@ export function ProviderAccountPage() {
                   {headline || 'Thợ Kỹ Thuật Độc Lập'}
                 </p>
                 <div className="provider-profile-sub-row">
-                  <div className="provider-profile-rating-pill">
-                    <span>★ 5.0</span>
-                    <span>(Mới tham gia)</span>
+                  <div 
+                    className="provider-profile-rating-pill"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setActiveTab('reviews')}
+                    title="Nhấp để xem danh sách đánh giá từ khách hàng"
+                  >
+                    <span>★ {profile?.ratingAverage ? profile.ratingAverage.toFixed(1) : '5.0'}</span>
+                    <span>({(profile?.reviewCount ?? 0) > 0 ? `${profile?.reviewCount} đánh giá` : 'Mới tham gia'})</span>
                   </div>
                   {displayAvatar && (
                     <button
@@ -439,209 +477,415 @@ export function ProviderAccountPage() {
           </div>
 
           {/* ==================================================================
-              CỘT PHẢI: FORM CHỈNH SỬA THÔNG TIN NGHỀ NGHIỆP
+              CỘT PHẢI: FORM CHỈNH SỬA THÔNG TIN & ĐÁNH GIÁ KHÁCH HÀNG
               ================================================================== */}
           <div className="provider-account-right-col">
-            <form onSubmit={handleSaveProfile} className="provider-edit-form-card">
-              <div className="provider-form-header">
-                <h2 className="provider-form-title">Cập nhật thông tin nghề nghiệp</h2>
-                <p className="provider-form-desc">
-                  Khách hàng sẽ nhìn thấy các thông tin này khi tìm kiếm và duyệt hồ sơ thợ của bạn.
-                </p>
-              </div>
+            {/* Tab switch header */}
+            <div className="provider-tabs-nav" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'profile'}
+                className={`provider-tab-btn ${activeTab === 'profile' ? 'active' : ''}`}
+                onClick={() => setActiveTab('profile')}
+              >
+                <Wrench size={16} />
+                <span>Hồ sơ & Chuyên môn</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'reviews'}
+                className={`provider-tab-btn ${activeTab === 'reviews' ? 'active' : ''}`}
+                onClick={() => setActiveTab('reviews')}
+              >
+                <Star size={16} className={activeTab === 'reviews' ? 'active-star-icon' : ''} />
+                <span>Đánh giá từ khách</span>
+                {(profile?.reviewCount ?? 0) > 0 && (
+                  <span className="provider-tab-badge">{profile?.reviewCount}</span>
+                )}
+              </button>
+            </div>
 
-              {/* Chức danh / Tiêu đề */}
-              <div className="form-group">
-                <label htmlFor="headline" className="form-label">
-                  Chức danh / Tiêu đề ngắn <span className="text-danger">*</span>
-                </label>
-                <input
-                  id="headline"
-                  type="text"
-                  className="form-input"
-                  placeholder="Ví dụ: Thợ sửa điện nước gia đình 5★, Chuyên sửa máy giặt & máy lạnh"
-                  value={headline}
-                  onChange={(e) => setHeadline(e.target.value)}
-                  maxLength={150}
-                  required
-                />
-                <span className="form-help">Tiêu đề xuất hiện nổi bật trên thẻ thợ (tối đa 150 ký tự).</span>
-              </div>
-
-              {/* Hàng 2 cột: Năm kinh nghiệm & Đơn giá tham khảo */}
-              <div className="form-row-grid">
-                <div className="form-group">
-                  <label htmlFor="experienceYears" className="form-label">
-                    <Clock size={16} className="label-icon" />
-                    <span>Số năm kinh nghiệm</span>
-                  </label>
-                  <input
-                    id="experienceYears"
-                    type="number"
-                    min="0"
-                    max="50"
-                    className="form-input"
-                    placeholder="0"
-                    value={experienceYears}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => handleNumberChange(e, setExperienceYears, 50)}
-                  />
-                  <span className="form-help">
-                    {experienceYears !== '' && Number(experienceYears) > 0
-                      ? `${experienceYears} năm kinh nghiệm làm nghề.`
-                      : 'Số năm làm nghề (năm).'}
-                  </span>
+            {activeTab === 'profile' ? (
+              <form onSubmit={handleSaveProfile} className="provider-edit-form-card">
+                <div className="provider-form-header">
+                  <h2 className="provider-form-title">Cập nhật thông tin nghề nghiệp</h2>
+                  <p className="provider-form-desc">
+                    Khách hàng sẽ nhìn thấy các thông tin này khi tìm kiếm và duyệt hồ sơ thợ của bạn.
+                  </p>
                 </div>
 
+                {/* Chức danh / Tiêu đề */}
                 <div className="form-group">
-                  <label htmlFor="pricePerHour" className="form-label">
-                    <DollarSign size={16} className="label-icon" />
-                    <span>Đơn giá tham khảo theo giờ (VNĐ)</span>
+                  <label htmlFor="headline" className="form-label">
+                    Chức danh / Tiêu đề ngắn <span className="text-danger">*</span>
                   </label>
                   <input
-                    id="pricePerHour"
-                    type="number"
-                    min="0"
-                    step="any"
+                    id="headline"
+                    type="text"
                     className="form-input"
-                    placeholder="Ví dụ: 150000"
-                    value={pricePerHour}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => handleNumberChange(e, setPricePerHour)}
+                    placeholder="Ví dụ: Thợ sửa điện nước gia đình 5★, Chuyên sửa máy giặt & máy lạnh"
+                    value={headline}
+                    onChange={(e) => setHeadline(e.target.value)}
+                    maxLength={150}
+                    required
                   />
-                  <span className="form-help">
-                    {pricePerHour !== '' && Number(pricePerHour) > 0
-                      ? `Tương đương: ${Number(pricePerHour).toLocaleString('vi-VN')} đ/giờ`
-                      : 'Mức giá tham khảo cho khách hàng.'}
-                  </span>
+                  <span className="form-help">Tiêu đề xuất hiện nổi bật trên thẻ thợ (tối đa 150 ký tự).</span>
                 </div>
-              </div>
 
-              {/* Khu vực phục vụ */}
-              <div className="form-group">
-                <label htmlFor="serviceArea" className="form-label">
-                  <MapPin size={16} className="label-icon" />
-                  <span>Khu vực hoạt động</span>
-                </label>
-                <input
-                  id="serviceArea"
-                  type="text"
-                  className="form-input"
-                  placeholder="Ví dụ: Quận Ninh Kiều & Cái Răng (Cần Thơ) hoặc Quận 1, 3, Bình Thạnh"
-                  value={serviceArea}
-                  onChange={(e) => setServiceArea(e.target.value)}
-                  maxLength={255}
-                />
-                <span className="form-help">Địa bàn Quận/Huyện bạn sẵn sàng nhận đơn.</span>
-              </div>
+                {/* Hàng 2 cột: Năm kinh nghiệm & Đơn giá tham khảo */}
+                <div className="form-row-grid">
+                  <div className="form-group">
+                    <label htmlFor="experienceYears" className="form-label">
+                      <Clock size={16} className="label-icon" />
+                      <span>Số năm kinh nghiệm</span>
+                    </label>
+                    <input
+                      id="experienceYears"
+                      type="number"
+                      min="0"
+                      max="50"
+                      className="form-input"
+                      placeholder="0"
+                      value={experienceYears}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => handleNumberChange(e, setExperienceYears, 50)}
+                    />
+                    <span className="form-help">
+                      {experienceYears !== '' && Number(experienceYears) > 0
+                        ? `${experienceYears} năm kinh nghiệm làm nghề.`
+                        : 'Số năm làm nghề (năm).'}
+                    </span>
+                  </div>
 
-              {/* Danh mục dịch vụ đảm nhận */}
-              <div className="form-group">
-                <label className="form-label">
-                  <Wrench size={16} className="label-icon" />
-                  <span>Danh mục dịch vụ bạn có thể đảm nhận</span>
-                </label>
-                <div className="provider-categories-selector">
-                  {availableCategories.length === 0 ? (
-                    <p className="text-muted">Đang tải danh mục dịch vụ từ hệ thống...</p>
-                  ) : (
-                    availableCategories.map((cat) => {
-                      const isChecked = selectedCategoryIds.includes(cat.id);
-                      return (
-                        <label 
-                          key={cat.id} 
-                          className={`provider-category-chip ${isChecked ? 'active' : ''}`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleCategoryToggle(cat.id)}
-                            className="chip-checkbox"
+                  <div className="form-group">
+                    <label htmlFor="pricePerHour" className="form-label">
+                      <DollarSign size={16} className="label-icon" />
+                      <span>Đơn giá tham khảo theo giờ (VNĐ)</span>
+                    </label>
+                    <input
+                      id="pricePerHour"
+                      type="number"
+                      min="0"
+                      step="any"
+                      className="form-input"
+                      placeholder="Ví dụ: 150000"
+                      value={pricePerHour}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => handleNumberChange(e, setPricePerHour)}
+                    />
+                    <span className="form-help">
+                      {pricePerHour !== '' && Number(pricePerHour) > 0
+                        ? `Tương đương: ${Number(pricePerHour).toLocaleString('vi-VN')} đ/giờ`
+                        : 'Mức giá tham khảo cho khách hàng.'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Khu vực phục vụ */}
+                <div className="form-group">
+                  <label htmlFor="serviceArea" className="form-label">
+                    <MapPin size={16} className="label-icon" />
+                    <span>Khu vực hoạt động</span>
+                  </label>
+                  <input
+                    id="serviceArea"
+                    type="text"
+                    className="form-input"
+                    placeholder="Ví dụ: Quận Ninh Kiều & Cái Răng (Cần Thơ) hoặc Quận 1, 3, Bình Thạnh"
+                    value={serviceArea}
+                    onChange={(e) => setServiceArea(e.target.value)}
+                    maxLength={255}
+                  />
+                  <span className="form-help">Địa bàn Quận/Huyện bạn sẵn sàng nhận đơn.</span>
+                </div>
+
+                {/* Danh mục dịch vụ đảm nhận */}
+                <div className="form-group">
+                  <label className="form-label">
+                    <Wrench size={16} className="label-icon" />
+                    <span>Danh mục dịch vụ bạn có thể đảm nhận</span>
+                  </label>
+                  <div className="provider-categories-selector">
+                    {availableCategories.length === 0 ? (
+                      <p className="text-muted">Đang tải danh mục dịch vụ từ hệ thống...</p>
+                    ) : (
+                      availableCategories.map((cat) => {
+                        const isChecked = selectedCategoryIds.includes(cat.id);
+                        return (
+                          <label 
+                            key={cat.id} 
+                            className={`provider-category-chip ${isChecked ? 'active' : ''}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleCategoryToggle(cat.id)}
+                              className="chip-checkbox"
+                            />
+                            <span>{cat.name}</span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                  <span className="form-help">Chọn những dịch vụ bạn có tay nghề và trang thiết bị để làm.</span>
+                </div>
+
+                {/* Giới thiệu bản thân / Bio */}
+                <div className="form-group">
+                  <label htmlFor="bio" className="form-label">
+                    Giới thiệu bản thân & Cam kết dịch vụ
+                  </label>
+                  <textarea
+                    id="bio"
+                    rows={4}
+                    className="form-textarea"
+                    placeholder="Mô tả kỹ năng, cam kết làm việc đúng giờ, trung thực, có bảo hành..."
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                  />
+                </div>
+
+                {/* Công tắc Bật/Tắt nhận việc */}
+                <div className="provider-availability-toggle-box">
+                  <label className="toggle-switch-label">
+                    <input
+                      type="checkbox"
+                      checked={isAvailable}
+                      onChange={() => {
+                        if (toggleAvailable) {
+                          toggleAvailable();
+                        }
+                      }}
+                      className="toggle-switch-input"
+                    />
+                    <span className="toggle-switch-slider" />
+                  </label>
+                  <div className="toggle-text-wrap">
+                    <span className="toggle-main-title">
+                      {isAvailable ? 'Đang sẵn sàng nhận việc' : 'Tạm ngưng nhận việc'}
+                    </span>
+                    <span className="toggle-sub-title">
+                      {isAvailable 
+                        ? 'Hồ sơ của bạn hiển thị công khai và sẵn sàng nhận đơn từ khách hàng.'
+                        : 'Hồ sơ sẽ tạm ẩn hoặc hiển thị "Tạm bận", không nhận thông báo đơn mới.'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Nút hành động */}
+                <div className="provider-form-actions">
+                  <button
+                    type="button"
+                    onClick={handleResetForm}
+                    disabled={saving}
+                    className="btn-form-secondary"
+                  >
+                    <RotateCcw size={16} />
+                    <span>Hoàn tác</span>
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="btn-form-primary"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 size={16} className="spin-icon" />
+                        <span>Đang lưu...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save size={16} />
+                        <span>Lưu thay đổi</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* TAB 2: ĐÁNH GIÁ TỪ KHÁCH HÀNG */
+              <div className="provider-reviews-tab-card">
+                {/* Header tổng quan uy tín */}
+                <div className="provider-reviews-summary-banner">
+                  <div className="provider-reviews-stat-score">
+                    <span className="score-big">{profile?.ratingAverage ? profile.ratingAverage.toFixed(1) : '5.0'}</span>
+                    <div className="score-stars-col">
+                      <div className="stars-row">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star 
+                            key={star} 
+                            size={18} 
+                            fill={star <= Math.round(profile?.ratingAverage || 5) ? '#F59E0B' : '#E2E8F0'} 
+                            color={star <= Math.round(profile?.ratingAverage || 5) ? '#F59E0B' : '#CBD5E1'} 
                           />
-                          <span>{cat.name}</span>
-                        </label>
-                      );
-                    })
-                  )}
+                        ))}
+                      </div>
+                      <span className="score-count-label">
+                        {reviewsTotal > 0 ? `${reviewsTotal} đánh giá từ khách hàng` : 'Chưa có đánh giá nào'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="provider-reviews-banner-tips">
+                    <div className="tip-badge">🏆 Cam kết dịch vụ</div>
+                    <p>Phản hồi nhanh và lịch sự giúp bạn tạo dựng niềm tin bền vững, nâng cao thứ hạng xuất hiện trong kết quả tìm kiếm.</p>
+                  </div>
                 </div>
-                <span className="form-help">Chọn những dịch vụ bạn có tay nghề và trang thiết bị để làm.</span>
-              </div>
 
-              {/* Giới thiệu bản thân / Bio */}
-              <div className="form-group">
-                <label htmlFor="bio" className="form-label">
-                  Giới thiệu bản thân & Cam kết dịch vụ
-                </label>
-                <textarea
-                  id="bio"
-                  rows={4}
-                  className="form-textarea"
-                  placeholder="Mô tả kỹ năng, cam kết làm việc đúng giờ, trung thực, có bảo hành..."
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                />
-              </div>
-
-              {/* Công tắc Bật/Tắt nhận việc */}
-              <div className="provider-availability-toggle-box">
-                <label className="toggle-switch-label">
-                  <input
-                    type="checkbox"
-                    checked={isAvailable}
-                    onChange={() => {
-                      if (toggleAvailable) {
-                        toggleAvailable();
-                      }
-                    }}
-                    className="toggle-switch-input"
-                  />
-                  <span className="toggle-switch-slider" />
-                </label>
-                <div className="toggle-text-wrap">
-                  <span className="toggle-main-title">
-                    {isAvailable ? 'Đang sẵn sàng nhận việc' : 'Tạm ngưng nhận việc'}
-                  </span>
-                  <span className="toggle-sub-title">
-                    {isAvailable 
-                      ? 'Hồ sơ của bạn hiển thị công khai và sẵn sàng nhận đơn từ khách hàng.'
-                      : 'Hồ sơ sẽ tạm ẩn hoặc hiển thị "Tạm bận", không nhận thông báo đơn mới.'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Nút hành động */}
-              <div className="provider-form-actions">
-                <button
-                  type="button"
-                  onClick={handleResetForm}
-                  disabled={saving}
-                  className="btn-form-secondary"
-                >
-                  <RotateCcw size={16} />
-                  <span>Hoàn tác</span>
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="btn-form-primary"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 size={16} className="spin-icon" />
-                      <span>Đang lưu...</span>
-                    </>
+                {/* Danh sách các đánh giá */}
+                <div className="provider-reviews-list-wrap">
+                  {reviewsLoading ? (
+                    <div className="provider-reviews-loading">
+                      <Loader2 size={32} className="spin-icon" />
+                      <p>Đang tải danh sách đánh giá...</p>
+                    </div>
+                  ) : reviews.length === 0 ? (
+                    <div className="provider-reviews-empty">
+                      <div className="empty-icon-box">
+                        <MessageSquare size={36} color="#94A3B8" />
+                      </div>
+                      <h3>Chưa có đánh giá nào từ khách hàng</h3>
+                      <p>Khi bạn hoàn thành các đơn hàng được giao, phản hồi và chấm điểm của khách sẽ hiển thị đầy đủ tại đây.</p>
+                    </div>
                   ) : (
-                    <>
-                      <Save size={16} />
-                      <span>Lưu thay đổi</span>
-                    </>
+                    reviews.map((rev) => (
+                      <div key={rev.id} className="provider-review-item-card">
+                        <div className="provider-review-item-header">
+                          <div className="customer-info-meta">
+                            <div className="customer-avatar-badge">
+                              {rev.customerName ? rev.customerName.charAt(0).toUpperCase() : 'K'}
+                            </div>
+                            <div>
+                              <div className="customer-name-row">
+                                <span className="customer-name">{rev.customerName || 'Khách hàng ẩn danh'}</span>
+                                {rev.orderCode && (
+                                  <span className="customer-order-tag">Đơn #{rev.orderCode}</span>
+                                )}
+                              </div>
+                              <div className="review-date-row">
+                                <Calendar size={13} color="#94A3B8" />
+                                <span>{new Date(rev.createdAt).toLocaleDateString('vi-VN')}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="review-stars-pill">
+                            <div className="stars-row">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star 
+                                  key={s} 
+                                  size={15} 
+                                  fill={s <= rev.rating ? '#F59E0B' : '#E2E8F0'} 
+                                  color={s <= rev.rating ? '#F59E0B' : '#CBD5E1'} 
+                                />
+                              ))}
+                            </div>
+                            <span className="star-number">{rev.rating}.0</span>
+                          </div>
+                        </div>
+
+                        {/* Tiêu chí chi tiết nếu có */}
+                        {(rev.punctualityRating || rev.skillRating || rev.attitudeRating || rev.priceRating) && (
+                          <div className="provider-review-subscores">
+                            {rev.punctualityRating && <span>Đúng hẹn: {rev.punctualityRating}★</span>}
+                            {rev.skillRating && <span>Tay nghề: {rev.skillRating}★</span>}
+                            {rev.attitudeRating && <span>Thái độ: {rev.attitudeRating}★</span>}
+                            {rev.priceRating && <span>Giá cả: {rev.priceRating}★</span>}
+                          </div>
+                        )}
+
+                        {/* Quick tags */}
+                        {rev.tags && rev.tags.length > 0 && (
+                          <div className="provider-review-tags-row">
+                            {rev.tags.map((t, idx) => (
+                              <span key={idx} className="review-tag-pill">{t}</span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Bình luận */}
+                        {rev.comment && (
+                          <p className="provider-review-comment">{rev.comment}</p>
+                        )}
+
+                        {/* Ảnh đính kèm từ khách */}
+                        {rev.images && rev.images.length > 0 && (
+                          <div className="provider-review-images-grid">
+                            {rev.images.map((img, idx) => (
+                              <img key={idx} src={img} alt="Hình ảnh nghiệm thu" className="review-thumb-img" />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Phản hồi của thợ */}
+                        {rev.providerReply ? (
+                          <div className="provider-replied-box">
+                            <div className="provider-replied-header">
+                              <span className="reply-label">💬 Phản hồi của bạn:</span>
+                              {rev.providerRepliedAt && (
+                                <span className="reply-time">{new Date(rev.providerRepliedAt).toLocaleDateString('vi-VN')}</span>
+                              )}
+                            </div>
+                            <p className="reply-content">{rev.providerReply}</p>
+                            <button
+                              type="button"
+                              className="btn-edit-reply"
+                              onClick={() => {
+                                setSelectedReviewForReply(rev);
+                                setShowReplyModal(true);
+                              }}
+                            >
+                              Chỉnh sửa phản hồi
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="provider-reply-action-row">
+                            <button
+                              type="button"
+                              className="btn-open-reply"
+                              onClick={() => {
+                                setSelectedReviewForReply(rev);
+                                setShowReplyModal(true);
+                              }}
+                            >
+                              <MessageSquare size={15} />
+                              <span>Phản hồi cho khách hàng này</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))
                   )}
-                </button>
+                </div>
               </div>
-            </form>
+            )}
           </div>
         </div>
+      )}
+
+      {/* Modal phản hồi đánh giá của khách */}
+      {selectedReviewForReply && (
+        <ProviderReplyModal
+          isOpen={showReplyModal}
+          onClose={() => {
+            setShowReplyModal(false);
+            setSelectedReviewForReply(null);
+          }}
+          reviewId={selectedReviewForReply.id}
+          customerName={selectedReviewForReply.customerName || 'Khách hàng'}
+          rating={selectedReviewForReply.rating}
+          comment={selectedReviewForReply.comment}
+          existingReply={selectedReviewForReply.providerReply || ''}
+          onSuccess={() => {
+            loadReviews();
+            setSuccessNotice('Đã gửi phản hồi đánh giá thành công!');
+            setTimeout(() => setSuccessNotice(null), 4000);
+          }}
+        />
       )}
 
       {/* Modal xác nhận gỡ ảnh chuyên nghiệp */}

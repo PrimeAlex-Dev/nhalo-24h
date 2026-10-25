@@ -12,3 +12,5 @@ export * from './adminOrderService';
 export * from './fileService';
 export * from './providerWalletService';
 export * from './adminFinancialService';
+export * from './reviewService';
+export * from './reportService';

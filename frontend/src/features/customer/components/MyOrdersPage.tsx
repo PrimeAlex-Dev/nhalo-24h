@@ -14,7 +14,8 @@ import {
   Bell,
   Home,
   ArrowLeft,
-  ZoomIn
+  ZoomIn,
+  Star
 } from 'lucide-react';
 import { customerOrderService } from '../../../services';
 import type { CustomerOrderSummary, OrderStatus } from '../../../types/order';
@@ -351,6 +352,13 @@ export function MyOrdersPage() {
                         <div className="quotation-received-pill" style={{ background: '#e0f2fe', color: '#0369a1' }}>
                           <Bell size={12} />
                           <span>Thợ đã báo hoàn thành — Bấm để nghiệm thu & Thanh toán</span>
+                        </div>
+                      )}
+
+                      {order.status === 'COMPLETED' && (
+                        <div className="quotation-received-pill" style={{ background: '#fef3c7', color: '#92400e' }}>
+                          <Star size={12} fill="#f59e0b" stroke="#f59e0b" />
+                          <span>Đã hoàn thành — Bấm để xem chi tiết & Đánh giá thợ</span>
                         </div>
                       )}
                     </div>

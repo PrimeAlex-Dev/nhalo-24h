@@ -282,6 +282,8 @@ public class ProviderProfileService {
             profile.getServiceArea(),
             profile.getIsAvailable(),
             categoryDtos,
+            profile.getRatingAverage() != null ? profile.getRatingAverage() : 5.0,
+            profile.getReviewCount() != null ? profile.getReviewCount() : 0,
             profile.getCreatedAt(),
             profile.getUpdatedAt()
         );
@@ -328,8 +330,8 @@ public class ProviderProfileService {
             availability,
             primaryCategory,
             categoryDtos,
-            5.0,
-            0,
+            profile.getRatingAverage() != null ? profile.getRatingAverage() : 5.0,
+            profile.getReviewCount() != null ? profile.getReviewCount() : 0,
             (profile.getExperienceYears() != null && profile.getExperienceYears() > 0)
                 ? (profile.getExperienceYears() * 100) + "+ việc"
                 : "Mới tham gia",

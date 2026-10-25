@@ -40,6 +40,8 @@ export const PATHS = {
     FINANCIAL: '/admin/financial',
     USERS: '/admin/users',
     SERVICES: '/admin/services',
+    DISPUTES: '/admin/reports',
+    REVIEWS: '/admin/reviews',
   },
 } as const;
 
