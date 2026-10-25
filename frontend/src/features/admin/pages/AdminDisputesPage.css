@@ -421,6 +421,7 @@
   justify-content: center;
   z-index: 1000;
   padding: 1.5rem;
+  overflow-y: auto;
 }
 
 .resolve-modal-card {
@@ -434,6 +435,7 @@
   box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
   animation: modalScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
+  margin: auto;
 }
 
 @keyframes modalScaleUp {
@@ -448,6 +450,7 @@
   align-items: center;
   justify-content: space-between;
   background: #F8FAFC;
+  flex-shrink: 0;
 }
 
 .resolve-modal-title-wrap {
@@ -481,12 +484,41 @@
   color: #0F172A;
 }
 
+.resolve-modal-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .resolve-modal-body {
   padding: 1.5rem;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  overscroll-behavior: contain;
+}
+
+.resolve-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.resolve-modal-body::-webkit-scrollbar-track {
+  background: #F1F5F9;
+  border-radius: 4px;
+}
+
+.resolve-modal-body::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+.resolve-modal-body::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
 }
 
 /* Dispute details summary box */
@@ -653,6 +685,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 .btn-cancel-modal {
