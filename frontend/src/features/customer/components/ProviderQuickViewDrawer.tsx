@@ -356,6 +356,10 @@ export function ProviderQuickViewDrawer({
                 <UserCheck size={16} />
                 <span>Đã gửi yêu cầu tới thợ này</span>
               </div>
+            ) : !current.isAvailable ? (
+              <div style={{ color: '#D97706', background: '#FFFBEB', border: '1px solid #FDE68A', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>○ Thợ đang tạm ngưng nhận việc</span>
+              </div>
             ) : onToggleSelect ? (
               isSelected ? (
                 <button

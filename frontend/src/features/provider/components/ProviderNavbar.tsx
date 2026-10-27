@@ -104,24 +104,36 @@ export function ProviderNavbar({
           {/* Header Right Actions */}
           <div className="provider-header-actions">
             {/* Quick Online / Offline Toggle */}
-            <button
-              type="button"
-              className={`provider-status-toggle-btn ${isOnline ? 'online' : 'offline'}`}
-              onClick={onToggleOnline}
-              title={isOnline ? 'Nhấn để tạm dừng nhận việc' : 'Nhấn để bật sẵn sàng nhận việc'}
-            >
-              {isOnline ? (
-                <>
-                  <span className="provider-status-pulse-dot" />
-                  <span>Sẵn sàng</span>
-                </>
-              ) : (
-                <>
-                  <Power size={13} />
-                  <span>Tạm ngưng</span>
-                </>
-              )}
-            </button>
+            {profile?.isSuspended ? (
+              <button
+                type="button"
+                className="provider-status-toggle-btn suspended"
+                disabled
+                title={`Tài khoản đang bị đình chỉ nhận việc đến ${profile.suspendedUntil ? new Date(profile.suspendedUntil).toLocaleDateString('vi-VN') : ''} do vi phạm quy chế`}
+              >
+                <Power size={13} />
+                <span>Bị đình chỉ</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={`provider-status-toggle-btn ${isOnline ? 'online' : 'offline'}`}
+                onClick={onToggleOnline}
+                title={isOnline ? 'Nhấn để tạm dừng nhận việc' : 'Nhấn để bật sẵn sàng nhận việc'}
+              >
+                {isOnline ? (
+                  <>
+                    <span className="provider-status-pulse-dot" />
+                    <span>Sẵn sàng</span>
+                  </>
+                ) : (
+                  <>
+                    <Power size={13} />
+                    <span>Tạm ngưng</span>
+                  </>
+                )}
+              </button>
+            )}
 
             {/* Notification Bell */}
             <button 

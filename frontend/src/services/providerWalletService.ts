@@ -5,6 +5,8 @@ import type {
   WalletTransactionResponse,
   CreatePayoutRequestDto,
   RequestDepositRefundDto,
+  TopupDepositFromAvailableDto,
+  TopupDepositVietQrDto,
   PayoutRequestResponse,
 } from '../types/wallet';
 
@@ -67,6 +69,26 @@ export const providerWalletService = {
    */
   async requestDepositRefund(payload: RequestDepositRefundDto): Promise<PayoutRequestResponse> {
     return request<PayoutRequestResponse>('/api/v1/provider/wallet/deposit-refund', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Thợ trích từ ví thu nhập khả dụng nạp bù Quỹ Ký Quỹ 2.000.000đ (1-click)
+   */
+  async topupDepositFromAvailable(payload: TopupDepositFromAvailableDto): Promise<ProviderWalletResponse> {
+    return request<ProviderWalletResponse>('/api/v1/provider/wallet/topup-deposit-from-available', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Thợ nạp bù Quỹ Ký Quỹ qua chuyển khoản VietQR Napas (Test demo / xác nhận)
+   */
+  async topupDepositVietQrDemo(payload: TopupDepositVietQrDto): Promise<ProviderWalletResponse> {
+    return request<ProviderWalletResponse>('/api/v1/provider/wallet/topup-deposit-vietqr-demo', {
       method: 'POST',
       body: JSON.stringify(payload),
     });

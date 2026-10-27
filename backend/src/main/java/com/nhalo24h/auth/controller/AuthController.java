@@ -1,5 +1,4 @@
 package com.nhalo24h.auth.controller;
-
 import com.nhalo24h.auth.dto.AuthResponse;
 import com.nhalo24h.auth.dto.LoginRequest;
 import com.nhalo24h.auth.dto.MessageResponse;

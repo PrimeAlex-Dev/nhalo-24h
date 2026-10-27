@@ -12,7 +12,8 @@ import {
   X, 
   DollarSign, 
   FileText,
-  AlertOctagon
+  AlertOctagon,
+  Building
 } from 'lucide-react';
 import { reportService } from '../../../services';
 import type { 
@@ -50,6 +51,30 @@ export function AdminDisputesPage() {
   const [resolvePenaltyAmount, setResolvePenaltyAmount] = useState<string>('200000');
   const [resolveAdminNotes, setResolveAdminNotes] = useState<string>('');
   const [submittingResolve, setSubmittingResolve] = useState<boolean>(false);
+  // Bổ sung chế tài đình chỉ & bồi thường
+  const [banDurationDays, setBanDurationDays] = useState<number>(7);
+  const [hasCompensation, setHasCompensation] = useState<boolean>(false);
+  const [compensationAmount, setCompensationAmount] = useState<string>('');
+  const [customerBankCode, setCustomerBankCode] = useState<string>('MBBank');
+  const [customerAccountNumber, setCustomerAccountNumber] = useState<string>('');
+  const [customerAccountHolder, setCustomerAccountHolder] = useState<string>('');
+
+  // Modal Hoàn cọc
+  const [selectedReportForRefund, setSelectedReportForRefund] = useState<ReportItem | null>(null);
+  const [refundReason, setRefundReason] = useState<string>('');
+  const [submittingRefund, setSubmittingRefund] = useState<boolean>(false);
+
+  // Modal Xác nhận Bồi thường
+  const [selectedReportForComp, setSelectedReportForComp] = useState<ReportItem | null>(null);
+  const [payoutRef, setPayoutRef] = useState<string>('');
+  const [compNote, setCompNote] = useState<string>('');
+  const [submittingComp, setSubmittingComp] = useState<boolean>(false);
+
+  // Modal Gỡ đình chỉ / Mở khóa tức thì
+  const [selectedReportForRevokeSuspension, setSelectedReportForRevokeSuspension] = useState<ReportItem | null>(null);
+  const [revokeSuspensionReason, setRevokeSuspensionReason] = useState<string>('');
+  const [submittingRevokeSuspension, setSubmittingRevokeSuspension] = useState<boolean>(false);
+
 
   // Image lightbox preview
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -89,7 +114,104 @@ export function AdminDisputesPage() {
         ? Number(report.penaltyAmount).toLocaleString('vi-VN') 
         : '200.000'
     );
+    setBanDurationDays(report.banDurationDays || 7);
+    setHasCompensation(report.compensationAmount > 0);
+    setCompensationAmount(report.compensationAmount > 0 ? Number(report.compensationAmount).toLocaleString('vi-VN') : '');
+    setCustomerBankCode(report.customerBankCode || 'MBBank');
+    setCustomerAccountNumber(report.customerAccountNumber || '');
+    setCustomerAccountHolder(report.customerAccountHolder || (report.reporterName || '').toUpperCase());
     setResolveAdminNotes(report.adminNotes || '');
+  };
+
+  
+  const handleOpenRefundModal = (report: ReportItem) => {
+    setSelectedReportForRefund(report);
+    setRefundReason('Hai bên đã hòa giải thành công / Khách hàng đã rút đơn khiếu nại');
+  };
+
+  const handleSubmitRefund = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReportForRefund) return;
+    if (!refundReason.trim()) {
+      alert('Vui lòng nhập lý do hoàn cọc');
+      return;
+    }
+    setSubmittingRefund(true);
+    try {
+      await reportService.refundDisputePenalty(selectedReportForRefund.id, { reason: refundReason.trim() });
+      setSuccessMsg(`Đã hoàn lại tiền cọc ${Number(selectedReportForRefund.penaltyAmount).toLocaleString('vi-VN')} đ cho thợ thành công!`);
+      setSelectedReportForRefund(null);
+      fetchReports();
+      setTimeout(() => setSuccessMsg(null), 5000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Hoàn cọc thất bại';
+      alert(msg);
+    } finally {
+      setSubmittingRefund(false);
+    }
+  };
+
+  const handleOpenCompModal = (report: ReportItem) => {
+    setSelectedReportForComp(report);
+    setPayoutRef('');
+    setCompNote('');
+  };
+
+  const handleSubmitComp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReportForComp) return;
+    if (!payoutRef.trim()) {
+      alert('Vui lòng nhập mã giao dịch ngân hàng / Ủy nhiệm chi');
+      return;
+    }
+    setSubmittingComp(true);
+    try {
+      await reportService.confirmCompensation(selectedReportForComp.id, {
+        payoutRef: payoutRef.trim(),
+        note: compNote.trim() || undefined,
+      });
+      setSuccessMsg(`Đã xác nhận chi trả bồi thường ${Number(selectedReportForComp.compensationAmount).toLocaleString('vi-VN')} đ cho khách hàng thành công!`);
+      setSelectedReportForComp(null);
+      fetchReports();
+      setTimeout(() => setSuccessMsg(null), 5000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Xác nhận bồi thường thất bại';
+      alert(msg);
+    } finally {
+      setSubmittingComp(false);
+    }
+  };
+
+  const handleOpenRevokeModal = (report: ReportItem) => {
+    setSelectedReportForRevokeSuspension(report);
+    setRevokeSuspensionReason('Hòa giải thành công / Xem xét lại chứng cứ không thỏa đáng');
+  };
+
+  const handleSubmitRevokeSuspension = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReportForRevokeSuspension) return;
+
+    if (!revokeSuspensionReason.trim()) {
+      alert('Vui lòng nhập lý do gỡ đình chỉ / mở khóa cho thợ');
+      return;
+    }
+
+    setSubmittingRevokeSuspension(true);
+    try {
+      await reportService.revokeSuspension(selectedReportForRevokeSuspension.id, {
+        reason: revokeSuspensionReason.trim(),
+      });
+      setSuccessMsg(`Đã gỡ án phạt và khôi phục trạng thái hoạt động cho thợ ${selectedReportForRevokeSuspension.providerName} thành công!`);
+      setSelectedReportForRevokeSuspension(null);
+      setRevokeSuspensionReason('');
+      fetchReports();
+      setTimeout(() => setSuccessMsg(null), 5000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gỡ đình chỉ thất bại';
+      alert(msg);
+    } finally {
+      setSubmittingRevokeSuspension(false);
+    }
   };
 
   const handlePenaltyAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,10 +247,19 @@ export function AdminDisputesPage() {
         ? Math.max(0, parseInt(resolvePenaltyAmount.replace(/\D/g, '') || '0', 10))
         : 0;
 
+      const compAmtNum = (resolvePenaltyType === 'DEPOSIT_DEDUCTION' && hasCompensation)
+        ? Math.max(0, parseInt(compensationAmount.replace(/\D/g, '') || '0', 10))
+        : 0;
+
       await reportService.resolveReport(selectedReport.id, {
         status: resolveStatus,
         penaltyType: resolvePenaltyType,
         penaltyAmount: penaltyAmountNum,
+        banDurationDays: resolvePenaltyType === 'TEMPORARY_BAN' ? banDurationDays : undefined,
+        compensationAmount: compAmtNum > 0 ? compAmtNum : undefined,
+        customerBankCode: compAmtNum > 0 ? customerBankCode : undefined,
+        customerAccountNumber: compAmtNum > 0 ? customerAccountNumber : undefined,
+        customerAccountHolder: compAmtNum > 0 ? customerAccountHolder : undefined,
         adminNotes: resolveAdminNotes.trim() || undefined,
       });
 
@@ -343,19 +474,139 @@ export function AdminDisputesPage() {
                     </td>
 
                     <td>
-                      {r.penaltyType === 'DEPOSIT_DEDUCTION' ? (
-                        <span className="penalty-badge deposit">
-                          Trừ cọc {Number(r.penaltyAmount).toLocaleString('vi-VN')}đ
-                        </span>
-                      ) : r.penaltyType === 'WARNING' ? (
-                        <span className="penalty-badge warning">Cảnh cáo vi phạm</span>
-                      ) : r.penaltyType === 'TEMPORARY_BAN' ? (
-                        <span className="penalty-badge deposit">Khóa thợ 7 ngày</span>
-                      ) : r.penaltyType === 'PERMANENT_BAN' ? (
-                        <span className="penalty-badge deposit">Khóa vĩnh viễn</span>
-                      ) : (
-                        <span className="penalty-badge none">Không phạt</span>
-                      )}
+                      <div>
+                        {r.penaltyType === 'DEPOSIT_DEDUCTION' ? (
+                          <div>
+                            <span className="penalty-badge deposit">
+                              Trừ cọc {Number(r.penaltyAmount).toLocaleString('vi-VN')}đ
+                            </span>
+                            {r.refundedAt ? (
+                              <div style={{ marginTop: '4px' }}>
+                                <span style={{ fontSize: '11px', background: '#DCFCE7', color: '#166534', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                                  ✓ Đã hoàn cọc ({new Date(r.refundedAt).toLocaleDateString('vi-VN')})
+                                </span>
+                              </div>
+                            ) : (
+                              <div style={{ marginTop: '4px' }}>
+                                <button
+                                  type="button"
+                                  style={{
+                                    fontSize: '11px',
+                                    color: '#C2410C',
+                                    background: '#FFF7ED',
+                                    border: '1px solid #FFEDD5',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontWeight: 600
+                                  }}
+                                  onClick={() => handleOpenRefundModal(r)}
+                                >
+                                  Hoàn cọc xử nhầm
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ) : r.penaltyType === 'WARNING' ? (
+                          <span className="penalty-badge warning">Cảnh cáo vi phạm</span>
+                        ) : r.penaltyType === 'TEMPORARY_BAN' ? (
+                          <div>
+                            <span className="penalty-badge deposit">Đình chỉ {r.banDurationDays || 7} ngày</span>
+                            {r.suspensionLiftedAt ? (
+                              <div style={{ marginTop: '4px' }}>
+                                <span style={{ fontSize: '11px', background: '#F0FDF4', color: '#166534', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                                  ✓ Đã gỡ đình chỉ
+                                </span>
+                              </div>
+                            ) : (
+                              <div style={{ marginTop: '4px' }}>
+                                <button
+                                  type="button"
+                                  style={{
+                                    fontSize: '11px',
+                                    color: '#15803D',
+                                    background: '#DCFCE7',
+                                    border: '1px solid #BBF7D0',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontWeight: 600
+                                  }}
+                                  onClick={() => handleOpenRevokeModal(r)}
+                                >
+                                  Gỡ đình chỉ ngay
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ) : r.penaltyType === 'PERMANENT_BAN' ? (
+                          <div>
+                            <span className="penalty-badge deposit" style={{ background: '#991B1B', color: '#fff' }}>Khóa vĩnh viễn</span>
+                            {r.suspensionLiftedAt ? (
+                              <div style={{ marginTop: '4px' }}>
+                                <span style={{ fontSize: '11px', background: '#F0FDF4', color: '#166534', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                                  ✓ Đã mở khóa
+                                </span>
+                              </div>
+                            ) : (
+                              <div style={{ marginTop: '4px' }}>
+                                <button
+                                  type="button"
+                                  style={{
+                                    fontSize: '11px',
+                                    color: '#15803D',
+                                    background: '#DCFCE7',
+                                    border: '1px solid #BBF7D0',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontWeight: 600
+                                  }}
+                                  onClick={() => handleOpenRevokeModal(r)}
+                                >
+                                  Mở khóa tài khoản ngay
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="penalty-badge none">Không phạt</span>
+                        )}
+
+                        {/* Thông tin bồi thường khách hàng */}
+                        {r.compensationStatus === 'PENDING_PAYOUT' && (
+                          <div style={{ marginTop: '6px' }}>
+                            <span style={{ fontSize: '11px', background: '#FEF3C7', color: '#92400E', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                              Chờ đền bù: {Number(r.compensationAmount).toLocaleString('vi-VN')}đ
+                            </span>
+                            <div style={{ marginTop: '2px' }}>
+                              <button
+                                type="button"
+                                style={{
+                                  fontSize: '11px',
+                                  color: '#166534',
+                                  background: '#DCFCE7',
+                                  border: '1px solid #BBF7D0',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontWeight: 600
+                                }}
+                                onClick={() => handleOpenCompModal(r)}
+                              >
+                                Đã chuyển khoản KH
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        {r.compensationStatus === 'COMPLETED' && (
+                          <div style={{ marginTop: '4px' }}>
+                            <span style={{ fontSize: '11px', background: '#F0FDF4', color: '#166534', padding: '2px 6px', borderRadius: '4px' }}>
+                              Đã đền bù ({r.compensationPayoutRef || 'Đã CK'})
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </td>
 
                     <td style={{ textAlign: 'right' }}>
@@ -483,6 +734,26 @@ export function AdminDisputesPage() {
                         </select>
                       </div>
 
+                      {resolvePenaltyType === 'TEMPORARY_BAN' && (
+                        <div className="form-field-group">
+                          <label htmlFor="resolveBanDuration">Thời gian đình chỉ nhận việc:</label>
+                          <select
+                            id="resolveBanDuration"
+                            className="form-select"
+                            value={banDurationDays}
+                            onChange={(e) => setBanDurationDays(Number(e.target.value))}
+                          >
+                            <option value={3}>3 ngày (Vi phạm nhẹ lần đầu)</option>
+                            <option value={7}>7 ngày (Mặc định - Cố tình vi phạm / Tái phạm)</option>
+                            <option value={14}>14 ngày (Vi phạm nghiêm trọng)</option>
+                            <option value={30}>30 ngày (Đình chỉ đặc biệt 1 tháng)</option>
+                          </select>
+                          <span style={{ fontSize: '12px', color: '#64748B', marginTop: '4px', display: 'block' }}>
+                            Hệ thống sẽ tự động khóa công tắc nhận việc của thợ đến hết thời hạn và chặn gửi báo giá.
+                          </span>
+                        </div>
+                      )}
+
                       {resolvePenaltyType === 'DEPOSIT_DEDUCTION' && (
                         <div className="form-field-group">
                           <label htmlFor="resolvePenaltyAmount">
@@ -514,8 +785,73 @@ export function AdminDisputesPage() {
                           <div className="deposit-penalty-alert">
                             <AlertOctagon size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
                             <span>
-                              Hệ thống sẽ trừ trực tiếp số tiền này từ Ví Ký Quỹ của thợ. Nếu số dư ký quỹ rơi xuống dưới 2.000.000đ, trạng thái ví của thợ sẽ chuyển sang <strong>Thiếu hụt ký quỹ (DEPOSIT_DEFICIT)</strong> và bị chặn nhận đơn mới ngay lập tức cho đến khi nạp bù.
+                              Hệ thống sẽ trừ trực tiếp số tiền này từ Ví Ký Quỹ của thợ. Nếu số dư rơi xuống dưới 2.000.000đ, trạng thái ví sẽ chuyển sang <strong>Thiếu hụt ký quỹ (DEPOSIT_DEFICIT)</strong> và bị chặn nhận việc ngay.
                             </span>
+                          </div>
+
+                          {/* Bồi thường cho Khách hàng */}
+                          <div style={{ marginTop: '14px', padding: '12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px', color: '#1E293B' }}>
+                              <input
+                                type="checkbox"
+                                checked={hasCompensation}
+                                onChange={(e) => {
+                                  setHasCompensation(e.target.checked);
+                                  if (e.target.checked && !compensationAmount) {
+                                    setCompensationAmount(resolvePenaltyAmount);
+                                  }
+                                }}
+                              />
+                              <span>Trích tiền này bồi thường trực tiếp cho Khách hàng</span>
+                            </label>
+
+                            {hasCompensation && (
+                              <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div>
+                                  <label style={{ fontSize: '12px', color: '#475569', display: 'block' }}>Số tiền bồi thường cho khách (đ):</label>
+                                  <input
+                                    type="text"
+                                    className="form-input-text"
+                                    value={compensationAmount}
+                                    onChange={(e) => setCompensationAmount(e.target.value.replace(/\D/g, ''))}
+                                    placeholder="Ví dụ: 500000"
+                                    style={{ marginTop: '2px' }}
+                                  />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '8px' }}>
+                                  <div>
+                                    <label style={{ fontSize: '12px', color: '#475569', display: 'block' }}>Ngân hàng khách:</label>
+                                    <input
+                                      type="text"
+                                      className="form-input-text"
+                                      value={customerBankCode}
+                                      onChange={(e) => setCustomerBankCode(e.target.value)}
+                                      placeholder="MBBank / VCB"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: '12px', color: '#475569', display: 'block' }}>Số tài khoản khách:</label>
+                                    <input
+                                      type="text"
+                                      className="form-input-text"
+                                      value={customerAccountNumber}
+                                      onChange={(e) => setCustomerAccountNumber(e.target.value)}
+                                      placeholder="Nhập số tài khoản khách"
+                                    />
+                                  </div>
+                                </div>
+                                <div>
+                                  <label style={{ fontSize: '12px', color: '#475569', display: 'block' }}>Tên chủ tài khoản:</label>
+                                  <input
+                                    type="text"
+                                    className="form-input-text"
+                                    value={customerAccountHolder}
+                                    onChange={(e) => setCustomerAccountHolder(e.target.value.toUpperCase())}
+                                    placeholder="NGUYEN VAN A"
+                                  />
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -561,6 +897,166 @@ export function AdminDisputesPage() {
                   ) : (
                     <span>Lưu kết luận xử lý</span>
                   )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      
+      {/* MODAL HOÀN CỌC XỬ NHẦM */}
+      {selectedReportForRefund && (
+        <div className="resolve-modal-backdrop" onClick={() => setSelectedReportForRefund(null)}>
+          <div className="resolve-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="resolve-modal-header">
+              <div className="resolve-modal-title-wrap">
+                <CheckCircle2 size={22} color="#16A34A" />
+                <h2>Hoàn Tiền Ký Quỹ Thợ #{selectedReportForRefund.reportCode}</h2>
+              </div>
+              <button type="button" className="btn-modal-close" onClick={() => setSelectedReportForRefund(null)}>✕</button>
+            </div>
+            <form onSubmit={handleSubmitRefund} className="resolve-modal-form">
+              <div className="resolve-modal-body">
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', fontSize: '13px', marginBottom: '12px' }}>
+                  <div><strong>Thợ nhận cọc:</strong> {selectedReportForRefund.providerName}</div>
+                  <div><strong>Số tiền hoàn lại:</strong> <span style={{ color: '#16A34A', fontWeight: 700 }}>+{Number(selectedReportForRefund.penaltyAmount).toLocaleString('vi-VN')} đ</span></div>
+                  <div style={{ marginTop: '4px', color: '#64748B' }}>Hệ thống sẽ cộng lại số tiền này vào Quỹ Ký Quỹ của thợ và tự động khôi phục quyền nhận đơn nếu số dư đạt 2.000.000đ.</div>
+                </div>
+
+                <div className="form-field-group">
+                  <label>Lý do hoàn cọc / Hủy quyết định phạt:</label>
+                  <textarea
+                    rows={3}
+                    className="form-textarea-notes"
+                    value={refundReason}
+                    onChange={(e) => setRefundReason(e.target.value)}
+                    placeholder="Ghi rõ lý do hòa giải, thỏa thuận hoặc khách hàng đã rút khiếu nại..."
+                    required
+                  />
+                </div>
+              </div>
+              <div className="resolve-modal-footer">
+                <button type="button" className="btn-cancel-modal" onClick={() => setSelectedReportForRefund(null)}>Hủy bỏ</button>
+                <button type="submit" className="btn-submit-resolve" style={{ background: '#16A34A' }} disabled={submittingRefund}>
+                  {submittingRefund ? 'Đang hoàn cọc...' : 'Xác nhận hoàn cọc cho thợ'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL XÁC NHẬN CHI TRẢ BỒI THƯỜNG CHO KHÁCH */}
+      {selectedReportForComp && (
+        <div className="resolve-modal-backdrop" onClick={() => setSelectedReportForComp(null)}>
+          <div className="resolve-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="resolve-modal-header">
+              <div className="resolve-modal-title-wrap">
+                <Building size={22} color="#1D6AE5" />
+                <h2>Xác Nhận Chi Trả Bồi Thường #{selectedReportForComp.reportCode}</h2>
+              </div>
+              <button type="button" className="btn-modal-close" onClick={() => setSelectedReportForComp(null)}>✕</button>
+            </div>
+            <form onSubmit={handleSubmitComp} className="resolve-modal-form">
+              <div className="resolve-modal-body">
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', fontSize: '13px', marginBottom: '12px' }}>
+                  <div><strong>Khách hàng nhận:</strong> {selectedReportForComp.reporterName}</div>
+                  <div><strong>Ngân hàng:</strong> {selectedReportForComp.customerBankCode || 'MBBank'}</div>
+                  <div><strong>Số tài khoản:</strong> {selectedReportForComp.customerAccountNumber || 'Chưa cung cấp'}</div>
+                  <div><strong>Chủ thẻ:</strong> {selectedReportForComp.customerAccountHolder || selectedReportForComp.reporterName}</div>
+                  <div style={{ marginTop: '6px' }}><strong>Số tiền đền bù:</strong> <span style={{ color: '#DC2626', fontWeight: 700 }}>{Number(selectedReportForComp.compensationAmount).toLocaleString('vi-VN')} đ</span></div>
+                </div>
+
+                <div className="form-field-group">
+                  <label>Mã giao dịch ngân hàng / Số bút toán ủy nhiệm chi:</label>
+                  <input
+                    type="text"
+                    className="form-input-text"
+                    value={payoutRef}
+                    onChange={(e) => setPayoutRef(e.target.value)}
+                    placeholder="Ví dụ: MB_FT2401239999"
+                    required
+                  />
+                </div>
+
+                <div className="form-field-group">
+                  <label>Ghi chú thêm:</label>
+                  <textarea
+                    rows={2}
+                    className="form-textarea-notes"
+                    value={compNote}
+                    onChange={(e) => setCompNote(e.target.value)}
+                    placeholder="Chuyển khoản thành công từ tài khoản BQT..."
+                  />
+                </div>
+              </div>
+              <div className="resolve-modal-footer">
+                <button type="button" className="btn-cancel-modal" onClick={() => setSelectedReportForComp(null)}>Hủy bỏ</button>
+                <button type="submit" className="btn-submit-resolve" disabled={submittingComp}>
+                  {submittingComp ? 'Đang lưu...' : 'Xác nhận đã chuyển khoản'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+            {/* MODAL GỠ ĐÌNH CHỈ / MỞ KHÓA CHO THỢ */}
+      {selectedReportForRevokeSuspension && (
+        <div className="resolve-modal-backdrop" onClick={() => setSelectedReportForRevokeSuspension(null)}>
+          <div className="resolve-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="resolve-modal-header">
+              <div className="resolve-modal-title-wrap">
+                <CheckCircle2 size={22} color="#16A34A" />
+                <h2>
+                  {selectedReportForRevokeSuspension.penaltyType === 'PERMANENT_BAN'
+                    ? `Mở Khóa Tài Khoản Thợ #${selectedReportForRevokeSuspension.reportCode}`
+                    : `Gỡ Đình Chỉ Nhận Việc Thợ #${selectedReportForRevokeSuspension.reportCode}`}
+                </h2>
+              </div>
+              <button type="button" className="btn-modal-close" onClick={() => setSelectedReportForRevokeSuspension(null)}>✕</button>
+            </div>
+            <form onSubmit={handleSubmitRevokeSuspension} className="resolve-modal-form">
+              <div className="resolve-modal-body">
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', fontSize: '13px', marginBottom: '12px' }}>
+                  <div><strong>Thợ xử lý:</strong> {selectedReportForRevokeSuspension.providerName}</div>
+                  <div>
+                    <strong>Chế tài hiện tại:</strong>{' '}
+                    <span style={{ color: '#DC2626', fontWeight: 700 }}>
+                      {selectedReportForRevokeSuspension.penaltyType === 'PERMANENT_BAN'
+                        ? 'Khóa tài khoản vĩnh viễn'
+                        : `Đình chỉ ${selectedReportForRevokeSuspension.banDurationDays || 7} ngày`}
+                    </span>
+                  </div>
+                  <div style={{ marginTop: '6px', color: '#475569', lineHeight: 1.4 }}>
+                    Khi xác nhận gỡ phạt:
+                    <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                      <li>Thời hạn đình chỉ được xóa bỏ ngay lập tức.</li>
+                      <li>Bộ đếm cảnh cáo được reset về 0 (chu kỳ mới).</li>
+                      {selectedReportForRevokeSuspension.penaltyType === 'PERMANENT_BAN' && (
+                        <li>Tài khoản đăng nhập và ví thợ sẽ được kích hoạt trở lại.</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="form-field-group">
+                  <label>Lý do gỡ đình chỉ / mở khóa:</label>
+                  <textarea
+                    rows={3}
+                    className="form-textarea-notes"
+                    value={revokeSuspensionReason}
+                    onChange={(e) => setRevokeSuspensionReason(e.target.value)}
+                    placeholder="Ghi rõ lý do hòa giải, thỏa thuận bồi thường hoàn tất hoặc xử phạt nhầm..."
+                    required
+                  />
+                </div>
+              </div>
+              <div className="resolve-modal-footer">
+                <button type="button" className="btn-cancel-modal" onClick={() => setSelectedReportForRevokeSuspension(null)}>Hủy bỏ</button>
+                <button type="submit" className="btn-submit-resolve" style={{ background: '#16A34A' }} disabled={submittingRevokeSuspension}>
+                  {submittingRevokeSuspension ? 'Đang xử lý...' : 'Xác nhận gỡ phạt / Mở khóa'}
                 </button>
               </div>
             </form>

@@ -59,7 +59,7 @@ export function FindProviderPage() {
       setLoading(true);
       try {
         const [providersRes, categoriesRes] = await Promise.allSettled([
-          providerProfileService.getPublicProviders(),
+          providerProfileService.getPublicProviders({ availableOnly: true }),
           categoryService.getCategories({ status: 'ACTIVE', size: 50 }),
         ]);
 
@@ -142,7 +142,8 @@ export function FindProviderPage() {
       pricePerHour: rp.pricePerHour || 0,
       category: rp.category || (rp.categories && rp.categories.length > 0 ? rp.categories[0].name : 'Dịch vụ gia đình'),
       isTopRated: rp.isTopRated ?? true,
-      availability: (rp.availability === 'Available today' ? 'Available today' : 'Available soon') as 'Available today' | 'Available soon',
+      isAvailable: rp.isAvailable,
+      availability: (rp.isAvailable ? 'Available today' : 'Available soon') as 'Available today' | 'Available soon',
       avatar: rp.avatar || '',
     }));
   }, [realProviders]);
@@ -151,6 +152,11 @@ export function FindProviderPage() {
   const filteredProviders = useMemo(() => {
     return providersPool
       .filter((provider) => {
+        // 0. Chỉ hiển thị thợ đang ở trạng thái hoạt động và sẵn sàng nhận việc
+        if (!provider.isAvailable) {
+          return false;
+        }
+
         // Category filter
         if (selectedCategory !== 'Tất cả dịch vụ' && selectedCategory !== 'All services') {
           const catLower = selectedCategory.toLowerCase();

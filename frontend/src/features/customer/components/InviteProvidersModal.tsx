@@ -66,7 +66,7 @@ export function InviteProvidersModal({
       // Query providers matching category of the order
       const categoryParam = categoryId || categoryName;
       const data = await providerProfileService.getPublicProviders(
-        categoryParam ? { category: categoryParam } : {}
+        categoryParam ? { category: categoryParam, availableOnly: true } : { availableOnly: true }
       );
       setProviders(data);
     } catch (err: any) {
@@ -78,6 +78,11 @@ export function InviteProvidersModal({
 
   const filteredProviders = useMemo(() => {
     return providers.filter((p) => {
+      // 0. Bắt buộc: Thợ phải đang ở trạng thái sẵn sàng hoạt động (tránh khách gửi yêu cầu mà thợ không nhận được)
+      if (!p.isAvailable) {
+        return false;
+      }
+
       // 1. Strict category check: Provider must belong to the order's category
       if (categoryId || categoryName) {
         const matchesCategory =
@@ -219,10 +224,10 @@ export function InviteProvidersModal({
             <div className="invite-empty-box">
               <p>
                 {categoryName
-                  ? `Hiện chưa có thợ nào thuộc chuyên môn "${categoryName}" khả dụng${
+                  ? `Hiện chưa có thợ nào thuộc chuyên môn "${categoryName}" đang bật sẵn sàng nhận việc${
                       searchQuery.trim() ? ' khớp với tìm kiếm' : ''
                     }.`
-                  : 'Không tìm thấy thợ phù hợp.'}
+                  : 'Hiện không có thợ nào đang bật sẵn sàng nhận việc phù hợp.'}
               </p>
               <span className="invite-empty-subtext">
                 Hệ thống chỉ hiển thị đúng thợ có chuyên môn tương ứng để đảm bảo chất lượng dịch vụ.

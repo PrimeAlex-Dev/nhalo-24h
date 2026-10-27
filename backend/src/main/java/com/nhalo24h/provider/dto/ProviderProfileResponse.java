@@ -43,6 +43,15 @@ public record ProviderProfileResponse(
     @Schema(description = "Trạng thái sẵn sàng nhận việc", example = "true")
     Boolean isAvailable,
 
+    @Schema(description = "Thời gian hết hạn đình chỉ nhận việc (nếu có)")
+    Instant suspendedUntil,
+
+    @Schema(description = "Đang trong thời gian đình chỉ nhận việc hay không")
+    Boolean isSuspended,
+
+    @Schema(description = "Số lần bị cảnh cáo vi phạm tích lũy")
+    Integer warningCount,
+
     @Schema(description = "Danh sách danh mục dịch vụ thợ nhận làm")
     List<ProviderCategoryDto> categories,
 

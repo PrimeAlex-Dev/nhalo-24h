@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import './ProviderProfilePage.css';
 import {
   ArrowLeft,
+  AlertCircle,
   BadgeCheck,
   Star,
   Award,
@@ -49,6 +50,7 @@ export function ProviderProfilePage() {
   const [starFilter, setStarFilter] = useState<number | undefined>(undefined);
   const [showReportModal, setShowReportModal] = useState<boolean>(false);
   const [reportSuccessMsg, setReportSuccessMsg] = useState<string | null>(null);
+  const [bookingErrorMsg, setBookingErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -171,6 +173,10 @@ export function ProviderProfilePage() {
   };
 
   const handleBookNow = async () => {
+    if (!realProvider?.isAvailable) {
+      setBookingErrorMsg('Thợ hiện đang ở trạng thái tạm ngưng nhận việc (Offline). Vui lòng chọn thợ khác đang hoạt động.');
+      return;
+    }
     try {
       setCheckingOrders(true);
       const res = await customerOrderService.getMyOrders('PENDING_PROVIDER', 0, 50);
@@ -213,6 +219,23 @@ export function ProviderProfilePage() {
             <span>Quay lại danh sách thợ</span>
           </button>
         </div>
+
+                {bookingErrorMsg && (
+          <div className="booking-toast-alert" style={{ background: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }} role="alert">
+            <AlertCircle size={18} className="toast-icon" />
+            <div className="toast-content">
+              <strong>Không thể gửi yêu cầu:</strong> {bookingErrorMsg}
+            </div>
+            <button
+              type="button"
+              className="toast-close-btn"
+              onClick={() => setBookingErrorMsg(null)}
+              aria-label="Đóng thông báo"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
 
         {/* Success toast if booked */}
         {isBooked && (
@@ -564,19 +587,32 @@ export function ProviderProfilePage() {
                   </div>
                 </div>
 
-                <div className="booking-availability-pill">
-                  {provider.availability === 'Available today' ? 'Sẵn sàng hôm nay' : 'Sắp rảnh'}
+                <div 
+                  className="booking-availability-pill"
+                  style={!realProvider?.isAvailable ? { background: '#F1F5F9', color: '#64748B', borderColor: '#CBD5E1' } : undefined}
+                >
+                  {realProvider?.isAvailable ? 'Sẵn sàng hôm nay' : 'Tạm ngưng nhận việc'}
                 </div>
               </div>
+
+              {!realProvider?.isAvailable && (
+                <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', color: '#92400E', margin: '8px 0 12px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                  <AlertCircle size={15} style={{ flexShrink: 0, marginTop: '2px', color: '#D97706' }} />
+                  <span>Thợ đang ở trạng thái <strong>Tạm ngưng nhận việc (Offline)</strong>. Không thể nhận yêu cầu đặt lịch lúc này.</span>
+                </div>
+              )}
 
               <div className="booking-card-actions">
                 <button
                   type="button"
                   className="btn-book-primary"
                   onClick={handleBookNow}
-                  disabled={checkingOrders}
+                  disabled={checkingOrders || !realProvider?.isAvailable}
+                  style={!realProvider?.isAvailable ? { background: '#94A3B8', cursor: 'not-allowed', boxShadow: 'none' } : undefined}
                 >
-                  {checkingOrders ? (
+                  {!realProvider?.isAvailable ? (
+                    'Tạm ngưng nhận việc'
+                  ) : checkingOrders ? (
                     <>
                       <Loader2 size={16} className="spin-icon" />
                       <span>Đang kiểm tra...</span>

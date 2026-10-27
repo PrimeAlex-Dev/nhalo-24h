@@ -16,6 +16,8 @@ export type PenaltyType =
   | 'TEMPORARY_BAN'
   | 'PERMANENT_BAN';
 
+export type CompensationStatus = 'NONE' | 'PENDING_PAYOUT' | 'COMPLETED';
+
 export interface CreateReportPayload {
   orderId?: string;
   providerId: string;
@@ -30,7 +32,26 @@ export interface ResolveReportPayload {
   status: ReportStatus;
   penaltyType?: PenaltyType;
   penaltyAmount?: number;
+  banDurationDays?: number;
+  compensationAmount?: number;
+  customerBankCode?: string;
+  customerAccountNumber?: string;
+  customerAccountHolder?: string;
   adminNotes?: string;
+}
+
+export interface RefundPenaltyPayload {
+  reason: string;
+}
+
+
+export interface RevokeSuspensionPayload {
+  reason: string;
+}
+
+export interface ConfirmCompensationPayload {
+  payoutRef: string;
+  note?: string;
 }
 
 export interface ReportItem {
@@ -53,9 +74,24 @@ export interface ReportItem {
   status: ReportStatus;
   penaltyType: PenaltyType;
   penaltyAmount: number;
+  banDurationDays?: number | null;
   adminNotes?: string | null;
   resolvedByName?: string | null;
   resolvedAt?: string | null;
+  refundedAt?: string | null;
+  refundedByName?: string | null;
+  refundReason?: string | null;
+  suspensionLiftedAt?: string | null;
+  suspensionLiftedByName?: string | null;
+  suspensionLiftedReason?: string | null;
+  isSuspensionActive?: boolean;
+  compensationAmount: number;
+  compensationStatus: CompensationStatus;
+  customerBankCode?: string | null;
+  customerAccountNumber?: string | null;
+  customerAccountHolder?: string | null;
+  compensationPayoutRef?: string | null;
+  compensationPayoutAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

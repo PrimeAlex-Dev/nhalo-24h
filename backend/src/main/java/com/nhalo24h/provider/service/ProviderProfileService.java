@@ -14,8 +14,12 @@ import com.nhalo24h.provider.repository.ProviderCategoryRepository;
 import com.nhalo24h.provider.repository.ProviderProfileRepository;
 import com.nhalo24h.storage.service.StorageService;
 import com.nhalo24h.user.domain.User;
+import com.nhalo24h.user.domain.UserStatus;
 import com.nhalo24h.user.repository.UserRepository;
 import com.nhalo24h.wallet.service.WalletService;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -64,6 +68,12 @@ public class ProviderProfileService {
                 return providerProfileRepository.save(newProfile);
             });
 
+        // Lazy check: Nếu đã hết thời hạn đình chỉ nhận việc thì tự động gỡ phạt
+        if (profile.getSuspendedUntil() != null && Instant.now().isAfter(profile.getSuspendedUntil())) {
+            profile.setSuspendedUntil(null);
+            profile = providerProfileRepository.save(profile);
+        }
+
         return mapToProviderProfileResponse(user, profile);
     }
 
@@ -106,6 +116,14 @@ public class ProviderProfileService {
         }
         if (request.isAvailable() != null) {
             if (Boolean.TRUE.equals(request.isAvailable())) {
+                // Kiểm tra kỷ luật đình chỉ
+                if (profile.isSuspended()) {
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+                            .withZone(ZoneId.of("Asia/Ho_Chi_Minh"));
+                    throw new AppException(ErrorCode.FORBIDDEN,
+                            "Tài khoản đang bị đình chỉ nhận việc đến " + formatter.format(profile.getSuspendedUntil()) +
+                            " do vi phạm quy chế sàn. Không thể bật nhận việc.");
+                }
                 walletService.validateProviderCanAcceptOrders(profile.getId());
             }
             profile.setIsAvailable(request.isAvailable());
@@ -130,7 +148,7 @@ public class ProviderProfileService {
         ProviderProfile profile = providerProfileRepository.findByUserId(userId)
             .orElseGet(() -> providerProfileRepository.save(new ProviderProfile(user)));
 
-        syncCategories(profile, categoryIds != null ? categoryIds : Collections.emptyList());
+        syncCategories(profile, categoryIds);
         profile = providerProfileRepository.findById(profile.getId()).orElse(profile);
 
         return mapToProviderProfileResponse(user, profile);
@@ -138,26 +156,21 @@ public class ProviderProfileService {
 
     @Transactional
     public ProviderProfileResponse uploadAvatar(UUID userId, MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new AppException(ErrorCode.INVALID_INPUT, "Vui lòng chọn một file ảnh đại diện để tải lên");
-        }
-
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy thông tin người dùng"));
 
         ProviderProfile profile = providerProfileRepository.findByUserId(userId)
             .orElseGet(() -> providerProfileRepository.save(new ProviderProfile(user)));
 
-        // Xóa avatar cũ nếu có để dọn dẹp rác ổ đĩa
         String oldAvatarUrl = profile.getAvatarUrl();
+        String newAvatarUrl = storageService.storeFile(file, "avatars");
+
+        profile.setAvatarUrl(newAvatarUrl);
+        profile = providerProfileRepository.save(profile);
+
         if (oldAvatarUrl != null && !oldAvatarUrl.isBlank()) {
             storageService.deleteFile(oldAvatarUrl);
         }
-
-        // Lưu ảnh mới vào thư mục con "avatars"
-        String newAvatarUrl = storageService.storeFile(file, "avatars");
-        profile.setAvatarUrl(newAvatarUrl);
-        profile = providerProfileRepository.save(profile);
 
         return mapToProviderProfileResponse(user, profile);
     }
@@ -182,6 +195,9 @@ public class ProviderProfileService {
 
     @Transactional(readOnly = true)
     public List<PublicProviderResponse> getPublicProviders(String category, String search, Boolean availableOnly) {
+        // Mặc định luôn lọc chỉ các thợ đang hoạt động và sẵn sàng nhận việc (trừ khi có chỉ định khác)
+        boolean filterAvailable = (availableOnly == null) || Boolean.TRUE.equals(availableOnly);
+
         List<ProviderProfile> allProfiles = providerProfileRepository.findAllActiveProviders();
 
         final String normalizedCategory = (category != null && !category.isBlank())
@@ -194,10 +210,27 @@ public class ProviderProfileService {
 
         return allProfiles.stream()
             .filter(p -> {
-                if (Boolean.TRUE.equals(availableOnly) && !Boolean.TRUE.equals(p.getIsAvailable())) {
+                // 1. Thợ bị đình chỉ kỷ luật hoặc tài khoản User không ACTIVE -> Tuyệt đối không hiển thị công khai
+                if (p.isSuspended()) {
+                    return false;
+                }
+                if (p.getUser() == null || p.getUser().getStatus() != UserStatus.ACTIVE) {
                     return false;
                 }
 
+                // 2. Nếu đang lọc thợ khả thi / sẵn sàng nhận việc (mặc định filterAvailable = true)
+                if (filterAvailable) {
+                    // Thợ tắt nhận việc -> không hiển thị
+                    if (!Boolean.TRUE.equals(p.getIsAvailable())) {
+                        return false;
+                    }
+                    // Thợ có ví không đủ điều kiện (hụt cọc, cooling rút cọc, closed) -> không hiển thị
+                    if (!walletService.isProviderEligibleToAcceptOrders(p.getId())) {
+                        return false;
+                    }
+                }
+
+                // 3. Lọc theo danh mục dịch vụ
                 if (normalizedCategory != null) {
                     boolean matchesCategory = p.getProviderCategories().stream().anyMatch(pc -> {
                         ServiceCategory sc = pc.getCategory();
@@ -210,6 +243,7 @@ public class ProviderProfileService {
                     }
                 }
 
+                // 4. Lọc theo từ khóa tìm kiếm
                 if (normalizedSearch != null) {
                     String name = p.getUser() != null ? p.getUser().getFullName().toLowerCase() : "";
                     String headline = p.getHeadline() != null ? p.getHeadline().toLowerCase() : "";
@@ -241,12 +275,14 @@ public class ProviderProfileService {
     }
 
     private void syncCategories(ProviderProfile profile, List<UUID> categoryIds) {
-        profile.getProviderCategories().clear();
-        providerProfileRepository.saveAndFlush(profile);
+        if (categoryIds == null) {
+            return;
+        }
 
-        if (categoryIds != null && !categoryIds.isEmpty()) {
-            Set<UUID> uniqueIds = new HashSet<>(categoryIds);
-            for (UUID catId : uniqueIds) {
+        profile.getProviderCategories().clear();
+
+        if (!categoryIds.isEmpty()) {
+            for (UUID catId : categoryIds) {
                 serviceCategoryRepository.findById(catId).ifPresent(cat -> {
                     ProviderCategory pc = new ProviderCategory(profile, cat);
                     profile.getProviderCategories().add(pc);
@@ -281,6 +317,9 @@ public class ProviderProfileService {
             profile.getPricePerHour(),
             profile.getServiceArea(),
             profile.getIsAvailable(),
+            profile.getSuspendedUntil(),
+            profile.isSuspended(),
+            profile.getWarningCount() != null ? profile.getWarningCount() : 0,
             categoryDtos,
             profile.getRatingAverage() != null ? profile.getRatingAverage() : 5.0,
             profile.getReviewCount() != null ? profile.getReviewCount() : 0,
@@ -310,7 +349,10 @@ public class ProviderProfileService {
             ? profile.getHeadline()
             : primaryCategory;
 
-        boolean isAvail = Boolean.TRUE.equals(profile.getIsAvailable());
+        boolean isEligible = walletService.isProviderEligibleToAcceptOrders(profile.getId());
+        boolean isSuspended = profile.isSuspended();
+        boolean isUserActive = profile.getUser() != null && profile.getUser().getStatus() == UserStatus.ACTIVE;
+        boolean isAvail = Boolean.TRUE.equals(profile.getIsAvailable()) && !isSuspended && isUserActive && isEligible;
         String availability = isAvail ? "Available today" : "Available soon";
 
         return new PublicProviderResponse(

@@ -29,7 +29,10 @@ import com.nhalo24h.order.repository.OrderRepository;
 import com.nhalo24h.order.repository.OrderRequestRepository;
 import com.nhalo24h.provider.domain.ProviderProfile;
 import com.nhalo24h.provider.repository.ProviderProfileRepository;
+import com.nhalo24h.wallet.domain.ProviderWallet;
 import com.nhalo24h.wallet.domain.WalletStatus;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import com.nhalo24h.wallet.repository.ProviderWalletRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -264,6 +267,7 @@ public class ProviderJobService {
     @Transactional
     public void submitQuotation(UUID providerUserId, UUID requestId, SubmitQuotationRequest request) {
         ProviderProfile profile = getProviderProfileByUserId(providerUserId);
+        validateProviderCanQuote(profile);
 
         OrderRequest orderRequest = orderRequestRepository.findById(requestId)
             .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy yêu cầu công việc"));
@@ -952,6 +956,28 @@ public class ProviderJobService {
             description
         );
         orderAuditLogRepository.save(log);
+    }
+
+    private void validateProviderCanQuote(ProviderProfile profile) {
+        if (profile.isSuspended()) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+                    .withZone(ZoneId.of("Asia/Ho_Chi_Minh"));
+            throw new AppException(ErrorCode.FORBIDDEN,
+                    "Tài khoản của bạn đang bị đình chỉ nhận việc đến " + formatter.format(profile.getSuspendedUntil()) +
+                    " do vi phạm quy chế sàn. Không thể gửi báo giá.");
+        }
+
+        if (!Boolean.TRUE.equals(profile.getIsAvailable())) {
+            throw new AppException(ErrorCode.INVALID_INPUT,
+                    "Bạn đang ở trạng thái Tạm ngưng nhận việc. Vui lòng bật lại trạng thái sẵn sàng để gửi báo giá.");
+        }
+
+        walletRepository.findByProviderProfileId(profile.getId()).ifPresent(wallet -> {
+            if (!wallet.isEligibleToAcceptOrders()) {
+                throw new AppException(ErrorCode.CONFLICT,
+                        "Số dư ký quỹ bảo hành không đủ định mức 2.000.000đ hoặc ví đang bị khóa. Vui lòng nạp bù ký quỹ để tiếp tục gửi báo giá.");
+            }
+        });
     }
 
     private String maskPhone(String phone) {

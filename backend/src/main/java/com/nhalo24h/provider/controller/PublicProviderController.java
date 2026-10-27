@@ -35,7 +35,7 @@ public class PublicProviderController {
         @RequestParam(required = false) String search,
 
         @Parameter(description = "Chỉ hiển thị thợ đang sẵn sàng nhận việc")
-        @RequestParam(required = false, defaultValue = "false") Boolean availableOnly
+        @RequestParam(required = false, defaultValue = "true") Boolean availableOnly
     ) {
         List<PublicProviderResponse> response = providerProfileService.getPublicProviders(category, search, availableOnly);
         return ResponseEntity.ok(response);

@@ -24,6 +24,8 @@ import com.nhalo24h.wallet.dto.FinancialDashboardSummaryResponse;
 import com.nhalo24h.wallet.dto.PayoutRequestResponse;
 import com.nhalo24h.wallet.dto.ProviderWalletResponse;
 import com.nhalo24h.wallet.dto.RequestDepositRefundDto;
+import com.nhalo24h.wallet.dto.TopupDepositFromAvailableRequestDto;
+import com.nhalo24h.wallet.dto.TopupDepositVietQrRequestDto;
 import com.nhalo24h.wallet.dto.WalletTransactionResponse;
 import com.nhalo24h.wallet.repository.PayoutRequestRepository;
 import com.nhalo24h.wallet.repository.PlatformFinancialRecordRepository;
@@ -516,5 +518,114 @@ public class WalletService {
     public Page<PayoutRequestResponse> getProviderPayoutRequests(UUID providerProfileId, Pageable pageable) {
         return payoutRequestRepository.findByProviderProfileIdOrderByCreatedAtDesc(providerProfileId, pageable)
                 .map(PayoutRequestResponse::from);
+    }
+
+    /**
+     * Thợ trích từ số dư thu nhập khả dụng để nạp bù Quỹ Ký Quỹ 2.000.000đ.
+     */
+    @Transactional
+    public ProviderWalletResponse topupDepositFromAvailable(UUID providerProfileId, TopupDepositFromAvailableRequestDto dto, User providerUser) {
+        ProviderWallet wallet = getOrCreateWallet(providerProfileId);
+
+        if (wallet.getAvailableBalance() < dto.amount()) {
+            throw new AppException(ErrorCode.CONFLICT, 
+                    "Số dư khả dụng không đủ để trích nạp bù ký quỹ (Số dư: " + wallet.getAvailableBalance() + "đ, Yêu cầu: " + dto.amount() + "đ)");
+        }
+
+        long beforeAvailable = wallet.getAvailableBalance();
+        long beforeDeposit = wallet.getDepositBalance();
+
+        wallet.debitAvailable(dto.amount());
+        wallet.creditDeposit(dto.amount());
+        walletRepository.save(wallet);
+
+        // Ghi nhận 2 giao dịch: Trừ ví khả dụng & Cộng ví ký quỹ
+        WalletTransaction debitTx = new WalletTransaction(
+                wallet,
+                WalletBalanceType.AVAILABLE,
+                -dto.amount(),
+                beforeAvailable,
+                wallet.getAvailableBalance(),
+                WalletTransactionType.WITHDRAW_AVAILABLE,
+                null,
+                providerUser.getId().toString(),
+                "Trích số dư khả dụng nạp bù Quỹ Ký Quỹ bảo hành"
+        );
+        transactionRepository.save(debitTx);
+
+        WalletTransaction creditTx = new WalletTransaction(
+                wallet,
+                WalletBalanceType.DEPOSIT,
+                dto.amount(),
+                beforeDeposit,
+                wallet.getDepositBalance(),
+                WalletTransactionType.TOPUP_DEPOSIT_FROM_AVAILABLE,
+                null,
+                providerUser.getId().toString(),
+                "Nạp bù Quỹ Ký Quỹ từ Số dư khả dụng"
+        );
+        transactionRepository.save(creditTx);
+
+        log.info("Thợ {} trích {}đ từ ví khả dụng sang bù ký quỹ. Số dư cọc hiện tại: {}đ", 
+                providerUser.getFullName(), dto.amount(), wallet.getDepositBalance());
+        return ProviderWalletResponse.from(wallet);
+    }
+
+    /**
+     * Thợ nạp bù Quỹ Ký Quỹ qua VietQR Napas ngân hàng (Test Demo / Xác nhận giao dịch).
+     */
+    @Transactional
+    public ProviderWalletResponse topupDepositVietQrDemo(UUID providerProfileId, TopupDepositVietQrRequestDto dto, User providerUser) {
+        ProviderWallet wallet = getOrCreateWallet(providerProfileId);
+        long beforeDeposit = wallet.getDepositBalance();
+
+        wallet.creditDeposit(dto.amount());
+        walletRepository.save(wallet);
+
+        WalletTransaction tx = new WalletTransaction(
+                wallet,
+                WalletBalanceType.DEPOSIT,
+                dto.amount(),
+                beforeDeposit,
+                wallet.getDepositBalance(),
+                WalletTransactionType.TOPUP_DEPOSIT_VIETQR,
+                null,
+                providerUser.getId().toString(),
+                "Nạp bù Quỹ Ký Quỹ qua VietQR Napas: " + (dto.note() != null ? dto.note() : "Chuyển khoản MBBank")
+        );
+        transactionRepository.save(tx);
+
+        log.info("Thợ {} nạp bù cọc {}đ qua VietQR. Số dư cọc hiện tại: {}đ", 
+                providerUser.getFullName(), dto.amount(), wallet.getDepositBalance());
+        return ProviderWalletResponse.from(wallet);
+    }
+
+    /**
+     * Admin hoàn lại tiền phạt cọc cho thợ khi xử lý nhầm hoặc hai bên hòa giải.
+     */
+    @Transactional
+    public ProviderWalletResponse adminRefundDisputePenalty(UUID providerProfileId, Long amount, String reason, UUID orderId, User adminUser) {
+        ProviderWallet wallet = getOrCreateWallet(providerProfileId);
+        long beforeDeposit = wallet.getDepositBalance();
+
+        wallet.creditDeposit(amount);
+        walletRepository.save(wallet);
+
+        WalletTransaction tx = new WalletTransaction(
+                wallet,
+                WalletBalanceType.DEPOSIT,
+                amount,
+                beforeDeposit,
+                wallet.getDepositBalance(),
+                WalletTransactionType.DISPUTE_PENALTY_REFUND,
+                orderId != null ? orderId.toString() : null,
+                adminUser.getId().toString(),
+                "Admin hoàn lại tiền phạt cọc xử nhầm/hòa giải: " + (reason != null ? reason : "")
+        );
+        transactionRepository.save(tx);
+
+        log.info("Admin {} hoàn cọc {}đ cho thợ ID: {}. Lý do: {}", 
+                adminUser.getFullName(), amount, providerProfileId, reason);
+        return ProviderWalletResponse.from(wallet);
     }
 }
