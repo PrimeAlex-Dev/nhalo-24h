@@ -1,6 +1,9 @@
 package com.nhalo24h.wallet.controller;
 
 import com.nhalo24h.auth.security.UserPrincipal;
+import com.nhalo24h.user.domain.User;
+import com.nhalo24h.wallet.dto.TopupDepositFromAvailableRequestDto;
+import com.nhalo24h.wallet.dto.TopupDepositVietQrRequestDto;
 import com.nhalo24h.wallet.dto.CreatePayoutRequestDto;
 import com.nhalo24h.wallet.dto.PayoutRequestResponse;
 import com.nhalo24h.wallet.dto.ProviderWalletResponse;
@@ -75,5 +78,27 @@ public class ProviderWalletController {
             @Valid @RequestBody RequestDepositRefundDto dto) {
         var wallet = walletService.getWalletByProviderUserId(principal.getId());
         return ResponseEntity.ok(walletService.requestDepositRefund(wallet.getProviderProfile().getId(), dto));
+    }
+
+    @PostMapping("/topup-deposit-from-available")
+    @Operation(summary = "Trích số dư thu nhập khả dụng nạp bù Quỹ Ký Quỹ 2.000.000đ")
+    public ResponseEntity<ProviderWalletResponse> topupDepositFromAvailable(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody TopupDepositFromAvailableRequestDto dto) {
+        var wallet = walletService.getWalletByProviderUserId(principal.getId());
+        User user = new User();
+        user.setId(principal.getId());
+        return ResponseEntity.ok(walletService.topupDepositFromAvailable(wallet.getProviderProfile().getId(), dto, user));
+    }
+
+    @PostMapping("/topup-deposit-vietqr-demo")
+    @Operation(summary = "Xác nhận nạp bù Quỹ Ký Quỹ qua chuyển khoản VietQR MBBank")
+    public ResponseEntity<ProviderWalletResponse> topupDepositVietQrDemo(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody TopupDepositVietQrRequestDto dto) {
+        var wallet = walletService.getWalletByProviderUserId(principal.getId());
+        User user = new User();
+        user.setId(principal.getId());
+        return ResponseEntity.ok(walletService.topupDepositVietQrDemo(wallet.getProviderProfile().getId(), dto, user));
     }
 }

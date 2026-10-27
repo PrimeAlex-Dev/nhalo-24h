@@ -2,6 +2,7 @@ package com.nhalo24h.report.dto;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nhalo24h.report.domain.CompensationStatus;
 import com.nhalo24h.report.domain.PenaltyType;
 import com.nhalo24h.report.domain.ProviderReport;
 import com.nhalo24h.report.domain.ReportReasonType;
@@ -32,9 +33,24 @@ public record ReportResponse(
     ReportStatus status,
     PenaltyType penaltyType,
     Long penaltyAmount,
+    Integer banDurationDays,
     String adminNotes,
     String resolvedByName,
     Instant resolvedAt,
+    Instant refundedAt,
+    String refundedByName,
+    String refundReason,
+    Instant suspensionLiftedAt,
+    String suspensionLiftedByName,
+    String suspensionLiftedReason,
+    Boolean isSuspensionActive,
+    Long compensationAmount,
+    CompensationStatus compensationStatus,
+    String customerBankCode,
+    String customerAccountNumber,
+    String customerAccountHolder,
+    String compensationPayoutRef,
+    Instant compensationPayoutAt,
     Instant createdAt,
     Instant updatedAt
 ) {
@@ -43,11 +59,14 @@ public record ReportResponse(
     public static ReportResponse from(ProviderReport report) {
         String provName = "Thợ đối tác";
         String provAvatar = null;
+        boolean isSuspended = false;
+
         if (report.getProvider() != null) {
             provAvatar = report.getProvider().getAvatarUrl();
             if (report.getProvider().getUser() != null) {
                 provName = report.getProvider().getUser().getFullName();
             }
+            isSuspended = report.getProvider().isSuspended();
         }
 
         String repName = "Khách hàng";
@@ -62,6 +81,16 @@ public record ReportResponse(
         String resolvedName = null;
         if (report.getResolvedBy() != null) {
             resolvedName = report.getResolvedBy().getFullName();
+        }
+
+        String refundedName = null;
+        if (report.getRefundedBy() != null) {
+            refundedName = report.getRefundedBy().getFullName();
+        }
+
+        String liftedByName = null;
+        if (report.getSuspensionLiftedBy() != null) {
+            liftedByName = report.getSuspensionLiftedBy().getFullName();
         }
 
         List<String> images = parseCommaOrJsonList(report.getEvidenceImages());
@@ -86,9 +115,24 @@ public record ReportResponse(
             report.getStatus(),
             report.getPenaltyType(),
             report.getPenaltyAmount() != null ? report.getPenaltyAmount() : 0L,
+            report.getBanDurationDays(),
             report.getAdminNotes(),
             resolvedName,
             report.getResolvedAt(),
+            report.getRefundedAt(),
+            refundedName,
+            report.getRefundReason(),
+            report.getSuspensionLiftedAt(),
+            liftedByName,
+            report.getSuspensionLiftedReason(),
+            isSuspended,
+            report.getCompensationAmount() != null ? report.getCompensationAmount() : 0L,
+            report.getCompensationStatus() != null ? report.getCompensationStatus() : CompensationStatus.NONE,
+            report.getCustomerBankCode(),
+            report.getCustomerAccountNumber(),
+            report.getCustomerAccountHolder(),
+            report.getCompensationPayoutRef(),
+            report.getCompensationPayoutAt(),
             report.getCreatedAt(),
             report.getUpdatedAt()
         );

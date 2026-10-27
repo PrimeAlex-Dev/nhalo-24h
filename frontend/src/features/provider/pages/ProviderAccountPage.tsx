@@ -442,8 +442,20 @@ export function ProviderAccountPage() {
               </div>
               <div className="provider-readonly-field">
                 <span className="readonly-label">Trạng thái nhận đơn</span>
-                <span className={`readonly-badge ${isAvailable ? 'available' : 'busy'}`}>
-                  {isAvailable ? '● Đang sẵn sàng nhận việc' : '○ Tạm ngưng nhận đơn'}
+                {profile?.isSuspended ? (
+                  <span className="readonly-badge busy" style={{ background: '#fee2e2', color: '#dc2626' }}>
+                    ● Đang bị đình chỉ đến {profile.suspendedUntil ? new Date(profile.suspendedUntil).toLocaleDateString('vi-VN') : ''}
+                  </span>
+                ) : (
+                  <span className={`readonly-badge ${isAvailable ? 'available' : 'busy'}`}>
+                    {isAvailable ? '● Đang sẵn sàng nhận việc' : '○ Tạm ngưng nhận đơn'}
+                  </span>
+                )}
+              </div>
+              <div className="provider-readonly-field">
+                <span className="readonly-label">Kỷ luật vi phạm</span>
+                <span className="readonly-value" style={{ color: (profile?.warningCount || 0) > 0 ? '#d97706' : '#16a34a', fontWeight: 600 }}>
+                  {Math.min(profile?.warningCount || 0, 3)} / 3 lần cảnh cáo (Chu kỳ hiện tại)
                 </span>
               </div>
             </div>
@@ -650,29 +662,40 @@ export function ProviderAccountPage() {
 
                 {/* Công tắc Bật/Tắt nhận việc */}
                 <div className="provider-availability-toggle-box">
-                  <label className="toggle-switch-label">
-                    <input
-                      type="checkbox"
-                      checked={isAvailable}
-                      onChange={() => {
-                        if (toggleAvailable) {
-                          toggleAvailable();
-                        }
-                      }}
-                      className="toggle-switch-input"
-                    />
-                    <span className="toggle-switch-slider" />
-                  </label>
-                  <div className="toggle-text-wrap">
-                    <span className="toggle-main-title">
-                      {isAvailable ? 'Đang sẵn sàng nhận việc' : 'Tạm ngưng nhận việc'}
-                    </span>
-                    <span className="toggle-sub-title">
-                      {isAvailable 
-                        ? 'Hồ sơ của bạn hiển thị công khai và sẵn sàng nhận đơn từ khách hàng.'
-                        : 'Hồ sơ sẽ tạm ẩn hoặc hiển thị "Tạm bận", không nhận thông báo đơn mới.'}
-                    </span>
-                  </div>
+                  {profile?.isSuspended ? (
+                    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', color: '#991b1b', fontSize: '13px', width: '100%' }}>
+                      <strong style={{ display: 'block', marginBottom: '4px', fontSize: '14px' }}>⚠️ Tài khoản đang bị đình chỉ nhận việc</strong>
+                      <p style={{ margin: 0, lineHeight: 1.5 }}>
+                        Thời hạn đình chỉ đến: <strong>{profile.suspendedUntil ? new Date(profile.suspendedUntil).toLocaleString('vi-VN') : ''}</strong> do vi phạm quy chế sàn. Chức năng nhận đơn tạm thời bị khóa.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <label className="toggle-switch-label">
+                        <input
+                          type="checkbox"
+                          checked={isAvailable}
+                          onChange={() => {
+                            if (toggleAvailable) {
+                              toggleAvailable();
+                            }
+                          }}
+                          className="toggle-switch-input"
+                        />
+                        <span className="toggle-switch-slider" />
+                      </label>
+                      <div className="toggle-text-wrap">
+                        <span className="toggle-main-title">
+                          {isAvailable ? 'Đang sẵn sàng nhận việc' : 'Tạm ngưng nhận việc'}
+                        </span>
+                        <span className="toggle-sub-hint">
+                          {isAvailable
+                            ? 'Khách hàng có thể tìm thấy bạn và gửi yêu cầu sửa chữa trực tiếp.'
+                            : 'Tạm ẩn hồ sơ khỏi danh sách tìm kiếm, không nhận đơn mới.'}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Nút hành động */}

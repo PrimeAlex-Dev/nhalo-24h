@@ -63,6 +63,12 @@ public class ProviderProfile {
     @Column(name = "report_count", nullable = false)
     private Integer reportCount = 0;
 
+    @Column(name = "suspended_until")
+    private Instant suspendedUntil;
+
+    @Column(name = "warning_count", nullable = false)
+    private Integer warningCount = 0;
+
     @OneToMany(mappedBy = "providerProfile", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ProviderCategory> providerCategories = new HashSet<>();
 
@@ -106,11 +112,18 @@ public class ProviderProfile {
         if (this.reportCount == null) {
             this.reportCount = 0;
         }
+        if (this.warningCount == null) {
+            this.warningCount = 0;
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = Instant.now();
+    }
+
+    public boolean isSuspended() {
+        return suspendedUntil != null && Instant.now().isBefore(suspendedUntil);
     }
 
     public UUID getId() {
@@ -183,6 +196,22 @@ public class ProviderProfile {
 
     public void setIsAvailable(Boolean isAvailable) {
         this.isAvailable = isAvailable;
+    }
+
+    public Instant getSuspendedUntil() {
+        return suspendedUntil;
+    }
+
+    public void setSuspendedUntil(Instant suspendedUntil) {
+        this.suspendedUntil = suspendedUntil;
+    }
+
+    public Integer getWarningCount() {
+        return warningCount;
+    }
+
+    public void setWarningCount(Integer warningCount) {
+        this.warningCount = warningCount;
     }
 
     public Set<ProviderCategory> getProviderCategories() {

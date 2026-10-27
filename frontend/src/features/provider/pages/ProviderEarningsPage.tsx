@@ -7,9 +7,13 @@ import {
   Clock, 
   RotateCcw,
   Building,
-  UserCheck
+  UserCheck,
+  PlusCircle,
+  ShieldAlert
 } from 'lucide-react';
 import { providerWalletService } from '../../../services';
+import { reportService } from '../../../services/reportService';
+import type { ReportItem } from '../../../types/report';
 import type { 
   ProviderWalletResponse, 
   WalletTransactionResponse, 
@@ -49,18 +53,30 @@ export function ProviderEarningsPage() {
   const [showDepositRefundModal, setShowDepositRefundModal] = useState(false);
   const [depositReason, setDepositReason] = useState('');
   const [submittingDepositRefund, setSubmittingDepositRefund] = useState(false);
+  // Modal: Nạp bù ký quỹ
+  const [showTopupModal, setShowTopupModal] = useState(false);
+  const [topupTab, setTopupTab] = useState<'available' | 'vietqr'>('available');
+  const [topupAmount, setTopupAmount] = useState('500000');
+  const [submittingTopup, setSubmittingTopup] = useState(false);
+
+  // Danh sách khiếu nại & kỷ luật
+  const [disputes, setDisputes] = useState<ReportItem[]>([]);
+
+
 
   const loadWalletData = useCallback(async () => {
     setLoading(true);
     try {
-      const [walletRes, txRes, payoutRes] = await Promise.all([
+      const [walletRes, txRes, payoutRes, disputeRes] = await Promise.all([
         providerWalletService.getMyWallet(),
         providerWalletService.getMyTransactions(0, 30),
         providerWalletService.getMyPayoutRequests(0, 20),
+        reportService.getProviderMyDisputes(0, 20),
       ]);
       setWallet(walletRes);
       setTransactions(txRes.content || []);
       setPayouts(payoutRes.content || []);
+      setDisputes(disputeRes.content || []);
     } catch (err: unknown) {
       console.error('Không thể tải thông tin ví:', err);
     } finally {
@@ -103,6 +119,50 @@ export function ProviderEarningsPage() {
       alert(msg);
     } finally {
       setSubmittingWithdraw(false);
+    }
+  };
+
+  
+  const handleTopupFromAvailable = async (amountNum: number) => {
+    if (!wallet || wallet.availableBalance < amountNum) {
+      alert('Số dư khả dụng không đủ để trích nạp bù!');
+      return;
+    }
+    setSubmittingTopup(true);
+    try {
+      await providerWalletService.topupDepositFromAvailable({ amount: amountNum });
+      setShowTopupModal(false);
+      setActionNotice({
+        type: 'success',
+        text: `Đã trích thành công ${amountNum.toLocaleString('vi-VN')} đ từ ví thu nhập sang Quỹ Ký Quỹ! Tài khoản đã sẵn sàng nhận đơn.`,
+      });
+      loadWalletData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Nạp bù ký quỹ thất bại';
+      alert(msg);
+    } finally {
+      setSubmittingTopup(false);
+    }
+  };
+
+  const handleTopupVietQrConfirm = async (amountNum: number) => {
+    setSubmittingTopup(true);
+    try {
+      await providerWalletService.topupDepositVietQrDemo({ 
+        amount: amountNum,
+        note: 'Nạp bù ký quỹ bảo hành 2tr qua VietQR MBBank'
+      });
+      setShowTopupModal(false);
+      setActionNotice({
+        type: 'success',
+        text: `Xác nhận chuyển khoản VietQR thành công! Đã nạp bù ${amountNum.toLocaleString('vi-VN')} đ vào Quỹ Ký Quỹ bảo hành.`,
+      });
+      loadWalletData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Xác nhận nạp bù thất bại';
+      alert(msg);
+    } finally {
+      setSubmittingTopup(false);
     }
   };
 
@@ -154,6 +214,12 @@ export function ProviderEarningsPage() {
         return <span className="tx-badge penalty">Trích phạt bảo hành</span>;
       case 'DEPOSIT_REFUND':
         return <span className="tx-badge refund">Tất toán cọc rời sàn</span>;
+      case 'TOPUP_DEPOSIT_FROM_AVAILABLE':
+        return <span className="tx-badge deposit-topup">Trích ví thu nhập bù cọc</span>;
+      case 'TOPUP_DEPOSIT_VIETQR':
+        return <span className="tx-badge deposit-topup">Nạp bù cọc VietQR</span>;
+      case 'DISPUTE_PENALTY_REFUND':
+        return <span className="tx-badge labor">Hoàn cọc xử nhầm/hòa giải</span>;
       default:
         return <span className="tx-badge">{type}</span>;
     }
@@ -250,6 +316,21 @@ export function ProviderEarningsPage() {
           </div>
 
           <div className="wallet-card-actions">
+            {wallet?.status === 'DEPOSIT_DEFICIT' && (
+              <button
+                type="button"
+                className="wallet-action-btn primary"
+                style={{ backgroundColor: '#EA580C', borderColor: '#EA580C', color: '#fff' }}
+                onClick={() => {
+                  const needed = Math.max(0, (wallet.depositTarget || 2000000) - (wallet.depositBalance || 0));
+                  setTopupAmount(needed > 0 ? needed.toString() : '500000');
+                  setShowTopupModal(true);
+                }}
+              >
+                <PlusCircle size={18} />
+                <span>Nạp bù ký quỹ ngay</span>
+              </button>
+            )}
             {wallet?.status === 'ACTIVE' && (
               <button
                 type="button"
@@ -261,6 +342,119 @@ export function ProviderEarningsPage() {
             )}
           </div>
         </div>
+      </div>
+
+      
+      {/* SECTION: LỊCH SỬ KHIẾU NẠI & KỶ LUẬT */}
+      <div className="earnings-section-box">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div>
+            <h2 className="earnings-section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldAlert size={20} color="#DC2626" />
+              <span>Hồ sơ Khiếu nại & Kỷ luật Bảo hành</span>
+            </h2>
+            <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748B' }}>
+              Minh bạch các vụ việc khiếu nại chất lượng dịch vụ, phán quyết của BQT và tình trạng chế tài.
+            </p>
+          </div>
+        </div>
+
+        {disputes.length === 0 ? (
+          <div className="empty-tx-box">
+            <ShieldCheck size={40} color="#10B981" />
+            <p>Hồ sơ kỷ luật trong sạch! Bạn chưa có bất kỳ khiếu nại hoặc án phạt nào.</p>
+          </div>
+        ) : (
+          <div className="disputes-provider-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {disputes.map((d) => (
+              <div 
+                key={d.id} 
+                style={{
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '10px',
+                  padding: '16px',
+                  backgroundColor: '#FFFFFF',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontWeight: 700, fontSize: '14px', color: '#1E293B' }}>#{d.reportCode}</span>
+                    {d.orderCode && (
+                      <span style={{ fontSize: '12px', background: '#F1F5F9', padding: '2px 8px', borderRadius: '4px', color: '#475569' }}>
+                        Đơn: {d.orderCode}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <span style={{
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      backgroundColor: d.status === 'RESOLVED' ? '#DCFCE7' : d.status === 'REJECTED' ? '#F1F5F9' : '#FEF3C7',
+                      color: d.status === 'RESOLVED' ? '#166534' : d.status === 'REJECTED' ? '#475569' : '#92400E'
+                    }}>
+                      {d.status === 'PENDING' && 'Chờ tiếp nhận'}
+                      {d.status === 'INVESTIGATING' && 'Đang xác minh'}
+                      {d.status === 'RESOLVED' && 'Đã có kết luận BQT'}
+                      {d.status === 'REJECTED' && 'Bác bỏ khiếu nại'}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>
+                  {d.title}
+                </div>
+                <div style={{ fontSize: '13px', color: '#64748B' }}>
+                  {d.description}
+                </div>
+
+                {d.status === 'RESOLVED' && (
+                  <div style={{ background: '#F8FAFC', border: '1px dashed #CBD5E1', borderRadius: '8px', padding: '10px 12px', marginTop: '6px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#1E293B', marginBottom: '4px' }}>
+                      Phán quyết của Ban Quản Trị:
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#475569' }}>
+                      {d.adminNotes || 'Đã hòa giải thành công'}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      {d.penaltyType === 'DEPOSIT_DEDUCTION' && (
+                        <span style={{ background: '#FEE2E2', color: '#991B1B', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>
+                          Khấu trừ cọc: -{d.penaltyAmount?.toLocaleString('vi-VN')} đ
+                        </span>
+                      )}
+                      {d.penaltyType === 'WARNING' && (
+                        <span style={{ background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>
+                          Cảnh cáo vi phạm (Strike)
+                        </span>
+                      )}
+                      {d.penaltyType === 'TEMPORARY_BAN' && (
+                        <span style={{ background: '#FEE2E2', color: '#991B1B', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>
+                          Đình chỉ nhận đơn {d.banDurationDays || 7} ngày
+                        </span>
+                      )}
+                      {d.penaltyType === 'PERMANENT_BAN' && (
+                        <span style={{ background: '#991B1B', color: '#FFFFFF', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>
+                          Khóa tài khoản vĩnh viễn
+                        </span>
+                      )}
+
+                      {d.refundedAt && (
+                        <span style={{ background: '#DCFCE7', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>
+                          ✓ Đã hoàn cọc lại cho thợ: +{d.penaltyAmount?.toLocaleString('vi-VN')} đ ({new Date(d.refundedAt).toLocaleDateString('vi-VN')})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* RECENT PAYOUT REQUESTS */}
@@ -427,6 +621,159 @@ export function ProviderEarningsPage() {
       )}
 
       {/* MODAL: RÚT KÝ QUỸ RỜI SÀN */}
+
+      {/* MODAL: NẠP BÙ QUỸ KÝ QUỸ */}
+      {showTopupModal && (
+        <div className="modal-backdrop" onClick={() => setShowTopupModal(false)}>
+          <div className="earnings-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="modal-card-header">
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <PlusCircle size={20} color="#EA580C" />
+                <span>Nạp Bù Quỹ Ký Quỹ Bảo Hành</span>
+              </h3>
+              <button 
+                type="button" 
+                className="btn-modal-close" 
+                onClick={() => setShowTopupModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', borderBottom: '1px solid #E2E8F0', marginTop: '12px' }}>
+              <button
+                type="button"
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  border: 'none',
+                  background: 'none',
+                  borderBottom: topupTab === 'available' ? '2px solid #EA580C' : 'none',
+                  color: topupTab === 'available' ? '#EA580C' : '#64748B',
+                  fontWeight: topupTab === 'available' ? 700 : 500,
+                  cursor: 'pointer'
+                }}
+                onClick={() => setTopupTab('available')}
+              >
+                1. Trích từ ví thu nhập
+              </button>
+              <button
+                type="button"
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  border: 'none',
+                  background: 'none',
+                  borderBottom: topupTab === 'vietqr' ? '2px solid #EA580C' : 'none',
+                  color: topupTab === 'vietqr' ? '#EA580C' : '#64748B',
+                  fontWeight: topupTab === 'vietqr' ? 700 : 500,
+                  cursor: 'pointer'
+                }}
+                onClick={() => setTopupTab('vietqr')}
+              >
+                2. Quét mã VietQR
+              </button>
+            </div>
+
+            <div style={{ padding: '16px 0' }}>
+              {topupTab === 'available' ? (
+                <div>
+                  <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', marginBottom: '14px', fontSize: '13px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span style={{ color: '#64748B' }}>Số dư thu nhập khả dụng:</span>
+                      <strong style={{ color: '#16A34A', fontSize: '14px' }}>
+                        {wallet?.availableBalance ? wallet.availableBalance.toLocaleString('vi-VN') : '0'} đ
+                      </strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#64748B' }}>Số tiền cọc cần bù thêm:</span>
+                      <strong style={{ color: '#EA580C', fontSize: '14px' }}>
+                        {wallet ? Math.max(0, 2000000 - wallet.depositBalance).toLocaleString('vi-VN') : '0'} đ
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="form-field">
+                    <label>Số tiền muốn trích nạp bù (đ):</label>
+                    <input
+                      type="text"
+                      value={Number(topupAmount).toLocaleString('vi-VN')}
+                      onChange={(e) => setTopupAmount(e.target.value.replace(/\D/g, ''))}
+                      placeholder="500.000"
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px', marginBottom: '16px' }}>
+                    {[200000, 500000, 1000000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        style={{
+                          flex: 1,
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          border: '1px solid #CBD5E1',
+                          background: '#F8FAFC',
+                          fontSize: '12px',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => setTopupAmount(amt.toString())}
+                      >
+                        {amt.toLocaleString('vi-VN')}đ
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-modal-submit"
+                    style={{ width: '100%', backgroundColor: '#EA580C', color: '#fff', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+                    disabled={submittingTopup || !wallet || wallet.availableBalance < Number(topupAmount)}
+                    onClick={() => handleTopupFromAvailable(Number(topupAmount))}
+                  >
+                    {submittingTopup 
+                      ? 'Đang xử lý...' 
+                      : (wallet && wallet.availableBalance < Number(topupAmount) 
+                          ? 'Số dư thu nhập không đủ (Chọn quét VietQR)' 
+                          : `Xác nhận trích ${Number(topupAmount).toLocaleString('vi-VN')} đ nạp bù cọc`)}
+                  </button>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#475569' }}>
+                    Quét mã QR dưới đây bằng bất kỳ App Ngân Hàng nào để chuyển tiền nạp bù cọc:
+                  </p>
+
+                  <div style={{ display: 'inline-block', padding: '12px', background: '#F1F5F9', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '12px' }}>
+                    <img
+                      src={`https://img.vietqr.io/image/MB-0786871062-compact.png?amount=${topupAmount}&addInfo=NAP%20COC%20THO%20${wallet?.providerId?.substring(0, 8)}&accountName=NGUYEN%20THANH%20HUY`}
+                      alt="VietQR nạp ký quỹ"
+                      style={{ width: '220px', height: '220px', display: 'block', margin: '0 auto', borderRadius: '6px' }}
+                    />
+                  </div>
+
+                  <div style={{ fontSize: '13px', textAlign: 'left', background: '#F8FAFC', padding: '10px 14px', borderRadius: '8px', marginBottom: '14px' }}>
+                    <div><strong>Ngân hàng:</strong> MBBank (Quân Đội)</div>
+                    <div><strong>Số tài khoản:</strong> 0786871062</div>
+                    <div><strong>Chủ tài khoản:</strong> NGUYEN THANH HUY</div>
+                    <div><strong>Số tiền:</strong> {Number(topupAmount).toLocaleString('vi-VN')} đ</div>
+                  </div>
+
+                  <button
+                    type="button"
+                    style={{ width: '100%', backgroundColor: '#16A34A', color: '#fff', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+                    disabled={submittingTopup}
+                    onClick={() => handleTopupVietQrConfirm(Number(topupAmount))}
+                  >
+                    {submittingTopup ? 'Đang cập nhật...' : 'Xác nhận đã chuyển tiền thành công (Test Demo)'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showDepositRefundModal && (
         <div className="earnings-modal-backdrop" onClick={() => setShowDepositRefundModal(false)}>
           <div className="earnings-modal-card" onClick={(e) => e.stopPropagation()}>

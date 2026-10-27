@@ -9,7 +9,10 @@ export type WalletTransactionType =
   | 'ORDER_INCOME_MATERIALS'
   | 'WITHDRAW_AVAILABLE'
   | 'DISPUTE_PENALTY'
-  | 'DEPOSIT_REFUND';
+  | 'DEPOSIT_REFUND'
+  | 'TOPUP_DEPOSIT_FROM_AVAILABLE'
+  | 'TOPUP_DEPOSIT_VIETQR'
+  | 'DISPUTE_PENALTY_REFUND';
 
 export type PayoutStatus = 'PENDING' | 'COOLING_WAIT' | 'COMPLETED' | 'REJECTED';
 
@@ -52,6 +55,15 @@ export interface RequestDepositRefundDto {
   reason?: string;
 }
 
+export interface TopupDepositFromAvailableDto {
+  amount: number;
+}
+
+export interface TopupDepositVietQrDto {
+  amount: number;
+  note?: string;
+}
+
 export interface PayoutRequestResponse {
   id: string;
   providerId: string;
@@ -61,22 +73,13 @@ export interface PayoutRequestResponse {
   bankCode: string;
   accountNumber: string;
   accountHolderName: string;
+  reason: string | null;
   status: PayoutStatus;
   coolingEndsAt: string | null;
   adminNote: string | null;
-  processedByName: string | null;
+  processedBy: string | null;
   processedAt: string | null;
   createdAt: string;
-}
-
-export interface FinancialDashboardSummaryResponse {
-  totalGmv: number;
-  totalPlatformRevenue: number;
-  totalProviderEarnings: number;
-  totalDepositFunds: number;
-  totalPendingPayoutAmount: number;
-  activeProvidersCount: number;
-  deficitProvidersCount: number;
 }
 
 export interface AdminReviewPayoutRequestDto {
@@ -93,4 +96,19 @@ export interface AdminDisputePenaltyRequestDto {
   penaltyAmount: number;
   reason: string;
   disputeOrderId?: string;
+}
+
+export interface FinancialDashboardSummaryResponse {
+  totalGmv: number;
+  totalPlatformCommission: number;
+  totalProviderEarnings: number;
+  totalDepositHeld?: number;
+  totalPendingPayoutAmount?: number;
+  activeWalletsCount?: number;
+  deficitWalletsCount?: number;
+  // Aliases for compatibility
+  totalPlatformRevenue?: number;
+  totalDepositFunds?: number;
+  activeProvidersCount?: number;
+  deficitProvidersCount?: number;
 }

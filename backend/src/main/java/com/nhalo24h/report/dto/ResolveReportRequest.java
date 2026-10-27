@@ -12,6 +12,19 @@ public record ResolveReportRequest(
 
     Long penaltyAmount,
 
+    Integer banDurationDays,
+
+    Long compensationAmount,
+
+    String customerBankCode,
+
+    String customerAccountNumber,
+
+    String customerAccountHolder,
+
     String adminNotes
 ) {
+    public ResolveReportRequest(ReportStatus status, PenaltyType penaltyType, Long penaltyAmount, String adminNotes) {
+        this(status, penaltyType, penaltyAmount, null, 0L, null, null, null, adminNotes);
+    }
 }

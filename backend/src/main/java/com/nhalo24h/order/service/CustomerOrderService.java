@@ -37,6 +37,7 @@ import com.nhalo24h.provider.domain.ProviderProfile;
 import com.nhalo24h.provider.repository.ProviderProfileRepository;
 import com.nhalo24h.user.domain.CustomerAddress;
 import com.nhalo24h.user.domain.User;
+import com.nhalo24h.user.domain.UserStatus;
 import com.nhalo24h.user.repository.CustomerAddressRepository;
 import com.nhalo24h.user.repository.UserRepository;
 import com.nhalo24h.wallet.service.WalletService;
@@ -156,11 +157,17 @@ public class CustomerOrderService {
             }
         }
 
-        // Gửi yêu cầu ban đầu tới danh sách thợ được chọn (nếu có)
+        // Gửi yêu cầu ban đầu tới danh sách thợ được chọn (chỉ gửi tới thợ đang thực sự hoạt động)
         if (request.initialProviderIds() != null && !request.initialProviderIds().isEmpty()) {
             for (UUID providerId : request.initialProviderIds()) {
                 providerProfileRepository.findById(providerId).ifPresent(provider -> {
                     if (provider.getIsAvailable() != null && !provider.getIsAvailable()) {
+                        return;
+                    }
+                    if (provider.isSuspended()) {
+                        return;
+                    }
+                    if (provider.getUser() != null && provider.getUser().getStatus() != UserStatus.ACTIVE) {
                         return;
                     }
                     if (!walletService.isProviderEligibleToAcceptOrders(provider.getId())) {
@@ -288,21 +295,34 @@ public class CustomerOrderService {
         }
 
         int addedCount = 0;
+        List<String> unavailableProviderNames = new ArrayList<>();
+
         for (UUID providerId : request.providerIds()) {
             if (!orderRequestRepository.existsByOrderIdAndProviderId(order.getId(), providerId)) {
                 ProviderProfile provider = providerProfileRepository.findById(providerId).orElse(null);
                 if (provider != null) {
-                    if (provider.getIsAvailable() != null && !provider.getIsAvailable()) {
+                    boolean isOffline = provider.getIsAvailable() != null && !provider.getIsAvailable();
+                    boolean isSuspended = provider.isSuspended();
+                    boolean isInactiveUser = provider.getUser() != null && provider.getUser().getStatus() != UserStatus.ACTIVE;
+                    boolean isWalletIneligible = !walletService.isProviderEligibleToAcceptOrders(provider.getId());
+
+                    if (isOffline || isSuspended || isInactiveUser || isWalletIneligible) {
+                        String name = provider.getUser() != null ? provider.getUser().getFullName() : "Thợ đối tác";
+                        unavailableProviderNames.add(name);
                         continue;
                     }
-                    if (!walletService.isProviderEligibleToAcceptOrders(provider.getId())) {
-                        continue;
-                    }
+
                     OrderRequest orderRequest = new OrderRequest(order, provider);
                     orderRequestRepository.save(orderRequest);
                     addedCount++;
                 }
             }
+        }
+
+        if (addedCount == 0 && !unavailableProviderNames.isEmpty()) {
+            throw new AppException(ErrorCode.CONFLICT,
+                "Thợ " + String.join(", ", unavailableProviderNames) +
+                " hiện đang tạm ngưng nhận việc hoặc không thể tiếp nhận yêu cầu lúc này. Vui lòng chọn thợ khác đang hoạt động.");
         }
 
         if (addedCount > 0) {

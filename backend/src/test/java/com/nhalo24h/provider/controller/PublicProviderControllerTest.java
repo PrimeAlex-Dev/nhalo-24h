@@ -12,6 +12,8 @@ import com.nhalo24h.user.domain.User;
 import com.nhalo24h.user.domain.UserRole;
 import com.nhalo24h.user.domain.UserStatus;
 import com.nhalo24h.user.repository.UserRepository;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -143,5 +145,26 @@ class PublicProviderControllerTest {
     void getProviderById_NotFound_ShouldReturn404() throws Exception {
         mockMvc.perform(get("/api/v1/providers/" + UUID.randomUUID()))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Nâng cấp: Thợ ở trạng thái không hoạt động (tắt nhận việc hoặc bị đình chỉ) KHÔNG hiển thị trên danh sách provider")
+    void getProviders_ShouldExcludeInactiveAndSuspendedProviders() throws Exception {
+        // 1. Thợ đang hoạt động bình thường
+        createTestProvider("Thợ Sẵn Sàng", "active@example.com", "Thợ điện thoại", "Ninh Kiều", true, null);
+
+        // 2. Thợ đã tắt nhận việc (offline)
+        createTestProvider("Thợ Tạm Ngưng", "offline@example.com", "Thợ nghỉ phép", "Ninh Kiều", false, null);
+
+        // 3. Thợ đang bị kỷ luật đình chỉ 7 ngày
+        ProviderProfile suspendedProfile = createTestProvider("Thợ Kỷ Luật", "suspended@example.com", "Thợ bị phạt", "Ninh Kiều", true, null);
+        suspendedProfile.setSuspendedUntil(Instant.now().plus(7, ChronoUnit.DAYS));
+        providerProfileRepository.save(suspendedProfile);
+
+        // Khách hàng gọi API tìm kiếm danh sách thợ công khai
+        mockMvc.perform(get("/api/v1/providers"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].name", is("Thợ Sẵn Sàng")));
     }
 }

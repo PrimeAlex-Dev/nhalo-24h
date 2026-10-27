@@ -20,6 +20,9 @@ export interface ProviderProfileData {
   pricePerHour: number;
   serviceArea?: string | null;
   isAvailable: boolean;
+  suspendedUntil?: string | null;
+  isSuspended?: boolean;
+  warningCount?: number;
   categories: ProviderCategoryItem[];
   ratingAverage?: number;
   reviewCount?: number;
