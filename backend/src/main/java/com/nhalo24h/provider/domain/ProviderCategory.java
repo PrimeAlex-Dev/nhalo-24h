@@ -92,19 +92,20 @@ public class ProviderCategory {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof ProviderCategory that)) return false;
-        if (this.id != null && that.id != null) {
-            return Objects.equals(this.id, that.id);
+        if (this.id != null && that.id != null && Objects.equals(this.id, that.id)) {
+            return true;
         }
+        UUID thisProfileId = this.providerProfile != null ? this.providerProfile.getId() : null;
+        UUID thatProfileId = that.providerProfile != null ? that.providerProfile.getId() : null;
         UUID thisCatId = this.category != null ? this.category.getId() : null;
         UUID thatCatId = that.category != null ? that.category.getId() : null;
-        return Objects.equals(thisCatId, thatCatId);
+        return Objects.equals(thisProfileId, thatProfileId) && Objects.equals(thisCatId, thatCatId);
     }
 
     @Override
     public int hashCode() {
-        if (this.id != null) {
-            return Objects.hash(this.id);
-        }
-        return Objects.hash(this.category != null ? this.category.getId() : null);
+        UUID profileId = this.providerProfile != null ? this.providerProfile.getId() : null;
+        UUID catId = this.category != null ? this.category.getId() : null;
+        return Objects.hash(profileId, catId);
     }
 }

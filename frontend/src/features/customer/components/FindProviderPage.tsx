@@ -16,7 +16,6 @@ import {
   Send,
   ZoomIn
 } from 'lucide-react';
-import { providerCategoryFilters, mockCategories } from '../data/customerMockData';
 import { 
   providerProfileService, 
   categoryService,
@@ -88,15 +87,9 @@ export function FindProviderPage() {
     };
   }, []);
 
-  // Combined category filters (DB categories + fallback filters)
+  // Category filters (Chỉ hiện đúng dữ liệu thật danh mục đang có từ hệ thống)
   const categoryFilters = useMemo(() => {
-    const combined = ['Tất cả dịch vụ'];
-    if (dbCategories.length > 0) {
-      combined.push(...dbCategories);
-    } else {
-      combined.push(...providerCategoryFilters.filter((c) => c !== 'Tất cả dịch vụ' && c !== 'All services'));
-    }
-    return Array.from(new Set(combined));
+    return ['Tất cả dịch vụ', ...dbCategories];
   }, [dbCategories]);
 
   // Derive selected category from URL search params (or default to 'Tất cả dịch vụ')
@@ -105,14 +98,7 @@ export function FindProviderPage() {
     const found = categoryFilters.find(
       (c) => c.toLowerCase() === categoryParam.trim().toLowerCase()
     );
-    if (found) return found;
-
-    const byId = mockCategories.find(
-      (c) => c.id.toLowerCase() === categoryParam.trim().toLowerCase()
-    );
-    if (byId) return byId.title;
-
-    return categoryParam.trim();
+    return found || 'Tất cả dịch vụ';
   }, [categoryParam, categoryFilters]);
 
   const handleCategorySelect = (category: string) => {
@@ -131,21 +117,27 @@ export function FindProviderPage() {
 
   // Map real providers from database (no fake mock data fallback)
   const providersPool = useMemo(() => {
-    return realProviders.map((rp) => ({
-      id: rp.id,
-      name: rp.name,
-      verified: rp.verified ?? true,
-      company: rp.headline || rp.company || 'Thợ Kỹ Thuật Độc Lập',
-      rating: rp.rating || 5.0,
-      reviewsCount: rp.reviewsCount || 0,
-      distance: rp.distance || rp.serviceArea || 'Gần bạn',
-      pricePerHour: rp.pricePerHour || 0,
-      category: rp.category || (rp.categories && rp.categories.length > 0 ? rp.categories[0].name : 'Dịch vụ gia đình'),
-      isTopRated: rp.isTopRated ?? true,
-      isAvailable: rp.isAvailable,
-      availability: (rp.isAvailable ? 'Available today' : 'Available soon') as 'Available today' | 'Available soon',
-      avatar: rp.avatar || '',
-    }));
+    return realProviders.map((rp) => {
+      const categoryName = (rp.category && rp.category !== 'Dịch vụ gia đình' && rp.category !== 'Dịch vụ chuyên nghiệp' && rp.category !== 'Chưa có')
+        ? rp.category
+        : (rp.categories && rp.categories.length > 0 ? rp.categories[0].name : 'Chưa có');
+
+      return {
+        id: rp.id,
+        name: rp.name,
+        verified: rp.verified ?? true,
+        company: rp.headline || rp.company || 'Thợ Kỹ Thuật Độc Lập',
+        rating: rp.rating || 5.0,
+        reviewsCount: rp.reviewsCount || 0,
+        distance: rp.distance || rp.serviceArea || 'Gần bạn',
+        pricePerHour: rp.pricePerHour || 0,
+        category: categoryName,
+        isTopRated: rp.isTopRated ?? true,
+        isAvailable: rp.isAvailable,
+        availability: (rp.isAvailable ? 'Available today' : 'Available soon') as 'Available today' | 'Available soon',
+        avatar: rp.avatar || '',
+      };
+    });
   }, [realProviders]);
 
   // Filter and sort providers

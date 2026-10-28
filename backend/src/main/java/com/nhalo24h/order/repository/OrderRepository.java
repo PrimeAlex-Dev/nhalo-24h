@@ -45,6 +45,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID>, JpaSpecific
 
     boolean existsByOrderCode(String orderCode);
 
+    long countByAssignedProviderIdAndStatus(UUID providerProfileId, OrderStatus status);
+
     @Query("SELECT o FROM Order o LEFT JOIN FETCH o.images LEFT JOIN FETCH o.assignedProvider ap LEFT JOIN FETCH ap.user WHERE o.id = :id")
     Optional<Order> findByIdWithDetails(@Param("id") UUID id);
 }
