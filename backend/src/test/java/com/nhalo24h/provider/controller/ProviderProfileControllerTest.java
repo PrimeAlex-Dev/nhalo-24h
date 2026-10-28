@@ -173,6 +173,62 @@ class ProviderProfileControllerTest {
     }
 
     @Test
+    @DisplayName("Fix bug: Thợ đã có danh mục, cập nhật lần 2 đổi năm kinh nghiệm và giá tham khảo không bị duplicate key uq_provider_category")
+    void updateMyProfile_SecondTime_ShouldNotViolateUniqueConstraint() throws Exception {
+        createProviderUser("tho_second_update@example.com", "Password123");
+        String token = loginAndGetToken("tho_second_update@example.com", "Password123");
+
+        ServiceCategory cat1 = serviceCategoryRepository.save(
+            new ServiceCategory("Sơn nhà", "son-nha", "Sơn tường", "paint", CategoryStatus.ACTIVE, 3)
+        );
+
+        // Lần 1: Thợ cập nhật hồ sơ ban đầu
+        UpdateProviderProfileRequest initialReq = new UpdateProviderProfileRequest(
+            "Thợ Sơn Chuyên Nghiệp",
+            null,
+            "Thợ sơn nước",
+            "Chuyên sơn nhà phố",
+            3,
+            120000L,
+            "Ninh Kiều",
+            true,
+            List.of(cat1.getId())
+        );
+
+        mockMvc.perform(put("/api/v1/provider/profile/me")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(initialReq)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.experienceYears", is(3)))
+            .andExpect(jsonPath("$.pricePerHour", is(120000)))
+            .andExpect(jsonPath("$.categories", hasSize(1)));
+
+        // Lần 2: Thợ vào trang /provider/account đổi năm kinh nghiệm lên 5 và giá lên 150000, giữ nguyên danh mục
+        UpdateProviderProfileRequest secondReq = new UpdateProviderProfileRequest(
+            "Thợ Sơn Chuyên Nghiệp",
+            null,
+            "Thợ sơn nước cao cấp",
+            "Chuyên sơn nhà phố",
+            5,
+            150000L,
+            "Ninh Kiều",
+            true,
+            List.of(cat1.getId())
+        );
+
+        mockMvc.perform(put("/api/v1/provider/profile/me")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(secondReq)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.experienceYears", is(5)))
+            .andExpect(jsonPath("$.pricePerHour", is(150000)))
+            .andExpect(jsonPath("$.categories", hasSize(1)))
+            .andExpect(jsonPath("$.categories[0].name", is("Sơn nhà")));
+    }
+
+    @Test
     @DisplayName("Thợ cập nhật danh mục phụ trách riêng qua endpoint categories")
     void updateMyCategories_ShouldUpdateRegisteredCategories() throws Exception {
         createProviderUser("tho3@example.com", "Password123");

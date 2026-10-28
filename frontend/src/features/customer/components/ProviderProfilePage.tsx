@@ -97,10 +97,16 @@ export function ProviderProfilePage() {
     if (realProvider) {
       const skills = (realProvider.categories && realProvider.categories.length > 0)
         ? realProvider.categories.map((c) => c.name)
-        : [realProvider.category || 'Dịch vụ chuyên nghiệp'];
+        : (realProvider.category && realProvider.category !== 'Dịch vụ gia đình' && realProvider.category !== 'Dịch vụ chuyên nghiệp' && realProvider.category !== 'Chưa có')
+          ? [realProvider.category]
+          : ['Chưa có'];
 
       const effectiveRating = ratingSummary?.averageRating ?? realProvider.rating ?? 5.0;
       const effectiveCount = ratingSummary?.totalReviews ?? realProvider.reviewsCount ?? 0;
+
+      const categoryName = (realProvider.category && realProvider.category !== 'Dịch vụ gia đình' && realProvider.category !== 'Dịch vụ chuyên nghiệp')
+        ? realProvider.category
+        : (realProvider.categories && realProvider.categories.length > 0 ? realProvider.categories[0].name : 'Chưa có');
 
       return {
         id: realProvider.id,
@@ -111,15 +117,15 @@ export function ProviderProfilePage() {
         reviewsCount: effectiveCount,
         distance: realProvider.distance || '1.8 km',
         pricePerHour: realProvider.pricePerHour || 150000,
-        category: realProvider.category || 'Dịch vụ chuyên nghiệp',
+        category: categoryName,
         isTopRated: realProvider.isTopRated ?? true,
         availability: (realProvider.availability === 'Available today' ? 'Available today' : 'Available soon') as 'Available today' | 'Available soon',
         avatar: realProvider.avatar || '',
-        experienceYears: realProvider.experienceYears || 0,
-        completedJobsCount: realProvider.completedJobsCount || 'Mới tham gia',
+        experienceYears: realProvider.experienceYears ?? 0,
+        completedJobsCount: realProvider.completedJobsCount ?? '0',
         responseTime: realProvider.responseTime || '~10 phút',
         availabilityDetail: realProvider.isAvailable ? 'Sẵn sàng nhận việc hôm nay' : 'Tạm bận',
-        about: realProvider.about || 'Kỹ thuật viên đối tác tận tâm, uy tín, bảo hành dịch vụ chu đáo.',
+        about: realProvider.about || 'Kỹ thuật viên đối tác chưa có thông tin giới thiệu bản thân.',
         skills,
         aiInsight: 'AI Match: Tay nghề cao, phản hồi nhanh và mức giá phù hợp trong khu vực.',
         reviews: [
@@ -352,7 +358,7 @@ export function ProviderProfilePage() {
                 <div className="metric-icon-box">
                   <Award size={20} />
                 </div>
-                <div className="metric-value">{provider.experienceYears || 12} năm</div>
+                <div className="metric-value">{provider.experienceYears ?? 0} năm</div>
                 <div className="metric-label">Kinh nghiệm</div>
               </div>
 
@@ -360,7 +366,7 @@ export function ProviderProfilePage() {
                 <div className="metric-icon-box">
                   <Briefcase size={20} />
                 </div>
-                <div className="metric-value">{provider.completedJobsCount || '1,840'}</div>
+                <div className="metric-value">{provider.completedJobsCount ?? '0'}</div>
                 <div className="metric-label">Đã hoàn thành</div>
               </div>
 
@@ -385,8 +391,7 @@ export function ProviderProfilePage() {
             <div className="profile-section">
               <h2 className="section-title">Giới thiệu bản thân</h2>
               <p className="section-paragraph">
-                {provider.about ||
-                  'Kỹ thuật viên chuyên nghiệp với nhiều năm kinh nghiệm cung cấp dịch vụ dân dụng. Cam kết đúng giờ, báo giá rõ ràng và bảo hành chu đáo.'}
+                {provider.about || 'Kỹ thuật viên đối tác chưa có thông tin giới thiệu bản thân.'}
               </p>
             </div>
 
@@ -394,7 +399,7 @@ export function ProviderProfilePage() {
             <div className="profile-section">
               <h2 className="section-title">Chuyên môn &amp; Kỹ năng</h2>
               <div className="skills-pill-group">
-                {(provider.skills || ['Kiểm tra & Sửa chữa', 'Lắp đặt thiết bị', 'Bảo dưỡng định kỳ', 'Xử lý sự cố khẩn cấp']).map(
+                {(provider.skills && provider.skills.length > 0 ? provider.skills : ['Chưa có']).map(
                   (skill, index) => (
                     <div key={index} className="skill-pill">
                       <Check size={14} strokeWidth={2.5} className="skill-check-icon" />
@@ -654,7 +659,7 @@ export function ProviderProfilePage() {
                 </div>
                 <div className="trust-item">
                   <Award size={17} className="trust-icon text-amber" />
-                  <span>{provider.completedJobsCount || '1,840'} công việc đã hoàn thành</span>
+                  <span>{provider.completedJobsCount ?? '0'} công việc đã hoàn thành</span>
                 </div>
               </div>
             </div>

@@ -79,7 +79,9 @@ export function ProviderQuickViewDrawer({
 
   const skills = (current.categories && current.categories.length > 0)
     ? current.categories.map((c) => c.name)
-    : [current.category || 'Dịch vụ chuyên nghiệp', 'Khảo sát & Báo giá tại chỗ', 'Bảo hành uy tín'];
+    : (current.category && current.category !== 'Dịch vụ gia đình' && current.category !== 'Dịch vụ chuyên nghiệp' && current.category !== 'Chưa có')
+      ? [current.category]
+      : ['Chưa có'];
 
   return (
     <div className="quick-view-backdrop" onClick={onClose}>
@@ -190,7 +192,7 @@ export function ProviderQuickViewDrawer({
               <div className="metric-icon-circle icon-award">
                 <Award size={18} />
               </div>
-              <div className="metric-val">{current.experienceYears || 5} năm</div>
+              <div className="metric-val">{current.experienceYears ?? 0} năm</div>
               <div className="metric-lbl">Kinh nghiệm</div>
             </div>
 
@@ -198,7 +200,7 @@ export function ProviderQuickViewDrawer({
               <div className="metric-icon-circle icon-jobs">
                 <Briefcase size={18} />
               </div>
-              <div className="metric-val">{current.completedJobsCount || '150+'}</div>
+              <div className="metric-val">{current.completedJobsCount ?? '0'}</div>
               <div className="metric-lbl">Đơn đã sửa</div>
             </div>
 

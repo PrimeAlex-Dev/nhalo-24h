@@ -4,6 +4,8 @@ import com.nhalo24h.category.domain.ServiceCategory;
 import com.nhalo24h.category.repository.ServiceCategoryRepository;
 import com.nhalo24h.common.error.AppException;
 import com.nhalo24h.common.error.ErrorCode;
+import com.nhalo24h.order.domain.OrderStatus;
+import com.nhalo24h.order.repository.OrderRepository;
 import com.nhalo24h.provider.domain.ProviderCategory;
 import com.nhalo24h.provider.domain.ProviderProfile;
 import com.nhalo24h.provider.dto.ProviderCategoryDto;
@@ -27,6 +29,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,6 +43,7 @@ public class ProviderProfileService {
     private final ServiceCategoryRepository serviceCategoryRepository;
     private final StorageService storageService;
     private final WalletService walletService;
+    private final OrderRepository orderRepository;
 
     public ProviderProfileService(
         UserRepository userRepository,
@@ -47,7 +51,8 @@ public class ProviderProfileService {
         ProviderCategoryRepository providerCategoryRepository,
         ServiceCategoryRepository serviceCategoryRepository,
         StorageService storageService,
-        WalletService walletService
+        WalletService walletService,
+        OrderRepository orderRepository
     ) {
         this.userRepository = userRepository;
         this.providerProfileRepository = providerProfileRepository;
@@ -55,6 +60,7 @@ public class ProviderProfileService {
         this.serviceCategoryRepository = serviceCategoryRepository;
         this.storageService = storageService;
         this.walletService = walletService;
+        this.orderRepository = orderRepository;
     }
 
     @Transactional
@@ -279,17 +285,38 @@ public class ProviderProfileService {
             return;
         }
 
-        profile.getProviderCategories().clear();
+        if (profile.getProviderCategories() == null) {
+            profile.setProviderCategories(new HashSet<>());
+        }
 
-        if (!categoryIds.isEmpty()) {
-            for (UUID catId : categoryIds) {
+        Set<UUID> targetCategoryIds = new HashSet<>(categoryIds);
+
+        Set<UUID> currentCategoryIds = profile.getProviderCategories().stream()
+            .filter(pc -> pc.getCategory() != null)
+            .map(pc -> pc.getCategory().getId())
+            .collect(Collectors.toSet());
+
+        // Nếu danh mục không hề thay đổi -> không cần thao tác gì, tránh sinh SQL thừa và tránh lỗi duplicate constraint
+        if (currentCategoryIds.equals(targetCategoryIds)) {
+            return;
+        }
+
+        // 1. Loại bỏ các danh mục không còn được chọn
+        profile.getProviderCategories().removeIf(pc -> 
+            pc.getCategory() == null || !targetCategoryIds.contains(pc.getCategory().getId())
+        );
+
+        // 2. Chỉ tạo mới các danh mục thực sự mới
+        for (UUID catId : targetCategoryIds) {
+            if (!currentCategoryIds.contains(catId)) {
                 serviceCategoryRepository.findById(catId).ifPresent(cat -> {
                     ProviderCategory pc = new ProviderCategory(profile, cat);
                     profile.getProviderCategories().add(pc);
                 });
             }
-            providerProfileRepository.save(profile);
         }
+
+        providerProfileRepository.save(profile);
     }
 
     private ProviderProfileResponse mapToProviderProfileResponse(User user, ProviderProfile profile) {
@@ -343,7 +370,7 @@ public class ProviderProfileService {
                 .toList()
             : Collections.emptyList();
 
-        String primaryCategory = !categoryDtos.isEmpty() ? categoryDtos.get(0).name() : "Dịch vụ gia đình";
+        String primaryCategory = !categoryDtos.isEmpty() ? categoryDtos.get(0).name() : "Chưa có";
 
         String headline = (profile.getHeadline() != null && !profile.getHeadline().isBlank())
             ? profile.getHeadline()
@@ -354,6 +381,8 @@ public class ProviderProfileService {
         boolean isUserActive = profile.getUser() != null && profile.getUser().getStatus() == UserStatus.ACTIVE;
         boolean isAvail = Boolean.TRUE.equals(profile.getIsAvailable()) && !isSuspended && isUserActive && isEligible;
         String availability = isAvail ? "Available today" : "Available soon";
+
+        long completedJobs = orderRepository.countByAssignedProviderIdAndStatus(profile.getId(), OrderStatus.COMPLETED);
 
         return new PublicProviderResponse(
             profile.getId(),
@@ -374,9 +403,7 @@ public class ProviderProfileService {
             categoryDtos,
             profile.getRatingAverage() != null ? profile.getRatingAverage() : 5.0,
             profile.getReviewCount() != null ? profile.getReviewCount() : 0,
-            (profile.getExperienceYears() != null && profile.getExperienceYears() > 0)
-                ? (profile.getExperienceYears() * 100) + "+ việc"
-                : "Mới tham gia",
+            String.valueOf(completedJobs),
             true,
             true
         );
