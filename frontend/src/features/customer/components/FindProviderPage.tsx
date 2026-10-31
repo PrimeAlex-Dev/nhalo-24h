@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { PATHS } from '../../../routes/paths';
 import './FindProviderPage.css';
@@ -14,7 +14,9 @@ import {
   ArrowLeft,
   Home,
   Send,
-  ZoomIn
+  ZoomIn,
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { 
   providerProfileService, 
@@ -27,6 +29,7 @@ import type { ProviderItem } from '../types/customer';
 import { CreateOrderModal } from './CreateOrderModal';
 import { SelectOrderForProviderModal } from './SelectOrderForProviderModal';
 import { AvatarLightboxModal } from '../../../components/common';
+import { subscribeProviderStatusChange } from '../../../utils/providerSyncChannel';
 
 export function FindProviderPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -39,6 +42,7 @@ export function FindProviderPage() {
   const [realProviders, setRealProviders] = useState<PublicProviderItem[]>([]);
   const [dbCategories, setDbCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [offlineAlertMsg, setOfflineAlertMsg] = useState<string | null>(null);
 
   // Booking & Dispatch state
   const [selectedProviderForBooking, setSelectedProviderForBooking] = useState<PublicProviderItem | null>(null);
@@ -50,42 +54,65 @@ export function FindProviderPage() {
 
   const categoryParam = searchParams.get('category');
 
-  // Load real active categories and public providers from database
-  useEffect(() => {
-    let ignore = false;
+  // Hàm tải dữ liệu danh sách thợ công khai và danh mục
+  const loadProviders = useCallback(async (silent = false) => {
+    try {
+      if (!silent) {
+        setLoading(true);
+      }
+      const [providersRes, categoriesRes] = await Promise.allSettled([
+        providerProfileService.getPublicProviders({ availableOnly: true }),
+        categoryService.getCategories({ status: 'ACTIVE', size: 50 }),
+      ]);
 
-    async function fetchData() {
-      setLoading(true);
-      try {
-        const [providersRes, categoriesRes] = await Promise.allSettled([
-          providerProfileService.getPublicProviders({ availableOnly: true }),
-          categoryService.getCategories({ status: 'ACTIVE', size: 50 }),
-        ]);
-
-        if (!ignore) {
-          if (providersRes.status === 'fulfilled' && providersRes.value) {
-            setRealProviders(providersRes.value);
-          }
-          if (categoriesRes.status === 'fulfilled' && categoriesRes.value?.content) {
-            const catNames = categoriesRes.value.content.map((c) => c.name);
-            setDbCategories(catNames);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching public providers:', err);
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
+      if (providersRes.status === 'fulfilled' && providersRes.value) {
+        setRealProviders(providersRes.value);
+      }
+      if (categoriesRes.status === 'fulfilled' && categoriesRes.value?.content) {
+        const catNames = categoriesRes.value.content.map((c) => c.name);
+        setDbCategories(catNames);
+      }
+    } catch (err) {
+      console.error('Error fetching public providers:', err);
+    } finally {
+      if (!silent) {
+        setLoading(false);
       }
     }
+  }, []);
 
-    fetchData();
+  // Thiết lập đồng bộ thời gian thực: Tức thì khi thợ đổi trạng thái (Cross-Tab/Window) + Auto-poll định kỳ 6s + Tab Focus
+  useEffect(() => {
+    loadProviders(false);
+
+    // 1. Lắng nghe thông báo tức thời khi thợ toggle nhận việc (BroadcastChannel + Window CustomEvent)
+    const unsubscribe = subscribeProviderStatusChange(() => {
+      loadProviders(true);
+    });
+
+    // 2. Auto-polling ngầm định kỳ mỗi 6 giây (silent poll không giật màn hình)
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadProviders(true);
+      }
+    }, 6000);
+
+    // 3. Tự động đồng bộ ngay khi người dùng chuyển focus tab trở lại
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadProviders(true);
+      }
+    };
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
 
     return () => {
-      ignore = true;
+      unsubscribe();
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
     };
-  }, []);
+  }, [loadProviders]);
 
   // Category filters (Chỉ hiện đúng dữ liệu thật danh mục đang có từ hệ thống)
   const categoryFilters = useMemo(() => {
@@ -193,9 +220,18 @@ export function FindProviderPage() {
   };
 
   const handleQuickBook = async (provider: any) => {
-    setSelectedProviderForBooking(provider);
     try {
       setCheckingOrders(true);
+      // Pre-flight check: Kiểm tra trạng thái khả dụng mới nhất của thợ trước khi mở popup
+      const freshest = await providerProfileService.getPublicProviderById(provider.id);
+      if (!freshest.isAvailable) {
+        setOfflineAlertMsg(`Thợ ${provider.name} vừa chuyển sang trạng thái Tạm ngưng nhận việc (Offline). Vui lòng chọn thợ khác đang hoạt động.`);
+        loadProviders(true); // Cập nhật lại danh sách ngay lập tức để ẩn thợ này
+        setTimeout(() => setOfflineAlertMsg(null), 6000);
+        return;
+      }
+
+      setSelectedProviderForBooking(provider);
       const res = await customerOrderService.getMyOrders('PENDING_PROVIDER', 0, 50);
       const orders = res.content;
       if (orders && orders.length > 0) {
@@ -204,7 +240,14 @@ export function FindProviderPage() {
       } else {
         setShowCreateModal(true);
       }
-    } catch {
+    } catch (err: any) {
+      if (err?.message && (err.message.includes('404') || err.message.includes('không tìm thấy'))) {
+        setOfflineAlertMsg(`Thợ ${provider.name} hiện đã tạm ẩn hoặc không khả dụng.`);
+        loadProviders(true);
+        setTimeout(() => setOfflineAlertMsg(null), 6000);
+        return;
+      }
+      setSelectedProviderForBooking(provider);
       setShowCreateModal(true);
     } finally {
       setCheckingOrders(false);
@@ -223,6 +266,36 @@ export function FindProviderPage() {
   return (
     <div className="find-provider-page">
       <div className="container">
+        {/* Banner thông báo tức thời khi thợ chuyển trạng thái offline */}
+        {offlineAlertMsg && (
+          <div className="provider-offline-alert" style={{
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#991b1b',
+            borderRadius: '10px',
+            padding: '12px 16px',
+            marginBottom: '1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            boxShadow: '0 2px 8px rgba(220, 38, 38, 0.08)'
+          }} role="alert">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <AlertCircle size={18} style={{ color: '#dc2626', flexShrink: 0 }} />
+              <span style={{ fontSize: '14px', lineHeight: 1.4 }}>{offlineAlertMsg}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOfflineAlertMsg(null)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b', padding: '4px' }}
+              aria-label="Đóng thông báo"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
         {/* Quick Back to Home Navigation Pill */}
         <div className="find-provider-breadcrumb-box">
           <Link to={PATHS.CUSTOMER.ROOT} className="back-to-home-pill" title="Quay về Trang chủ Nhà Lo 24h">

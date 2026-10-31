@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import './ProviderProfilePage.css';
 import {
@@ -29,6 +29,7 @@ import { CreateOrderModal } from './CreateOrderModal';
 import { SelectOrderForProviderModal } from './SelectOrderForProviderModal';
 import { ReportProviderModal } from './ReportProviderModal';
 import { AvatarLightboxModal } from '../../../components/common';
+import { subscribeProviderStatusChange } from '../../../utils/providerSyncChannel';
 
 export function ProviderProfilePage() {
   const { providerId } = useParams<{ providerId: string }>();
@@ -52,33 +53,59 @@ export function ProviderProfilePage() {
   const [reportSuccessMsg, setReportSuccessMsg] = useState<string | null>(null);
   const [bookingErrorMsg, setBookingErrorMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    let ignore = false;
-    async function loadProvider() {
-      if (!providerId) {
-        setLoading(false);
-        return;
-      }
+  const loadProvider = useCallback(async (silent = false) => {
+    if (!providerId) {
+      if (!silent) setLoading(false);
+      return;
+    }
+    if (!silent) {
       setLoading(true);
-      try {
-        const data = await providerProfileService.getPublicProviderById(providerId);
-        if (!ignore) {
-          setRealProvider(data);
-        }
-      } catch {
-        // Fallback to mock data if API fails or mock ID
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
+    }
+    try {
+      const data = await providerProfileService.getPublicProviderById(providerId);
+      setRealProvider(data);
+    } catch {
+      // Keep existing data if API fails
+    } finally {
+      if (!silent) {
+        setLoading(false);
       }
     }
-
-    loadProvider();
-    return () => {
-      ignore = true;
-    };
   }, [providerId]);
+
+  useEffect(() => {
+    loadProvider(false);
+
+    // 1. Lắng nghe thông báo tức thời khi thợ toggle nhận việc (BroadcastChannel + Window CustomEvent)
+    const unsubscribe = subscribeProviderStatusChange((payload) => {
+      if (!payload.providerId || payload.providerId === providerId) {
+        loadProvider(true);
+      }
+    });
+
+    // 2. Auto-polling ngầm định kỳ mỗi 6 giây để cập nhật trạng thái mới nhất của thợ
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadProvider(true);
+      }
+    }, 6000);
+
+    // 3. Tự động đồng bộ ngay khi người dùng chuyển focus tab trở lại
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadProvider(true);
+      }
+    };
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    return () => {
+      unsubscribe();
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+    };
+  }, [providerId, loadProvider]);
 
   useEffect(() => {
     if (!realProvider?.id) return;
@@ -179,11 +206,21 @@ export function ProviderProfilePage() {
   };
 
   const handleBookNow = async () => {
-    if (!realProvider?.isAvailable) {
-      setBookingErrorMsg('Thợ hiện đang ở trạng thái tạm ngưng nhận việc (Offline). Vui lòng chọn thợ khác đang hoạt động.');
-      return;
-    }
     try {
+      setCheckingOrders(true);
+      // Pre-flight check: Kiểm tra trạng thái khả dụng mới nhất của thợ trước khi đặt
+      if (realProvider?.id) {
+        const freshest = await providerProfileService.getPublicProviderById(realProvider.id);
+        setRealProvider(freshest);
+        if (!freshest.isAvailable) {
+          setBookingErrorMsg('Thợ hiện vừa chuyển sang trạng thái tạm ngưng nhận việc (Offline). Vui lòng chọn thợ khác đang hoạt động.');
+          return;
+        }
+      } else if (!realProvider?.isAvailable) {
+        setBookingErrorMsg('Thợ hiện đang ở trạng thái tạm ngưng nhận việc (Offline). Vui lòng chọn thợ khác đang hoạt động.');
+        return;
+      }
+
       setCheckingOrders(true);
       const res = await customerOrderService.getMyOrders('PENDING_PROVIDER', 0, 50);
       const orders = res.content;
