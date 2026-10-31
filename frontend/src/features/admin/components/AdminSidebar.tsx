@@ -4,7 +4,6 @@ import {
   ShoppingBag, 
   Users, 
   Layers,
-  CircleDollarSign,
   ArrowLeftRight, 
   LogOut, 
   X,
@@ -12,6 +11,7 @@ import {
   ShieldAlert,
   Star
 } from 'lucide-react';
+import { DongIcon } from '../../../components/common';
 import { useAuth } from '../../auth';
 import { PATHS } from '../../../routes/paths';
 import './AdminSidebar.css';
@@ -105,7 +105,7 @@ export function AdminSidebar({
               className={({ isActive }) => `sidebar-nav-item ${isActive ? 'is-active' : ''}`}
               onClick={onClose}
             >
-              <CircleDollarSign size={20} className="nav-icon" />
+              <DongIcon size={20} className="nav-icon" />
               <span className="nav-label">Tài chính & Đối soát</span>
             </NavLink>
 

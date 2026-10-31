@@ -420,8 +420,9 @@ export function AdminUsersPage() {
                           className="btn-table-inspect"
                           onClick={() => handleOpenDetail(user)}
                           title="Xem chi tiết & Chỉnh sửa hồ sơ"
+                          aria-label="Xem chi tiết"
                         >
-                          <Eye size={14} /> Chi tiết
+                          <Eye size={16} />
                         </button>
                       </div>
                     </td>
