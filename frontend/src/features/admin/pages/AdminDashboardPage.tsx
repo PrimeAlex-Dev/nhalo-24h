@@ -9,7 +9,9 @@ import {
   Activity,
   Layers,
   RefreshCw,
-  ShieldAlert
+  ShieldAlert,
+  User,
+  Lock
 } from 'lucide-react';
 import { AdminKpiCards } from '../components/AdminKpiCards';
 import { UserDetailModal } from '../components/UserDetailModal';
@@ -243,22 +245,42 @@ export function AdminDashboardPage() {
   const getRoleBadge = (role: UserRole) => {
     switch (role) {
       case 'ADMIN':
-        return <span className="admin-chip chip-role-admin">Quản trị viên</span>;
+        return (
+          <span className="admin-chip chip-role-admin" title="Quản trị viên">
+            <ShieldCheck size={16} />
+          </span>
+        );
       case 'PROVIDER':
-        return <span className="admin-chip chip-role-provider">Thợ kỹ thuật</span>;
+        return (
+          <span className="admin-chip chip-role-provider" title="Thợ kỹ thuật đối tác">
+            <Wrench size={16} />
+          </span>
+        );
       case 'CUSTOMER':
       default:
-        return <span className="admin-chip chip-role-customer">Khách hàng</span>;
+        return (
+          <span className="admin-chip chip-role-customer" title="Khách hàng">
+            <User size={16} />
+          </span>
+        );
     }
   };
 
   const getStatusBadge = (status: AdminUserItem['status']) => {
     switch (status) {
       case 'ACTIVE':
-        return <span className="admin-chip chip-status-active">Đang hoạt động</span>;
+        return (
+          <span className="admin-chip chip-status-active" title="Đang hoạt động">
+            <CheckCircle2 size={16} />
+          </span>
+        );
       case 'DISABLED':
       default:
-        return <span className="admin-chip chip-status-disabled">Chờ duyệt / Khóa</span>;
+        return (
+          <span className="admin-chip chip-status-disabled" title="Chờ duyệt / Đã khóa">
+            <Lock size={15} />
+          </span>
+        );
     }
   };
 
@@ -484,9 +506,10 @@ export function AdminDashboardPage() {
                             type="button"
                             className="btn-table-inspect"
                             onClick={() => handleOpenUserDetail(u)}
-                            title="Bấm để xem hồ sơ và chỉnh sửa trạng thái"
+                            title="Xem chi tiết hồ sơ & quản lý tài khoản"
+                            aria-label="Xem chi tiết"
                           >
-                            <Eye size={14} /> Chi tiết
+                            <Eye size={16} />
                           </button>
                         </td>
                       </tr>

@@ -7,9 +7,9 @@ import {
   CheckCircle2, 
   AlertTriangle,
   RotateCcw,
-  Search,
-  DollarSign
+  Search
 } from 'lucide-react';
+import { DongIcon } from '../../../components/common';
 import { adminFinancialService } from '../../../services';
 import type { 
   FinancialDashboardSummaryResponse, 
@@ -211,7 +211,7 @@ export function AdminFinancialPage() {
           <div className="metric-header">
             <span className="metric-label">Doanh Thu Sàn (10% Công)</span>
             <div className="metric-icon-wrap revenue">
-              <DollarSign size={20} />
+              <DongIcon size={20} />
             </div>
           </div>
           <div className="metric-value">

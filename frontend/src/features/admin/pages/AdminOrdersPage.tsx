@@ -524,9 +524,10 @@ export function AdminOrdersPage() {
                         type="button"
                         className="btn-table-inspect"
                         onClick={() => handleOpenDetail(ord)}
-                        title="Bấm để xem chi tiết đầy đủ & đối soát"
+                        title="Xem chi tiết đơn hàng & đối soát"
+                        aria-label="Xem chi tiết đơn hàng"
                       >
-                        <Eye size={14} /> Chi tiết
+                        <Eye size={16} />
                       </button>
                     </td>
                   </tr>

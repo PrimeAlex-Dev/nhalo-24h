@@ -249,8 +249,9 @@
 .visibility-status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.25rem 0.65rem;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 700;
@@ -271,8 +272,9 @@
 .btn-toggle-visibility {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.45rem 0.85rem;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
   font-size: 0.82rem;
   font-weight: 700;

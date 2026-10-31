@@ -431,13 +431,14 @@
 .btn-table-inspect {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   background-color: #eff6ff;
   border: 1px solid #bfdbfe;
   color: #1d6ae5;
   font-size: 0.75rem;
   font-weight: 600;
-  padding: 0.35rem 0.65rem;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
@@ -761,11 +762,12 @@
 .admin-chip {
   display: inline-flex;
   align-items: center;
-  padding: 0.2rem 0.55rem;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 600;
-  width: fit-content;
 }
 
 .chip-role-admin {

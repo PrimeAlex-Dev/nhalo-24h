@@ -340,14 +340,12 @@ export function AdminReviewsPage() {
 
                   <td>
                     {rev.isVisible ? (
-                      <span className="visibility-status-badge visible">
-                        <Eye size={12} />
-                        <span>Công khai</span>
+                      <span className="visibility-status-badge visible" title="Đang công khai trên trang thợ">
+                        <Eye size={15} />
                       </span>
                     ) : (
-                      <span className="visibility-status-badge hidden">
-                        <EyeOff size={12} />
-                        <span>Đã ẩn</span>
+                      <span className="visibility-status-badge hidden" title="Đã ẩn khỏi trang thợ">
+                        <EyeOff size={15} />
                       </span>
                     )}
                   </td>
@@ -358,19 +356,15 @@ export function AdminReviewsPage() {
                       className={`btn-toggle-visibility ${rev.isVisible ? 'hide' : 'show'}`}
                       onClick={() => handleToggleVisibility(rev)}
                       disabled={togglingId === rev.id}
+                      title={rev.isVisible ? 'Nhấn để ẩn đánh giá này' : 'Nhấn để mở công khai đánh giá này'}
+                      aria-label={rev.isVisible ? 'Ẩn đánh giá' : 'Mở hiển thị đánh giá'}
                     >
                       {togglingId === rev.id ? (
-                        <Loader2 size={13} className="spin-icon" />
+                        <Loader2 size={15} className="spin-icon" />
                       ) : rev.isVisible ? (
-                        <>
-                          <EyeOff size={13} />
-                          <span>Ẩn đánh giá</span>
-                        </>
+                        <EyeOff size={15} />
                       ) : (
-                        <>
-                          <Eye size={13} />
-                          <span>Mở hiển thị</span>
-                        </>
+                        <Eye size={15} />
                       )}
                     </button>
                   </td>
