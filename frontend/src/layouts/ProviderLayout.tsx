@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import { ProviderNavbar } from '../features/provider/components/ProviderNavbar';
 import { providerProfileService, providerJobService, type ProviderProfileData } from '../services';
+import { broadcastProviderStatusChange } from '../utils/providerSyncChannel';
 import './ProviderLayout.css';
 
 export interface ProviderContextType {
@@ -74,13 +75,17 @@ export function ProviderLayout() {
   const toggleOnline = useCallback(async () => {
     setIsOnline((prev) => {
       const nextVal = !prev;
-      providerProfileService.updateMyProfile({ isAvailable: nextVal }).catch((err) => {
-        console.error('Failed to sync availability status to backend:', err);
-        setIsOnline(prev);
-      });
+      providerProfileService.updateMyProfile({ isAvailable: nextVal })
+        .then(() => {
+          broadcastProviderStatusChange(nextVal, profile?.id);
+        })
+        .catch((err) => {
+          console.error('Failed to sync availability status to backend:', err);
+          setIsOnline(prev);
+        });
       return nextVal;
     });
-  }, []);
+  }, [profile?.id]);
 
   return (
     <div className="provider-layout">

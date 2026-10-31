@@ -35,6 +35,7 @@ import {
 import type { ReviewItem } from '../../../types/review';
 import { ConfirmModal, AvatarLightboxModal } from '../../../components/common';
 import { ProviderReplyModal } from '../components/ProviderReplyModal';
+import { broadcastProviderStatusChange } from '../../../utils/providerSyncChannel';
 import './ProviderAccountPage.css';
 
 export function ProviderAccountPage() {
@@ -222,6 +223,7 @@ export function ProviderAccountPage() {
       if (setParentProfile) {
         setParentProfile(updated);
       }
+      broadcastProviderStatusChange(isAvailable, updated.id);
       setSuccessNotice('Hồ sơ nghề nghiệp đã được cập nhật thành công!');
       setTimeout(() => setSuccessNotice(null), 4000);
     } catch (err) {
