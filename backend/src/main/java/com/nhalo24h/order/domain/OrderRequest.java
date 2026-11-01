@@ -47,14 +47,8 @@ public class OrderRequest {
     @Column(name = "quote_mode", nullable = false, length = 30)
     private QuoteMode quoteMode = QuoteMode.SURVEY_REQUIRED;
 
-    @Column(name = "survey_fee", nullable = false)
-    private Long surveyFee = 0L;
-
     @Column(name = "travel_fee", nullable = false)
     private Long travelFee = 0L;
-
-    @Column(name = "waive_survey_if_repaired", nullable = false)
-    private Boolean waiveSurveyIfRepaired = true;
 
     @Column(name = "waive_travel_if_repaired", nullable = false)
     private Boolean waiveTravelIfRepaired = true;
@@ -97,9 +91,7 @@ public class OrderRequest {
         this.provider = provider;
         this.status = OrderRequestStatus.PENDING_RESPONSE;
         this.quoteMode = QuoteMode.SURVEY_REQUIRED;
-        this.surveyFee = 0L;
         this.travelFee = 0L;
-        this.waiveSurveyIfRepaired = true;
         this.waiveTravelIfRepaired = true;
         this.estimatedLaborFee = 0L;
         this.estimatedMaterialsFee = 0L;
@@ -117,16 +109,10 @@ public class OrderRequest {
         if (this.quoteMode == null) {
             this.quoteMode = QuoteMode.SURVEY_REQUIRED;
         }
-        if (this.surveyFee == null) {
-            this.surveyFee = 0L;
-        }
-        if (this.travelFee == null) {
+                if (this.travelFee == null) {
             this.travelFee = 0L;
         }
-        if (this.waiveSurveyIfRepaired == null) {
-            this.waiveSurveyIfRepaired = true;
-        }
-        if (this.waiveTravelIfRepaired == null) {
+                if (this.waiveTravelIfRepaired == null) {
             this.waiveTravelIfRepaired = true;
         }
         if (this.estimatedLaborFee == null) {
@@ -189,28 +175,12 @@ public class OrderRequest {
         this.quoteMode = quoteMode != null ? quoteMode : QuoteMode.SURVEY_REQUIRED;
     }
 
-    public Long getSurveyFee() {
-        return surveyFee;
-    }
-
-    public void setSurveyFee(Long surveyFee) {
-        this.surveyFee = surveyFee != null ? surveyFee : 0L;
-    }
-
     public Long getTravelFee() {
         return travelFee;
     }
 
     public void setTravelFee(Long travelFee) {
         this.travelFee = travelFee != null ? travelFee : 0L;
-    }
-
-    public Boolean getWaiveSurveyIfRepaired() {
-        return waiveSurveyIfRepaired;
-    }
-
-    public void setWaiveSurveyIfRepaired(Boolean waiveSurveyIfRepaired) {
-        this.waiveSurveyIfRepaired = waiveSurveyIfRepaired != null ? waiveSurveyIfRepaired : true;
     }
 
     public Boolean getWaiveTravelIfRepaired() {

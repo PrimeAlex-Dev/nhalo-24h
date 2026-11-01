@@ -12,7 +12,6 @@ public record OnlinePaymentInitResponse(
     Long amountToPay,
     Long laborFee,
     Long materialsFee,
-    Long appliedSurveyFee,
     Long appliedTravelFee,
     String paymentStatus,
     String gatewayProvider,

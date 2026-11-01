@@ -377,9 +377,7 @@ public class CustomerOrderService {
         QuoteMode quoteMode = chosenRequest.getQuoteMode() != null ? chosenRequest.getQuoteMode() : QuoteMode.SURVEY_REQUIRED;
         order.setAssignedProvider(chosenRequest.getProvider());
         order.setWorkflowMode(quoteMode);
-        order.setAgreedSurveyFee(chosenRequest.getSurveyFee());
         order.setAgreedTravelFee(chosenRequest.getTravelFee());
-        order.setWaiveSurveyIfRepaired(chosenRequest.getWaiveSurveyIfRepaired());
         order.setWaiveTravelIfRepaired(chosenRequest.getWaiveTravelIfRepaired());
         order.setFinalLaborFee(chosenRequest.getEstimatedLaborFee());
         order.setFinalMaterialsFee(chosenRequest.getEstimatedMaterialsFee());
@@ -412,9 +410,7 @@ public class CustomerOrderService {
             }
         }
 
-        String actionDesc = (quoteMode == QuoteMode.SURVEY_REQUIRED)
-            ? "Khách chọn thợ " + chosenRequest.getProvider().getUser().getFullName() + " và đồng ý lịch khảo sát (Phí KS: " + order.getAgreedSurveyFee() + "đ, Phí di chuyển: " + order.getAgreedTravelFee() + "đ)"
-            : "Khách chọn thợ " + chosenRequest.getProvider().getUser().getFullName() + " theo gói giá cố định cam kết (" + order.getFinalPrice() + "đ)";
+        String actionDesc = "Khách chọn thợ " + chosenRequest.getProvider().getUser().getFullName() + " (Phí di chuyển: " + order.getAgreedTravelFee() + "đ, Công dự kiến: " + order.getFinalLaborFee() + "đ)";
 
         recordAuditLog(
             order,
@@ -583,8 +579,7 @@ public class CustomerOrderService {
             savedOrder.getStatus().name(),
             oldPaymentStatus,
             savedOrder.getPaymentStatus().name(),
-            "Khách từ chối sửa sau khảo sát. Hóa đơn chỉ tính Phí khảo sát (" + savedOrder.getAppliedSurveyFee()
-                + "đ) + Phí di chuyển (" + savedOrder.getAppliedTravelFee() + "đ) = " + savedOrder.getFinalPrice() + "đ. Hoa hồng = 0đ."
+            "Khách từ chối sửa sau khi thợ kiểm tra. Hóa đơn chỉ tính Phí di chuyển (" + savedOrder.getAppliedTravelFee() + "đ) = " + savedOrder.getFinalPrice() + "đ. Hoa hồng = 0đ."
         );
 
         return buildOrderDetailResponse(savedOrder, false);
@@ -709,7 +704,6 @@ public class CustomerOrderService {
             savedOrder.getFinalPrice(),
             savedOrder.getFinalLaborFee(),
             savedOrder.getFinalMaterialsFee(),
-            savedOrder.getAppliedSurveyFee(),
             savedOrder.getAppliedTravelFee(),
             savedOrder.getPaymentStatus().name(),
             "VIETQR_NAPAS_MBBANK",
@@ -826,8 +820,7 @@ public class CustomerOrderService {
 
         // Nếu thợ đã đến khảo sát và gửi báo giá cuối mà có phí khảo sát/di chuyển -> chuyển sang DECLINED_AFTER_SURVEY
         if (order.getStatus() == OrderStatus.AWAITING_CUSTOMER_APPROVAL
-            && ((order.getAgreedSurveyFee() != null && order.getAgreedSurveyFee() > 0)
-                || (order.getAgreedTravelFee() != null && order.getAgreedTravelFee() > 0))) {
+            && (order.getAgreedTravelFee() != null && order.getAgreedTravelFee() > 0)) {
             declineAfterSurvey(customerUserId, orderId, reason);
             return;
         }
@@ -955,11 +948,8 @@ public class CustomerOrderService {
             order.getServiceMetadata(),
             order.getStatus().name(),
             order.getWorkflowMode() != null ? order.getWorkflowMode().name() : QuoteMode.SURVEY_REQUIRED.name(),
-            order.getAgreedSurveyFee(),
             order.getAgreedTravelFee(),
-            order.getWaiveSurveyIfRepaired(),
             order.getWaiveTravelIfRepaired(),
-            order.getAppliedSurveyFee(),
             order.getAppliedTravelFee(),
             order.getFinalLaborFee(),
             order.getFinalMaterialsFee(),
@@ -1007,9 +997,7 @@ public class CustomerOrderService {
             provider.getPricePerHour(),
             req.getStatus().name(),
             req.getQuoteMode() != null ? req.getQuoteMode().name() : QuoteMode.SURVEY_REQUIRED.name(),
-            req.getSurveyFee(),
             req.getTravelFee(),
-            req.getWaiveSurveyIfRepaired(),
             req.getWaiveTravelIfRepaired(),
             req.getEstimatedLaborFee(),
             req.getEstimatedMaterialsFee(),
@@ -1047,9 +1035,7 @@ public class CustomerOrderService {
             v.getVersionNumber(),
             v.getVersionType().name(),
             v.getQuoteMode().name(),
-            v.getSurveyFee(),
             v.getTravelFee(),
-            v.getWaiveSurveyIfRepaired(),
             v.getWaiveTravelIfRepaired(),
             v.getLaborFee(),
             v.getMaterialsFee(),

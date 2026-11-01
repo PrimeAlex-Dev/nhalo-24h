@@ -47,11 +47,8 @@ export interface GenericOrderItem {
   scheduledTime?: string;
   status: string;
   workflowMode?: string;
-  agreedSurveyFee?: number;
   agreedTravelFee?: number;
-  waiveSurveyIfRepaired?: boolean;
   waiveTravelIfRepaired?: boolean;
-  appliedSurveyFee?: number;
   appliedTravelFee?: number;
   finalLaborFee?: number;
   finalMaterialsFee?: number;
@@ -166,17 +163,16 @@ export function OrderDetailModal({
       })
     : 'Chưa cập nhật';
 
-  // Khóa chết công thức toán học: Tổng = Tiền công + Vật tư + (Phí KS + Di chuyển)
-  const appliedSurvey = order.waiveSurveyIfRepaired ? 0 : (order.appliedSurveyFee ?? order.agreedSurveyFee ?? 0);
+  // Khóa chết công thức toán học: Tổng = Tiền công + Vật tư + Phí di chuyển
   const appliedTravel = order.waiveTravelIfRepaired ? 0 : (order.appliedTravelFee ?? order.agreedTravelFee ?? 0);
 
   const parsedAdjustLabor = parseInt(adjustLaborStr.replace(/\D/g, '') || '0', 10);
   const parsedAdjustMaterials = parseInt(adjustMaterialsStr.replace(/\D/g, '') || '0', 10);
-  const computedAdjustTotal = parsedAdjustLabor + parsedAdjustMaterials + appliedSurvey + appliedTravel;
+  const computedAdjustTotal = parsedAdjustLabor + parsedAdjustMaterials + appliedTravel;
 
   const parsedDisputeLabor = parseInt(disputeLaborStr.replace(/\D/g, '') || '0', 10);
   const parsedDisputeMaterials = parseInt(disputeMaterialsStr.replace(/\D/g, '') || '0', 10);
-  const computedDisputeTotal = parsedDisputeLabor + parsedDisputeMaterials + appliedSurvey + appliedTravel;
+  const computedDisputeTotal = parsedDisputeLabor + parsedDisputeMaterials + appliedTravel;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -497,35 +493,23 @@ export function OrderDetailModal({
           <div className="order-modal-col">
             <div className="order-section-card">
               <h3 className="order-section-title">
-                <CreditCard size={16} /> Chi tiết 3 nhóm chi phí & Hoa hồng nền tảng
+                <CreditCard size={16} /> Cơ cấu chi phí & Hoa hồng nền tảng
               </h3>
               <div className="order-info-list">
                 <div className="order-info-item">
-                  <span className="order-info-label">Chế độ báo giá:</span>
-                  <span className="order-info-val font-semibold">
-                    {order.workflowMode === 'COMMITTED_FIXED' ? 'Gói cố định (COMMITTED_FIXED)' : 'Cần khảo sát (SURVEY_REQUIRED)'}
-                  </span>
-                </div>
-                <div className="order-info-item">
-                  <span className="order-info-label">1. Phí khảo sát (Thỏa thuận / Áp dụng):</span>
-                  <span className="order-info-val">
-                    {(order.agreedSurveyFee ?? 0).toLocaleString('vi-VN')} đ / <strong>{(order.appliedSurveyFee ?? 0).toLocaleString('vi-VN')} đ</strong>
-                  </span>
-                </div>
-                <div className="order-info-item">
-                  <span className="order-info-label">2. Phí di chuyển (Thỏa thuận / Áp dụng):</span>
+                  <span className="order-info-label">Phí di chuyển (Thỏa thuận / Áp dụng):</span>
                   <span className="order-info-val">
                     {(order.agreedTravelFee ?? 0).toLocaleString('vi-VN')} đ / <strong>{(order.appliedTravelFee ?? 0).toLocaleString('vi-VN')} đ</strong>
                   </span>
                 </div>
                 <div className="order-info-item">
-                  <span className="order-info-label">3a. Tiền công thực tế (Cơ sở tính hoa hồng):</span>
+                  <span className="order-info-label">Tiền công thực tế (Cơ sở tính hoa hồng):</span>
                   <span className="order-info-val font-semibold">
                     {(order.finalLaborFee ?? 0).toLocaleString('vi-VN')} đ
                   </span>
                 </div>
                 <div className="order-info-item">
-                  <span className="order-info-label">3b. Tiền vật tư / linh kiện:</span>
+                  <span className="order-info-label">Tiền vật tư / linh kiện:</span>
                   <span className="order-info-val">
                     {(order.finalMaterialsFee ?? 0).toLocaleString('vi-VN')} đ
                   </span>

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  DollarSign,
   Clock,
   FileText,
   Loader2,
@@ -9,11 +8,10 @@ import {
   AlertCircle,
   ShieldCheck,
   Truck,
-  SearchCheck,
   Wrench,
 } from 'lucide-react';
 import { providerJobService } from '../../../services';
-import type { QuoteMode } from '../../../types/order';
+import { DongIcon } from '../../../components/common';
 import './SubmitQuotationModal.css';
 
 interface SubmitQuotationModalProps {
@@ -42,32 +40,24 @@ export function SubmitQuotationModal({
   orderTitle,
   onSuccess,
 }: SubmitQuotationModalProps) {
-  const [quoteMode, setQuoteMode] = useState<QuoteMode>('SURVEY_REQUIRED');
-  const [surveyFee, setSurveyFee] = useState<string>('50.000');
   const [travelFee, setTravelFee] = useState<string>('30.000');
-  const [waiveSurvey, setWaiveSurvey] = useState<boolean>(true);
-  const [waiveTravel, setWaiveTravel] = useState<boolean>(true);
   const [laborFee, setLaborFee] = useState<string>('');
   const [materialsFee, setMaterialsFee] = useState<string>('0');
   const [providerNote, setProviderNote] = useState<string>('');
   const [scopeAndConditions, setScopeAndConditions] = useState<string>(
-    'Miễn 100% phí khảo sát & di chuyển nếu khách hàng đồng ý sửa chữa sau khi kiểm tra thực tế.'
+    'Miễn 100% phí di chuyển nếu khách hàng đồng ý sửa chữa sau khi kiểm tra thực tế.'
   );
   const [arrivalHours, setArrivalHours] = useState<string>('1');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const resetForm = () => {
-    setQuoteMode('SURVEY_REQUIRED');
-    setSurveyFee('50.000');
     setTravelFee('30.000');
-    setWaiveSurvey(true);
-    setWaiveTravel(true);
     setLaborFee('');
     setMaterialsFee('0');
     setProviderNote('');
     setScopeAndConditions(
-      'Miễn 100% phí khảo sát & di chuyển nếu khách hàng đồng ý sửa chữa sau khi kiểm tra thực tế.'
+      'Miễn 100% phí di chuyển nếu khách hàng đồng ý sửa chữa sau khi kiểm tra thực tế.'
     );
     setArrivalHours('1');
     setErrorMsg(null);
@@ -87,22 +77,19 @@ export function SubmitQuotationModal({
 
   if (!isOpen || !requestId) return null;
 
-  const surveyNum = quoteMode === 'COMMITTED_FIXED' ? 0 : parseVnd(surveyFee);
-  const travelNum = quoteMode === 'COMMITTED_FIXED' ? 0 : parseVnd(travelFee);
+  const travelNum = parseVnd(travelFee);
   const laborNum = parseVnd(laborFee);
   const materialsNum = parseVnd(materialsFee);
 
-  const appliedSurveyIfRepaired = quoteMode === 'COMMITTED_FIXED' || waiveSurvey ? 0 : surveyNum;
-  const appliedTravelIfRepaired = quoteMode === 'COMMITTED_FIXED' || waiveTravel ? 0 : travelNum;
-  const totalEstimatedIfRepaired =
-    appliedSurveyIfRepaired + appliedTravelIfRepaired + laborNum + materialsNum;
-  const feeIfDeclinedAfterSurvey = surveyNum + travelNum;
+  // Khách sửa: Phí di chuyển = 0đ (miễn phí theo chính sách sàn)
+  const totalEstimatedIfRepaired = laborNum + materialsNum;
+  const feeIfDeclinedAfterSurvey = travelNum;
   const estimatedCommission = Math.round(laborNum * 0.1);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (laborNum <= 0 && surveyNum <= 0) {
-      setErrorMsg('Vui lòng nhập Tiền công dự kiến (hoặc Phí khảo sát) lớn hơn 0.');
+    if (laborNum <= 0 && travelNum <= 0) {
+      setErrorMsg('Vui lòng nhập Tiền công dự kiến (hoặc Phí di chuyển) lớn hơn 0.');
       return;
     }
 
@@ -114,11 +101,8 @@ export function SubmitQuotationModal({
       const arrivalDate = new Date(Date.now() + hours * 3600 * 1000);
 
       await providerJobService.submitQuotation(requestId, {
-        quoteMode,
-        surveyFee: surveyNum,
         travelFee: travelNum,
-        waiveSurveyIfRepaired: quoteMode === 'COMMITTED_FIXED' ? true : waiveSurvey,
-        waiveTravelIfRepaired: quoteMode === 'COMMITTED_FIXED' ? true : waiveTravel,
+        waiveTravelIfRepaired: true,
         estimatedLaborFee: laborNum,
         estimatedMaterialsFee: materialsNum,
         quotedPrice: totalEstimatedIfRepaired > 0 ? totalEstimatedIfRepaired : feeIfDeclinedAfterSurvey,
@@ -141,15 +125,22 @@ export function SubmitQuotationModal({
     <div className="quote-modal-backdrop" onClick={handleClose}>
       <div
         className="quote-modal-dialog"
-        style={{ maxWidth: '640px' }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
+        {/* Header */}
         <div className="quote-modal-header">
-          <div>
-            <h3 className="quote-modal-title">Gửi Báo Giá Chuẩn 3 Nhóm Chi Phí</h3>
-            {orderTitle && <p className="quote-modal-subtitle">Đơn: {orderTitle}</p>}
+          <div className="quote-modal-header-left">
+            <div className="quote-modal-icon-badge">
+              <DongIcon size={20} />
+            </div>
+            <div>
+              <h3 className="quote-modal-title">Gửi Báo Giá Dịch Vụ</h3>
+              <p className="quote-modal-subtitle">
+                Đơn hàng: <strong>{orderTitle || 'Yêu cầu dịch vụ'}</strong>
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -157,7 +148,7 @@ export function SubmitQuotationModal({
             onClick={handleClose}
             aria-label="Đóng"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
@@ -169,213 +160,87 @@ export function SubmitQuotationModal({
         )}
 
         <form onSubmit={handleSubmit} className="quote-modal-form">
-          <div className="quote-modal-body" style={{ maxHeight: '72vh', overflowY: 'auto' }}>
-            {/* Chọn chế độ báo giá */}
-            <div className="form-group">
-              <label className="form-label">
-                <Wrench size={16} className="text-blue" />
-                <span>Hình thức báo giá & quy trình làm việc *</span>
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setQuoteMode('SURVEY_REQUIRED')}
-                  style={{
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: quoteMode === 'SURVEY_REQUIRED' ? '2px solid #2563eb' : '1px solid #e2e8f0',
-                    background: quoteMode === 'SURVEY_REQUIRED' ? '#eff6ff' : '#fff',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b', marginBottom: 4 }}>
-                    🔍 Cần khảo sát thực tế
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.4 }}>
-                    Báo giá sơ bộ trước, đến kiểm tra thực tế rồi chốt giá cuối & vật tư (Phù hợp Sửa chữa / Vệ sinh thực tế).
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setQuoteMode('COMMITTED_FIXED')}
-                  style={{
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: quoteMode === 'COMMITTED_FIXED' ? '2px solid #2563eb' : '1px solid #e2e8f0',
-                    background: quoteMode === 'COMMITTED_FIXED' ? '#eff6ff' : '#fff',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b', marginBottom: 4 }}>
-                    ✅ Báo giá cố định cam kết
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.4 }}>
-                    Cam kết đúng giá theo mô tả ban đầu, khách chọn là bắt đầu làm ngay (Phù hợp Gói vệ sinh chuẩn).
-                  </div>
-                </button>
+          <div className="quote-modal-body">
+            {/* Khối Cơ Cấu Chi Phí Hợp Nhất */}
+            <div className="quote-pricing-card">
+              <div className="quote-pricing-card-header">
+                <span className="quote-pricing-card-title">
+                  <Truck size={16} style={{ color: '#2563EB' }} />
+                  <span>Phí di chuyển / kiểm tra</span>
+                </span>
+                <span className="quote-free-badge">
+                  Miễn phí khi khách sửa
+                </span>
               </div>
-            </div>
 
-            {/* Nhóm 1 & Nhóm 2: Phí khảo sát & Phí di chuyển (Chỉ hiện khi SURVEY_REQUIRED) */}
-            {quoteMode === 'SURVEY_REQUIRED' && (
-              <div
-                style={{
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '12px',
-                  padding: '14px',
-                  marginBottom: '16px',
-                }}
-              >
-                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a', marginBottom: '10px' }}>
-                  Nhóm 1 & 2: Phí khảo sát và Phí di chuyển
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div>
-                    <label className="form-label" style={{ fontSize: '0.82rem' }}>
-                      <SearchCheck size={14} className="text-blue" />
-                      <span>1. Phí khảo sát (VNĐ)</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="price-input"
-                      style={{ padding: '8px 12px', fontSize: '0.95rem' }}
-                      placeholder="50.000"
-                      value={surveyFee}
-                      onChange={(e) => setSurveyFee(formatVndInput(e.target.value))}
-                    />
-                    <label
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        fontSize: '0.78rem',
-                        color: '#334155',
-                        marginTop: '6px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={waiveSurvey}
-                        onChange={(e) => setWaiveSurvey(e.target.checked)}
-                      />
-                      <span>Miễn phí khảo sát nếu khách đồng ý sửa</span>
-                    </label>
-                  </div>
-
-                  <div>
-                    <label className="form-label" style={{ fontSize: '0.82rem' }}>
-                      <Truck size={14} className="text-blue" />
-                      <span>2. Phí di chuyển (VNĐ)</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="price-input"
-                      style={{ padding: '8px 12px', fontSize: '0.95rem' }}
-                      placeholder="30.000"
-                      value={travelFee}
-                      onChange={(e) => setTravelFee(formatVndInput(e.target.value))}
-                    />
-                    <label
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        fontSize: '0.78rem',
-                        color: '#334155',
-                        marginTop: '6px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={waiveTravel}
-                        onChange={(e) => setWaiveTravel(e.target.checked)}
-                      />
-                      <span>Miễn phí di chuyển nếu khách đồng ý sửa</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Nhóm 3: Tiền công & Vật tư */}
-            <div
-              style={{
-                background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                borderRadius: '12px',
-                padding: '14px',
-                marginBottom: '16px',
-              }}
-            >
-              <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#14532d', marginBottom: '10px' }}>
-                Nhóm 3: Tiền công & Vật tư {quoteMode === 'SURVEY_REQUIRED' ? '(Dự kiến ban đầu)' : '(Giá cam kết)'}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label className="form-label" style={{ fontSize: '0.82rem' }}>
-                    <DollarSign size={14} className="text-blue" />
-                    <span>Tiền công thợ (VNĐ) *</span>
-                  </label>
+              <div>
+                <div className="price-input-wrapper">
                   <input
                     type="text"
                     className="price-input"
-                    style={{ padding: '8px 12px', fontSize: '0.95rem' }}
-                    placeholder="Ví dụ: 200.000"
-                    value={laborFee}
-                    onChange={(e) => setLaborFee(formatVndInput(e.target.value))}
-                    autoFocus
+                    placeholder="30.000"
+                    value={travelFee}
+                    onChange={(e) => setTravelFee(formatVndInput(e.target.value))}
                   />
+                  <span className="currency-suffix">VNĐ</span>
+                </div>
+                <p className="form-hint" style={{ marginTop: '0.35rem' }}>
+                  Đã gồm công đi lại & kiểm tra. Thợ nhận khoản này nếu khách quyết định dừng đơn sau khi kiểm tra.
+                </p>
+              </div>
+
+              {/* Grid 2 cột: Tiền công & Vật tư */}
+              <div className="quote-pricing-grid">
+                <div className="form-group">
+                  <label className="form-label">
+                    <DongIcon size={14} style={{ color: '#2563EB' }} />
+                    <span>Tiền công thợ *</span>
+                  </label>
+                  <div className="price-input-wrapper">
+                    <input
+                      type="text"
+                      className="price-input"
+                      placeholder="Ví dụ: 200.000"
+                      value={laborFee}
+                      onChange={(e) => setLaborFee(formatVndInput(e.target.value))}
+                      autoFocus
+                    />
+                    <span className="currency-suffix">VNĐ</span>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="form-label" style={{ fontSize: '0.82rem' }}>
-                    <Wrench size={14} className="text-blue" />
-                    <span>Tiền vật tư / linh kiện dự kiến (VNĐ)</span>
+                <div className="form-group">
+                  <label className="form-label">
+                    <Wrench size={14} style={{ color: '#2563EB' }} />
+                    <span>Vật tư dự kiến</span>
                   </label>
-                  <input
-                    type="text"
-                    className="price-input"
-                    style={{ padding: '8px 12px', fontSize: '0.95rem' }}
-                    placeholder="Ví dụ: 100.000 (hoặc 0)"
-                    value={materialsFee}
-                    onChange={(e) => setMaterialsFee(formatVndInput(e.target.value))}
-                  />
+                  <div className="price-input-wrapper">
+                    <input
+                      type="text"
+                      className="price-input"
+                      placeholder="0"
+                      value={materialsFee}
+                      onChange={(e) => setMaterialsFee(formatVndInput(e.target.value))}
+                    />
+                    <span className="currency-suffix">VNĐ</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Minh bạch hoa hồng cho thợ */}
-              <div
-                style={{
-                  marginTop: '10px',
-                  paddingTop: '10px',
-                  borderTop: '1px dashed #86efac',
-                  fontSize: '0.8rem',
-                  color: '#166534',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Tổng khách trả dự kiến (khi đồng ý làm):</span>
+              {/* Bảng tóm tắt tài chính minh bạch */}
+              <div className="quote-summary-box">
+                <div className="quote-summary-row primary">
+                  <span>Tổng khách trả khi sửa (Công + Vật tư):</span>
                   <strong>{totalEstimatedIfRepaired.toLocaleString('vi-VN')} đ</strong>
                 </div>
-                {quoteMode === 'SURVEY_REQUIRED' && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
-                    <span>Nếu khách từ chối sửa sau khảo sát (Khách trả KS + Di chuyển):</span>
-                    <strong>{feeIfDeclinedAfterSurvey.toLocaleString('vi-VN')} đ (Hoa hồng: 0đ)</strong>
-                  </div>
-                )}
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div className="quote-summary-row sub">
+                  <span>Nếu khách từ chối sửa sau kiểm tra:</span>
+                  <strong>{feeIfDeclinedAfterSurvey.toLocaleString('vi-VN')} đ (Hoa hồng: 0đ)</strong>
+                </div>
+                <div className="quote-summary-row commission">
                   <span>
                     <ShieldCheck size={13} style={{ display: 'inline', marginRight: 4 }} />
-                    Hoa hồng nền tảng (10% chỉ tính trên Tiền công, 0% vật tư):
+                    Hoa hồng nền tảng (10% chỉ tính trên Tiền công):
                   </span>
                   <strong>{estimatedCommission.toLocaleString('vi-VN')} đ</strong>
                 </div>
@@ -385,7 +250,7 @@ export function SubmitQuotationModal({
             {/* Thời gian ước tính có mặt */}
             <div className="form-group">
               <label className="form-label">
-                <Clock size={16} className="text-blue" />
+                <Clock size={15} style={{ color: '#2563EB' }} />
                 <span>Ước tính có mặt sau</span>
               </label>
               <select
@@ -402,11 +267,11 @@ export function SubmitQuotationModal({
               </select>
             </div>
 
-            {/* Ghi chú giải pháp & phạm vi điều kiện */}
+            {/* Ghi chú giải pháp */}
             <div className="form-group">
               <label className="form-label">
-                <FileText size={16} className="text-blue" />
-                <span>Phương án kiểm tra, phạm vi công việc & cam kết bảo hành</span>
+                <FileText size={15} style={{ color: '#2563EB' }} />
+                <span>Phương án kiểm tra, thi công & cam kết bảo hành</span>
               </label>
               <textarea
                 className="form-textarea"
@@ -417,21 +282,23 @@ export function SubmitQuotationModal({
               />
             </div>
 
-            {quoteMode === 'SURVEY_REQUIRED' && (
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">
-                  <span>Điều kiện miễn phí khảo sát / di chuyển & lưu ý phát sinh</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-select"
-                  value={scopeAndConditions}
-                  onChange={(e) => setScopeAndConditions(e.target.value)}
-                />
-              </div>
-            )}
+            {/* Lưu ý phát sinh */}
+            <div className="form-group">
+              <label className="form-label">
+                <ShieldCheck size={15} style={{ color: '#2563EB' }} />
+                <span>Lưu ý phát sinh hoặc cam kết thêm (nếu có)</span>
+              </label>
+              <input
+                type="text"
+                className="form-select"
+                placeholder="Ví dụ: Đã bao gồm trọn gói công và vật tư, không phụ thu..."
+                value={scopeAndConditions}
+                onChange={(e) => setScopeAndConditions(e.target.value)}
+              />
+            </div>
           </div>
 
+          {/* Footer */}
           <div className="quote-modal-footer">
             <button
               type="button"
@@ -444,16 +311,16 @@ export function SubmitQuotationModal({
             <button
               type="submit"
               className="btn-quote-submit"
-              disabled={loading || (laborNum <= 0 && surveyNum <= 0)}
+              disabled={loading || (laborNum <= 0 && travelNum <= 0)}
             >
               {loading ? (
                 <>
-                  <Loader2 size={17} className="spin-icon" />
+                  <Loader2 size={16} className="spin-icon" />
                   <span>Đang gửi...</span>
                 </>
               ) : (
                 <>
-                  <CheckCircle2 size={17} />
+                  <CheckCircle2 size={16} />
                   <span>Xác nhận gửi báo giá</span>
                 </>
               )}

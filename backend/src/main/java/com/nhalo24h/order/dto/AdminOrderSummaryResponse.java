@@ -46,11 +46,8 @@ public record AdminOrderSummaryResponse(
     @Schema(description = "Phương thức thanh toán")
     String paymentMethod,
 
-    @Schema(description = "Chế độ quy trình (SURVEY_REQUIRED / COMMITTED_FIXED)")
+    @Schema(description = "Chế độ quy trình")
     String workflowMode,
-
-    @Schema(description = "Phí khảo sát áp dụng (VNĐ)")
-    Long appliedSurveyFee,
 
     @Schema(description = "Phí di chuyển áp dụng (VNĐ)")
     Long appliedTravelFee,

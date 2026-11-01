@@ -59,23 +59,14 @@ public record ProviderJobResponse(
     @Schema(description = "Trạng thái công việc của đơn")
     String orderStatus,
 
-    @Schema(description = "Chế độ báo giá / quy trình (SURVEY_REQUIRED hoặc COMMITTED_FIXED)")
+    @Schema(description = "Chế độ báo giá / quy trình")
     String quoteMode,
-
-    @Schema(description = "Phí khảo sát (VNĐ)")
-    Long surveyFee,
 
     @Schema(description = "Phí di chuyển (VNĐ)")
     Long travelFee,
 
-    @Schema(description = "Miễn phí khảo sát nếu sửa")
-    Boolean waiveSurveyIfRepaired,
-
     @Schema(description = "Miễn phí di chuyển nếu sửa")
     Boolean waiveTravelIfRepaired,
-
-    @Schema(description = "Phí khảo sát áp dụng vào hóa đơn cuối (VNĐ)")
-    Long appliedSurveyFee,
 
     @Schema(description = "Phí di chuyển áp dụng vào hóa đơn cuối (VNĐ)")
     Long appliedTravelFee,
@@ -98,7 +89,7 @@ public record ProviderJobResponse(
     @Schema(description = "Ghi chú đã gửi của thợ")
     String providerNote,
 
-    @Schema(description = "Phạm vi kiểm tra & điều kiện miễn phí")
+    @Schema(description = "Phạm vi kiểm tra & lưu ý phát sinh")
     String scopeAndConditions,
 
     @Schema(description = "Ghi chú hoàn thành công việc")
