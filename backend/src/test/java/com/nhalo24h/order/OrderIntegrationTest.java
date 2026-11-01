@@ -361,16 +361,14 @@ class OrderIntegrationTest {
         // Tiền công dự kiến: 200.000đ, Vật tư dự kiến: 100.000đ
         SubmitQuotationRequest initialQuote = new SubmitQuotationRequest(
             300000L,
-            "Kiểm tra bo mạch và tụ đề cục nóng. Miễn phí khảo sát & di chuyển nếu anh đồng ý sửa.",
+            "Kiểm tra bo mạch và tụ đề cục nóng. Miễn phí di chuyển nếu anh đồng ý sửa.",
             Instant.now().plusSeconds(3600),
             QuoteMode.SURVEY_REQUIRED,
-            50000L,
             30000L,
-            true,
             true,
             200000L,
             100000L,
-            "Miễn 100% phí khảo sát (50k) và di chuyển (30k) khi đồng ý sửa chữa.",
+            "Miễn 100% phí di chuyển (30k) khi đồng ý sửa chữa.",
             List.of(new QuoteItemDto(null, "Tụ đề dự kiến", "Cái", 1, 100000L, 100000L, "Dự kiến"))
         );
 
@@ -387,7 +385,6 @@ class OrderIntegrationTest {
 
         Order afterAccept = orderRepository.findById(orderId).orElseThrow();
         assertThat(afterAccept.getStatus()).isEqualTo(OrderStatus.AWAITING_SURVEY);
-        assertThat(afterAccept.getAgreedSurveyFee()).isEqualTo(50000L);
         assertThat(afterAccept.getAgreedTravelFee()).isEqualTo(30000L);
 
         // 4. Thợ 1 đến khảo sát thực tế và gửi Báo giá cuối:
@@ -417,7 +414,6 @@ class OrderIntegrationTest {
                 .header("Authorization", "Bearer " + customerToken))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
-            .andExpect(jsonPath("$.appliedSurveyFee").value(0))
             .andExpect(jsonPath("$.appliedTravelFee").value(0))
             .andExpect(jsonPath("$.finalLaborFee").value(250000))
             .andExpect(jsonPath("$.finalMaterialsFee").value(180000))
@@ -523,13 +519,11 @@ class OrderIntegrationTest {
             "Kiểm tra hộp số máy giặt",
             Instant.now().plusSeconds(3600),
             QuoteMode.SURVEY_REQUIRED,
-            50000L,
-            30000L,
-            true,
+            80000L,
             true,
             300000L,
             500000L,
-            "Nếu không sửa sau khi kiểm tra, khách vui lòng thanh toán phí khảo sát 50k và di chuyển 30k.",
+            "Nếu không sửa sau khi kiểm tra, khách vui lòng thanh toán phí di chuyển 80k.",
             null
         );
         mockMvc.perform(post("/api/v1/provider/requests/" + requestId1 + "/quote")
@@ -565,8 +559,7 @@ class OrderIntegrationTest {
                 .content(objectMapper.writeValueAsString(declineDto)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("DECLINED_AFTER_SURVEY"))
-            .andExpect(jsonPath("$.appliedSurveyFee").value(50000))
-            .andExpect(jsonPath("$.appliedTravelFee").value(30000))
+            .andExpect(jsonPath("$.appliedTravelFee").value(80000))
             .andExpect(jsonPath("$.finalLaborFee").value(0))
             .andExpect(jsonPath("$.finalMaterialsFee").value(0))
             .andExpect(jsonPath("$.finalPrice").value(80000))
@@ -606,8 +599,6 @@ class OrderIntegrationTest {
             Instant.now().plusSeconds(3600),
             QuoteMode.COMMITTED_FIXED,
             0L,
-            0L,
-            true,
             true,
             250000L,
             180000L,
@@ -1021,9 +1012,7 @@ class OrderIntegrationTest {
             "Có mặt sau 20 phút",
             Instant.now().plusSeconds(3600),
             QuoteMode.SURVEY_REQUIRED,
-            50000L,
             20000L,
-            true,
             true,
             200000L,
             100000L,
@@ -1083,9 +1072,7 @@ class OrderIntegrationTest {
             "Đang chuẩn bị dụng cụ",
             Instant.now().plusSeconds(3600),
             QuoteMode.SURVEY_REQUIRED,
-            50000L,
             30000L,
-            true,
             true,
             150000L,
             0L,

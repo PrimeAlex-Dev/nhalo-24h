@@ -146,28 +146,21 @@ export function AcceptQuotationModal({
               }}>
                 <div style={{ fontWeight: 600, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.15rem' }}>
                   <Layers size={13} />
-                  <span>Bóc tách 3 nhóm chi phí minh bạch:</span>
+                  <span>Cơ cấu chi phí minh bạch:</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#334155' }}>
-                  <span>1. Phí khảo sát kiểm tra:</span>
-                  <span>
-                    <strong>{(quotation.surveyFee ?? 0).toLocaleString('vi-VN')} đ</strong>
-                    {quotation.waiveSurveyIfRepaired ? ' (Miễn phí khi sửa)' : ''}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#334155' }}>
-                  <span>2. Phí di chuyển:</span>
+                  <span>Phí di chuyển:</span>
                   <span>
                     <strong>{(quotation.travelFee ?? 0).toLocaleString('vi-VN')} đ</strong>
-                    {quotation.waiveTravelIfRepaired ? ' (Miễn phí khi sửa)' : ''}
+                    {' (Miễn phí 100% khi sửa)'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#334155' }}>
-                  <span>3a. Tiền công {isCommittedFixed ? 'cam kết' : 'dự kiến'}:</span>
+                  <span>Tiền công dự kiến:</span>
                   <strong>{(quotation.estimatedLaborFee ?? 0).toLocaleString('vi-VN')} đ</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#334155' }}>
-                  <span>3b. Tiền vật tư {isCommittedFixed ? 'đi kèm' : 'dự kiến'}:</span>
+                  <span>Tiền vật tư dự kiến:</span>
                   <strong>{(quotation.estimatedMaterialsFee ?? 0).toLocaleString('vi-VN')} đ</strong>
                 </div>
               </div>
@@ -210,15 +203,7 @@ export function AcceptQuotationModal({
           <div className="accept-notice-box">
             <ShieldCheck size={18} className="notice-icon" />
             <div className="notice-text">
-              {isCommittedFixed ? (
-                <>
-                  Đây là <strong>Gói báo giá cố định cam kết theo mô tả</strong>. Khi bạn đồng ý, đơn hàng sẽ chuyển thẳng sang trạng thái <strong>Đang thực hiện (IN_PROGRESS)</strong>.
-                </>
-              ) : (
-                <>
-                  Đây là <strong>Báo giá cần khảo sát thực tế</strong>. Khi bạn đồng ý, đơn chuyển sang <strong>Chờ khảo sát (AWAITING_SURVEY)</strong>. Sau khi kiểm tra tại nhà, thợ sẽ gửi Báo giá cuối kèm danh sách vật tư để bạn bấm duyệt trước khi sửa. Nếu bạn quyết định không sửa sau khi khảo sát, bạn chỉ thanh toán Phí khảo sát + Phí di chuyển ({((quotation.surveyFee ?? 0) + (quotation.travelFee ?? 0)).toLocaleString('vi-VN')} đ).
-                </>
-              )}
+              Thợ sẽ đến tận nơi để kiểm tra và tiến hành sửa chữa theo báo giá. Phí di chuyển được <strong>MIỄN PHÍ 100%</strong> nếu bạn đồng ý sửa chữa theo quy định của sàn. Nếu thợ đã đến kiểm tra mà bạn quyết định không sửa, bạn chỉ thanh toán Phí di chuyển (<strong>{(quotation.travelFee ?? 0).toLocaleString('vi-VN')} đ</strong>) cho thợ.
             </div>
           </div>
         </div>

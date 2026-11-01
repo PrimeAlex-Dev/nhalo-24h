@@ -14,33 +14,66 @@
   background: #FFFFFF;
   border-radius: 18px;
   width: 100%;
-  max-width: 520px;
+  max-width: 540px;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   overflow: hidden;
-  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideUpQuote 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpQuote {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .quote-modal-header {
-  padding: 1.25rem 1.5rem 1rem;
+  padding: 1.15rem 1.5rem;
   border-bottom: 1px solid #E2E8F0;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
+  background: #FFFFFF;
+}
+
+.quote-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.quote-modal-icon-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #EFF6FF;
+  color: #1D6AE5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .quote-modal-title {
-  margin: 0 0 0.2rem;
-  font-size: 1.15rem;
+  margin: 0;
+  font-size: 1.1rem;
   font-weight: 800;
   color: #0F172A;
+  line-height: 1.3;
 }
 
 .quote-modal-subtitle {
-  margin: 0;
+  margin: 0.15rem 0 0;
   font-size: 0.825rem;
   color: #64748B;
+  line-height: 1.3;
 }
 
 .quote-modal-close {
@@ -55,6 +88,7 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .quote-modal-close:hover {
@@ -78,23 +112,68 @@
 .quote-modal-form {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .quote-modal-body {
   padding: 1.25rem 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  gap: 1rem;
+  overflow-y: auto;
+  max-height: calc(90vh - 145px);
+}
+
+/* Pricing Card Box */
+.quote-pricing-card {
+  background: #F8FAFC;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.quote-pricing-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.quote-pricing-card-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0F172A;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.quote-free-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #15803D;
+  background: #DCFCE7;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid #BBF7D0;
+}
+
+.quote-pricing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .form-label {
-  font-size: 0.85rem;
+  font-size: 0.825rem;
   font-weight: 700;
   color: #334155;
   display: flex;
@@ -110,13 +189,14 @@
 
 .price-input {
   width: 100%;
-  padding: 0.75rem 3.5rem 0.75rem 0.9rem;
-  font-size: 1.15rem;
+  padding: 0.65rem 3rem 0.65rem 0.85rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: #0F172A;
-  border: 2px solid #CBD5E1;
-  border-radius: 12px;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 10px;
   outline: none;
+  background: #FFFFFF;
   box-sizing: border-box;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -128,42 +208,93 @@
 
 .currency-suffix {
   position: absolute;
-  right: 1rem;
-  font-weight: 800;
-  color: #64748B;
-  font-size: 0.95rem;
+  right: 0.85rem;
+  font-weight: 700;
+  color: #94A3B8;
+  font-size: 0.85rem;
   pointer-events: none;
 }
 
 .form-hint {
   font-size: 0.75rem;
   color: #64748B;
-  margin-top: 0.2rem;
+  line-height: 1.35;
+  margin: 0;
+}
+
+/* Summary Box */
+.quote-summary-box {
+  padding-top: 0.75rem;
+  border-top: 1px dashed #CBD5E1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+}
+
+.quote-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.quote-summary-row.primary {
+  color: #166534;
+  font-weight: 600;
+}
+
+.quote-summary-row.primary strong {
+  font-size: 0.95rem;
+  color: #15803D;
+  font-weight: 800;
+}
+
+.quote-summary-row.sub {
+  color: #64748B;
+}
+
+.quote-summary-row.sub strong {
+  color: #475569;
+  font-weight: 600;
+}
+
+.quote-summary-row.commission {
+  color: #0369A1;
+  padding-top: 0.25rem;
+  border-top: 1px dotted #E2E8F0;
+}
+
+.quote-summary-row.commission strong {
+  color: #0284C7;
+  font-weight: 700;
 }
 
 .form-select, .form-textarea {
   width: 100%;
-  padding: 0.65rem 0.85rem;
-  font-size: 0.9rem;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.875rem;
   border: 1.5px solid #CBD5E1;
   border-radius: 10px;
   outline: none;
   font-family: inherit;
+  background: #FFFFFF;
   box-sizing: border-box;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .form-select:focus, .form-textarea:focus {
   border-color: #1D6AE5;
+  box-shadow: 0 0 0 3px rgba(29, 106, 229, 0.12);
 }
 
 .quote-modal-footer {
-  padding: 1rem 1.5rem;
+  padding: 0.9rem 1.5rem;
   background: #F8FAFC;
   border-top: 1px solid #E2E8F0;
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 .btn-quote-cancel {
@@ -172,13 +303,15 @@
   border: 1.5px solid #CBD5E1;
   border-radius: 10px;
   color: #475569;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.btn-quote-cancel:hover {
+.btn-quote-cancel:hover:not(:disabled) {
   background: #F1F5F9;
+  border-color: #94A3B8;
 }
 
 .btn-quote-submit {
@@ -187,12 +320,12 @@
   border: none;
   border-radius: 10px;
   color: #FFFFFF;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   transition: background 0.2s ease;
 }
 
@@ -200,7 +333,16 @@
   background: #1550B5;
 }
 
-.btn-quote-submit:disabled {
+.btn-quote-submit:disabled, .btn-quote-cancel:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

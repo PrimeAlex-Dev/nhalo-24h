@@ -221,11 +221,8 @@ public class ProviderJobService {
             matchedRequest != null ? matchedRequest.getStatus().name() : OrderRequestStatus.ACCEPTED.name(),
             order.getStatus().name(),
             order.getWorkflowMode() != null ? order.getWorkflowMode().name() : QuoteMode.SURVEY_REQUIRED.name(),
-            order.getAgreedSurveyFee(),
             order.getAgreedTravelFee(),
-            order.getWaiveSurveyIfRepaired(),
             order.getWaiveTravelIfRepaired(),
-            order.getAppliedSurveyFee(),
             order.getAppliedTravelFee(),
             order.getFinalLaborFee(),
             order.getFinalMaterialsFee(),
@@ -286,9 +283,7 @@ public class ProviderJobService {
         }
 
         QuoteMode quoteMode = request.quoteMode() != null ? request.quoteMode() : QuoteMode.SURVEY_REQUIRED;
-        long surveyFee = request.surveyFee() != null ? request.surveyFee() : 0L;
         long travelFee = request.travelFee() != null ? request.travelFee() : 0L;
-        boolean waiveSurvey = request.waiveSurveyIfRepaired() != null ? request.waiveSurveyIfRepaired() : true;
         boolean waiveTravel = request.waiveTravelIfRepaired() != null ? request.waiveTravelIfRepaired() : true;
 
         long materialsFeeFromItems = 0L;
@@ -312,22 +307,19 @@ public class ProviderJobService {
             estimatedLaborFee = 0L;
         }
 
-        long appliedSurvey = waiveSurvey ? 0L : surveyFee;
         long appliedTravel = waiveTravel ? 0L : travelFee;
-        long totalEstimated = appliedSurvey + appliedTravel + estimatedLaborFee + estimatedMaterialsFee;
+        long totalEstimated = appliedTravel + estimatedLaborFee + estimatedMaterialsFee;
 
-        if (totalEstimated <= 0 && surveyFee <= 0 && travelFee <= 0) {
-            throw new AppException(ErrorCode.INVALID_INPUT, "Vui lòng nhập tiền công dự kiến hoặc phí khảo sát/di chuyển lớn hơn 0");
+        if (totalEstimated <= 0 && travelFee <= 0) {
+            throw new AppException(ErrorCode.INVALID_INPUT, "Vui lòng nhập tiền công dự kiến hoặc phí di chuyển lớn hơn 0");
         }
 
         orderRequest.setQuoteMode(quoteMode);
-        orderRequest.setSurveyFee(surveyFee);
         orderRequest.setTravelFee(travelFee);
-        orderRequest.setWaiveSurveyIfRepaired(waiveSurvey);
         orderRequest.setWaiveTravelIfRepaired(waiveTravel);
         orderRequest.setEstimatedLaborFee(estimatedLaborFee);
         orderRequest.setEstimatedMaterialsFee(estimatedMaterialsFee);
-        orderRequest.setQuotedPrice(totalEstimated > 0 ? totalEstimated : (surveyFee + travelFee));
+        orderRequest.setQuotedPrice(totalEstimated > 0 ? totalEstimated : travelFee);
         orderRequest.setProviderNote(request.providerNote() != null ? request.providerNote().trim() : null);
         orderRequest.setScopeAndConditions(request.scopeAndConditions() != null ? request.scopeAndConditions().trim() : null);
         orderRequest.setEstimatedArrivalTime(request.estimatedArrivalTime());
@@ -353,9 +345,7 @@ public class ProviderJobService {
         version.setVersionNumber(1);
         version.setVersionType(QuoteVersionType.INITIAL_ESTIMATE);
         version.setQuoteMode(quoteMode);
-        version.setSurveyFee(surveyFee);
         version.setTravelFee(travelFee);
-        version.setWaiveSurveyIfRepaired(waiveSurvey);
         version.setWaiveTravelIfRepaired(waiveTravel);
         version.setLaborFee(estimatedLaborFee);
         version.setMaterialsFee(estimatedMaterialsFee);
@@ -380,7 +370,7 @@ public class ProviderJobService {
             order.getPaymentStatus().name(),
             order.getPaymentStatus().name(),
             "Thợ " + profile.getUser().getFullName() + " gửi báo giá (" + quoteMode.name() + "): Công "
-                + estimatedLaborFee + "đ, Vật tư " + estimatedMaterialsFee + "đ, KS " + surveyFee + "đ, Di chuyển " + travelFee + "đ"
+                + estimatedLaborFee + "đ, Vật tư " + estimatedMaterialsFee + "đ, Di chuyển " + travelFee + "đ"
         );
     }
 
@@ -440,9 +430,8 @@ public class ProviderJobService {
             }
         }
 
-        long appliedSurvey = Boolean.TRUE.equals(order.getWaiveSurveyIfRepaired()) ? 0L : order.getAgreedSurveyFee();
         long appliedTravel = Boolean.TRUE.equals(order.getWaiveTravelIfRepaired()) ? 0L : order.getAgreedTravelFee();
-        long totalAmount = appliedSurvey + appliedTravel + laborFee + materialsFee;
+        long totalAmount = appliedTravel + laborFee + materialsFee;
 
         OrderQuoteVersion surveyVersion = new OrderQuoteVersion();
         surveyVersion.setOrder(order);
@@ -451,9 +440,7 @@ public class ProviderJobService {
         surveyVersion.setVersionNumber(nextVersionNum);
         surveyVersion.setVersionType(QuoteVersionType.POST_SURVEY_FINAL);
         surveyVersion.setQuoteMode(order.getWorkflowMode());
-        surveyVersion.setSurveyFee(order.getAgreedSurveyFee());
         surveyVersion.setTravelFee(order.getAgreedTravelFee());
-        surveyVersion.setWaiveSurveyIfRepaired(order.getWaiveSurveyIfRepaired());
         surveyVersion.setWaiveTravelIfRepaired(order.getWaiveTravelIfRepaired());
         surveyVersion.setLaborFee(laborFee);
         surveyVersion.setMaterialsFee(materialsFee);
@@ -523,9 +510,8 @@ public class ProviderJobService {
             }
         }
 
-        long appliedSurvey = Boolean.TRUE.equals(order.getWaiveSurveyIfRepaired()) ? 0L : order.getAgreedSurveyFee();
         long appliedTravel = Boolean.TRUE.equals(order.getWaiveTravelIfRepaired()) ? 0L : order.getAgreedTravelFee();
-        long totalAmount = appliedSurvey + appliedTravel + laborFee + materialsFee;
+        long totalAmount = appliedTravel + laborFee + materialsFee;
 
         OrderRequest initialReq = orderRequestRepository.findByOrderIdAndProviderId(order.getId(), profile.getId()).orElse(null);
 
@@ -536,9 +522,7 @@ public class ProviderJobService {
         changeVersion.setVersionNumber(nextVersionNum);
         changeVersion.setVersionType(QuoteVersionType.IN_PROGRESS_CHANGE);
         changeVersion.setQuoteMode(order.getWorkflowMode());
-        changeVersion.setSurveyFee(order.getAgreedSurveyFee());
         changeVersion.setTravelFee(order.getAgreedTravelFee());
-        changeVersion.setWaiveSurveyIfRepaired(order.getWaiveSurveyIfRepaired());
         changeVersion.setWaiveTravelIfRepaired(order.getWaiveTravelIfRepaired());
         changeVersion.setLaborFee(laborFee);
         changeVersion.setMaterialsFee(materialsFee);
@@ -868,11 +852,8 @@ public class ProviderJobService {
             request.getStatus().name(),
             order.getStatus().name(),
             request.getQuoteMode() != null ? request.getQuoteMode().name() : QuoteMode.SURVEY_REQUIRED.name(),
-            request.getSurveyFee(),
             request.getTravelFee(),
-            request.getWaiveSurveyIfRepaired(),
             request.getWaiveTravelIfRepaired(),
-            order.getAppliedSurveyFee(),
             order.getAppliedTravelFee(),
             labor,
             materials,
@@ -918,9 +899,7 @@ public class ProviderJobService {
             v.getVersionNumber(),
             v.getVersionType().name(),
             v.getQuoteMode().name(),
-            v.getSurveyFee(),
             v.getTravelFee(),
-            v.getWaiveSurveyIfRepaired(),
             v.getWaiveTravelIfRepaired(),
             v.getLaborFee(),
             v.getMaterialsFee(),

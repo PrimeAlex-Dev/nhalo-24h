@@ -168,7 +168,7 @@ export function JobDetailModal({
                   {job.quotedPrice ? `Dự kiến: ${job.quotedPrice.toLocaleString('vi-VN')} đ` : 'Khảo sát báo giá'}
                 </div>
                 <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: '0.2rem' }}>
-                  Phí khảo sát đã chốt: {(job.surveyFee ?? 0).toLocaleString('vi-VN')} đ · Phí di chuyển: {(job.travelFee ?? 0).toLocaleString('vi-VN')} đ
+                  Phí di chuyển: {(job.travelFee ?? 0).toLocaleString('vi-VN')} đ (Miễn phí nếu khách sửa)
                 </div>
               </div>
               <div className="job-modal-price-tag in-progress">Chờ khảo sát</div>
@@ -298,29 +298,22 @@ export function JobDetailModal({
             }}>
               <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <Layers size={15} />
-                <span>Cấu trúc chi phí 3 nhóm & Hoa hồng nền tảng</span>
+                <span>Cơ cấu chi phí & Hoa hồng nền tảng</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', color: '#334155' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>1. Phí khảo sát thỏa thuận:</span>
-                  <span>
-                    <strong>{(job.surveyFee ?? 0).toLocaleString('vi-VN')} đ</strong>
-                    {job.waiveSurveyIfRepaired ? ' (Miễn phí khi sửa)' : ''}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>2. Phí di chuyển thỏa thuận:</span>
+                  <span>Phí di chuyển thỏa thuận:</span>
                   <span>
                     <strong>{(job.travelFee ?? 0).toLocaleString('vi-VN')} đ</strong>
                     {job.waiveTravelIfRepaired ? ' (Miễn phí khi sửa)' : ''}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>3a. Tiền công thợ:</span>
+                  <span>Tiền công thợ:</span>
                   <strong>{(job.laborFee ?? 0).toLocaleString('vi-VN')} đ</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>3b. Tiền vật tư / linh kiện:</span>
+                  <span>Tiền vật tư / linh kiện:</span>
                   <strong>{(job.materialsFee ?? 0).toLocaleString('vi-VN')} đ</strong>
                 </div>
                 <div style={{

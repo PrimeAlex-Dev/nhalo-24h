@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-@Schema(description = "Chi tiết toàn bộ đơn hàng kèm 3 nhóm chi phí, lịch sử phiên bản báo giá, thanh toán và nhật ký")
+@Schema(description = "Chi tiết toàn bộ đơn hàng kèm cơ cấu chi phí tinh gọn, lịch sử phiên bản báo giá, thanh toán và nhật ký")
 public record CustomerOrderDetailResponse(
     @Schema(description = "ID đơn hàng")
     UUID id,
@@ -47,23 +47,14 @@ public record CustomerOrderDetailResponse(
     @Schema(description = "Trạng thái công việc của đơn hàng")
     String status,
 
-    @Schema(description = "Chế độ quy trình (SURVEY_REQUIRED hoặc COMMITTED_FIXED)")
+    @Schema(description = "Chế độ quy trình")
     String workflowMode,
-
-    @Schema(description = "Phí khảo sát đã thỏa thuận (VNĐ)")
-    Long agreedSurveyFee,
 
     @Schema(description = "Phí di chuyển đã thỏa thuận (VNĐ)")
     Long agreedTravelFee,
 
-    @Schema(description = "Chính sách miễn phí khảo sát nếu sửa (snapshot)")
-    Boolean waiveSurveyIfRepaired,
-
     @Schema(description = "Chính sách miễn phí di chuyển nếu sửa (snapshot)")
     Boolean waiveTravelIfRepaired,
-
-    @Schema(description = "Phí khảo sát áp dụng thực tế vào hóa đơn (VNĐ)")
-    Long appliedSurveyFee,
 
     @Schema(description = "Phí di chuyển áp dụng thực tế vào hóa đơn (VNĐ)")
     Long appliedTravelFee,

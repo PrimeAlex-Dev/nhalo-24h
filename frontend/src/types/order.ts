@@ -62,9 +62,7 @@ export interface QuoteVersionItem {
   versionNumber: number;
   versionType: QuoteVersionType;
   quoteMode: QuoteMode;
-  surveyFee: number;
   travelFee: number;
-  waiveSurveyIfRepaired: boolean;
   waiveTravelIfRepaired: boolean;
   laborFee: number;
   materialsFee: number;
@@ -112,9 +110,7 @@ export interface SubmitQuotationPayload {
   providerNote?: string;
   estimatedArrivalTime?: string;
   quoteMode?: QuoteMode;
-  surveyFee?: number;
   travelFee?: number;
-  waiveSurveyIfRepaired?: boolean;
   waiveTravelIfRepaired?: boolean;
   estimatedLaborFee?: number;
   estimatedMaterialsFee?: number;
@@ -152,7 +148,6 @@ export interface OnlinePaymentInitResponse {
   amountToPay: number;
   laborFee: number;
   materialsFee: number;
-  appliedSurveyFee: number;
   appliedTravelFee: number;
   paymentStatus: PaymentStatus;
   gatewayProvider: string;
@@ -209,9 +204,7 @@ export interface QuotationItem {
   pricePerHour?: number;
   status: OrderRequestStatus;
   quoteMode?: QuoteMode;
-  surveyFee?: number;
   travelFee?: number;
-  waiveSurveyIfRepaired?: boolean;
   waiveTravelIfRepaired?: boolean;
   estimatedLaborFee?: number;
   estimatedMaterialsFee?: number;
@@ -240,7 +233,6 @@ export interface CustomerOrderSummary {
   contactName?: string;
   contactPhone?: string;
   expectedScheduleTime: string;
-  appliedSurveyFee?: number;
   appliedTravelFee?: number;
   finalLaborFee?: number;
   finalMaterialsFee?: number;
@@ -276,11 +268,8 @@ export interface CustomerOrderDetail {
   serviceMetadata?: string;
   status: OrderStatus;
   workflowMode?: QuoteMode;
-  agreedSurveyFee?: number;
   agreedTravelFee?: number;
-  waiveSurveyIfRepaired?: boolean;
   waiveTravelIfRepaired?: boolean;
-  appliedSurveyFee?: number;
   appliedTravelFee?: number;
   finalLaborFee?: number;
   finalMaterialsFee?: number;
@@ -332,11 +321,8 @@ export interface ProviderJobItem {
   requestStatus: OrderRequestStatus;
   orderStatus: OrderStatus;
   quoteMode?: QuoteMode;
-  surveyFee?: number;
   travelFee?: number;
-  waiveSurveyIfRepaired?: boolean;
   waiveTravelIfRepaired?: boolean;
-  appliedSurveyFee?: number;
   appliedTravelFee?: number;
   laborFee?: number;
   materialsFee?: number;

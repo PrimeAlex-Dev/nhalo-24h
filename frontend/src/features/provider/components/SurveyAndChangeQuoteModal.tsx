@@ -95,9 +95,8 @@ export function SurveyAndChangeQuoteModal({
     (sum, it) => sum + (it.quantity || 1) * (it.unitPrice || 0),
     0
   );
-  const appliedSurvey = job.waiveSurveyIfRepaired ? 0 : job.surveyFee || 0;
   const appliedTravel = job.waiveTravelIfRepaired ? 0 : job.travelFee || 0;
-  const totalAmount = appliedSurvey + appliedTravel + laborNum + materialsNum;
+  const totalAmount = appliedTravel + laborNum + materialsNum;
   const commissionAmount = Math.round(laborNum * 0.1);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -366,19 +365,15 @@ export function SurveyAndChangeQuoteModal({
                 Bảng Tổng Hợp Báo Giá Gửi Khách Duyệt:
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span>1. Phí khảo sát ({job.waiveSurveyIfRepaired ? 'Miễn phí khi sửa' : 'Áp dụng'}):</span>
-                <strong>{appliedSurvey.toLocaleString('vi-VN')} đ</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span>2. Phí di chuyển ({job.waiveTravelIfRepaired ? 'Miễn phí khi sửa' : 'Áp dụng'}):</span>
+                <span>Phí di chuyển ({job.waiveTravelIfRepaired ? 'Miễn phí khi sửa' : 'Áp dụng'}):</span>
                 <strong>{appliedTravel.toLocaleString('vi-VN')} đ</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span>3a. Tiền công sửa chữa:</span>
+                <span>Tiền công sửa chữa:</span>
                 <strong>{laborNum.toLocaleString('vi-VN')} đ</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span>3b. Tiền vật tư / linh kiện ({items.length} mục):</span>
+                <span>Tiền vật tư / linh kiện ({items.length} mục):</span>
                 <strong>{materialsNum.toLocaleString('vi-VN')} đ</strong>
               </div>
               <div

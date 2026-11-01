@@ -117,16 +117,15 @@ public class AdminOrderService {
             );
         }
 
-        long appliedSurvey = Boolean.TRUE.equals(order.getWaiveSurveyIfRepaired()) ? 0L : (order.getAgreedSurveyFee() != null ? order.getAgreedSurveyFee() : 0L);
         long appliedTravel = Boolean.TRUE.equals(order.getWaiveTravelIfRepaired()) ? 0L : (order.getAgreedTravelFee() != null ? order.getAgreedTravelFee() : 0L);
-        long expectedTotal = appliedSurvey + appliedTravel + request.verifiedLaborFee() + request.verifiedMaterialsFee();
+        long expectedTotal = appliedTravel + request.verifiedLaborFee() + request.verifiedMaterialsFee();
 
         if (!request.verifiedTotalPaid().equals(expectedTotal)) {
             throw new AppException(
                 ErrorCode.INVALID_INPUT,
                 "Tổng tiền thanh toán (" + request.verifiedTotalPaid() + "đ) phải bằng Tiền công (" + request.verifiedLaborFee()
                     + "đ) + Tiền vật tư (" + request.verifiedMaterialsFee()
-                    + "đ) + Phí khảo sát/di chuyển (" + (appliedSurvey + appliedTravel)
+                    + "đ) + Phí di chuyển (" + appliedTravel
                     + "đ) = " + expectedTotal + "đ"
             );
         }
@@ -293,7 +292,6 @@ public class AdminOrderService {
             order.getPaymentStatus() != null ? order.getPaymentStatus().name() : PaymentStatus.UNPAID.name(),
             order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null,
             order.getWorkflowMode() != null ? order.getWorkflowMode().name() : QuoteMode.SURVEY_REQUIRED.name(),
-            order.getAppliedSurveyFee(),
             order.getAppliedTravelFee(),
             order.getFinalLaborFee(),
             order.getFinalMaterialsFee(),

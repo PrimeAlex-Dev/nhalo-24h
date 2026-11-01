@@ -87,20 +87,11 @@ public class Order {
     @JoinColumn(name = "assigned_provider_id")
     private ProviderProfile assignedProvider;
 
-    @Column(name = "agreed_survey_fee", nullable = false)
-    private Long agreedSurveyFee = 0L;
-
     @Column(name = "agreed_travel_fee", nullable = false)
     private Long agreedTravelFee = 0L;
 
-    @Column(name = "waive_survey_if_repaired", nullable = false)
-    private Boolean waiveSurveyIfRepaired = true;
-
     @Column(name = "waive_travel_if_repaired", nullable = false)
     private Boolean waiveTravelIfRepaired = true;
-
-    @Column(name = "applied_survey_fee", nullable = false)
-    private Long appliedSurveyFee = 0L;
 
     @Column(name = "applied_travel_fee", nullable = false)
     private Long appliedTravelFee = 0L;
@@ -212,11 +203,8 @@ public class Order {
         if (this.paymentStatus == null) {
             this.paymentStatus = PaymentStatus.UNPAID;
         }
-        if (this.agreedSurveyFee == null) this.agreedSurveyFee = 0L;
         if (this.agreedTravelFee == null) this.agreedTravelFee = 0L;
-        if (this.waiveSurveyIfRepaired == null) this.waiveSurveyIfRepaired = true;
         if (this.waiveTravelIfRepaired == null) this.waiveTravelIfRepaired = true;
-        if (this.appliedSurveyFee == null) this.appliedSurveyFee = 0L;
         if (this.appliedTravelFee == null) this.appliedTravelFee = 0L;
         if (this.finalLaborFee == null) this.finalLaborFee = 0L;
         if (this.finalMaterialsFee == null) this.finalMaterialsFee = 0L;
@@ -240,22 +228,19 @@ public class Order {
      *   Hoa hồng chỉ tính trên Tiền công thực tế (finalLaborFee), không tính trên vật tư/khảo sát/di chuyển.
      */
     public void recalculateFinancials(boolean isDeclinedAfterSurvey) {
-        long survey = this.agreedSurveyFee != null ? this.agreedSurveyFee : 0L;
         long travel = this.agreedTravelFee != null ? this.agreedTravelFee : 0L;
 
         if (isDeclinedAfterSurvey) {
-            this.appliedSurveyFee = survey;
             this.appliedTravelFee = travel;
             this.finalLaborFee = 0L;
             this.finalMaterialsFee = 0L;
-            this.finalPrice = this.appliedSurveyFee + this.appliedTravelFee;
+            this.finalPrice = this.appliedTravelFee;
             this.commissionAmount = 0L;
         } else {
-            this.appliedSurveyFee = Boolean.TRUE.equals(this.waiveSurveyIfRepaired) ? 0L : survey;
             this.appliedTravelFee = Boolean.TRUE.equals(this.waiveTravelIfRepaired) ? 0L : travel;
             long labor = this.finalLaborFee != null ? this.finalLaborFee : 0L;
             long materials = this.finalMaterialsFee != null ? this.finalMaterialsFee : 0L;
-            this.finalPrice = this.appliedSurveyFee + this.appliedTravelFee + labor + materials;
+            this.finalPrice = this.appliedTravelFee + labor + materials;
 
             BigDecimal rate = this.commissionRateSnapshot != null ? this.commissionRateSnapshot : new BigDecimal("10.00");
             this.commissionAmount = BigDecimal.valueOf(labor)
@@ -419,14 +404,6 @@ public class Order {
         this.assignedProvider = assignedProvider;
     }
 
-    public Long getAgreedSurveyFee() {
-        return agreedSurveyFee;
-    }
-
-    public void setAgreedSurveyFee(Long agreedSurveyFee) {
-        this.agreedSurveyFee = agreedSurveyFee != null ? agreedSurveyFee : 0L;
-    }
-
     public Long getAgreedTravelFee() {
         return agreedTravelFee;
     }
@@ -435,28 +412,12 @@ public class Order {
         this.agreedTravelFee = agreedTravelFee != null ? agreedTravelFee : 0L;
     }
 
-    public Boolean getWaiveSurveyIfRepaired() {
-        return waiveSurveyIfRepaired;
-    }
-
-    public void setWaiveSurveyIfRepaired(Boolean waiveSurveyIfRepaired) {
-        this.waiveSurveyIfRepaired = waiveSurveyIfRepaired != null ? waiveSurveyIfRepaired : true;
-    }
-
     public Boolean getWaiveTravelIfRepaired() {
         return waiveTravelIfRepaired;
     }
 
     public void setWaiveTravelIfRepaired(Boolean waiveTravelIfRepaired) {
         this.waiveTravelIfRepaired = waiveTravelIfRepaired != null ? waiveTravelIfRepaired : true;
-    }
-
-    public Long getAppliedSurveyFee() {
-        return appliedSurveyFee;
-    }
-
-    public void setAppliedSurveyFee(Long appliedSurveyFee) {
-        this.appliedSurveyFee = appliedSurveyFee != null ? appliedSurveyFee : 0L;
     }
 
     public Long getAppliedTravelFee() {

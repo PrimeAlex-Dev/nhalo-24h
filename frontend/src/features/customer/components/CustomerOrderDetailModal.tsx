@@ -481,9 +481,7 @@ export function CustomerOrderDetailModal({
         versionNumber: 1,
         versionType: 'POST_SURVEY_FINAL' as const,
         quoteMode: order.workflowMode || ('SURVEY_REQUIRED' as const),
-        surveyFee: order.agreedSurveyFee ?? 0,
         travelFee: order.agreedTravelFee ?? 0,
-        waiveSurveyIfRepaired: order.waiveSurveyIfRepaired ?? true,
         waiveTravelIfRepaired: order.waiveTravelIfRepaired ?? true,
         laborFee: order.finalLaborFee ?? 0,
         materialsFee: order.finalMaterialsFee ?? 0,
@@ -758,7 +756,7 @@ export function CustomerOrderDetailModal({
                         }}
                       >
                         <XCircle size={16} />
-                        <span>Không sửa — Chỉ trả phí khảo sát ({((order.agreedSurveyFee ?? 0) + (order.agreedTravelFee ?? 0)).toLocaleString('vi-VN')} đ)</span>
+                        <span>Không sửa — Chỉ trả phí di chuyển ({(order.agreedTravelFee ?? 0).toLocaleString('vi-VN')} đ)</span>
                       </button>
                     ) : (
                       <button
@@ -791,7 +789,7 @@ export function CustomerOrderDetailModal({
                     gap: '0.5rem'
                   }}>
                     <div style={{ fontSize: '0.82rem', color: '#991b1b', fontWeight: 600 }}>
-                      Xác nhận dừng đơn sau khảo sát: Bạn sẽ thanh toán Phí khảo sát ({(order.agreedSurveyFee ?? 0).toLocaleString('vi-VN')} đ) + Phí di chuyển ({(order.agreedTravelFee ?? 0).toLocaleString('vi-VN')} đ) = {((order.agreedSurveyFee ?? 0) + (order.agreedTravelFee ?? 0)).toLocaleString('vi-VN')} đ cho thợ.
+                      Xác nhận dừng đơn: Bạn sẽ thanh toán Phí di chuyển ({(order.agreedTravelFee ?? 0).toLocaleString('vi-VN')} đ) cho thợ vì thợ đã đến kiểm tra tận nơi.
                     </div>
                     <input
                       type="text"
@@ -887,12 +885,8 @@ export function CustomerOrderDetailModal({
                   gap: '0.25rem'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Phí khảo sát áp dụng:</span>
-                    <strong>{(order.appliedSurveyFee ?? 0).toLocaleString('vi-VN')} đ</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Phí di chuyển áp dụng:</span>
-                    <strong>{(order.appliedTravelFee ?? 0).toLocaleString('vi-VN')} đ</strong>
+                    <strong>{(order.appliedTravelFee ?? 0).toLocaleString('vi-VN')} đ {order.status === 'COMPLETED' ? '(Đã miễn phí)' : ''}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Tiền công thực hiện:</span>
@@ -1238,29 +1232,22 @@ export function CustomerOrderDetailModal({
               }}>
                 <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <Layers size={15} />
-                  <span>Bóc tách 3 nhóm chi phí & Lịch sử báo giá</span>
+                  <span>Cơ cấu chi phí & Lịch sử báo giá</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', color: '#334155' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>1. Phí khảo sát đã thỏa thuận:</span>
-                    <span>
-                      <strong>{(order.agreedSurveyFee ?? 0).toLocaleString('vi-VN')} đ</strong>
-                      {order.waiveSurveyIfRepaired ? ' (Miễn phí khi sửa)' : ''}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>2. Phí di chuyển đã thỏa thuận:</span>
+                    <span>Phí di chuyển đã thỏa thuận:</span>
                     <span>
                       <strong>{(order.agreedTravelFee ?? 0).toLocaleString('vi-VN')} đ</strong>
                       {order.waiveTravelIfRepaired ? ' (Miễn phí khi sửa)' : ''}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>3a. Tiền công thực hiện:</span>
+                    <span>Tiền công thực hiện:</span>
                     <strong>{(order.finalLaborFee ?? 0).toLocaleString('vi-VN')} đ</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>3b. Tiền vật tư / linh kiện:</span>
+                    <span>Tiền vật tư / linh kiện:</span>
                     <strong>{(order.finalMaterialsFee ?? 0).toLocaleString('vi-VN')} đ</strong>
                   </div>
                   <div style={{
@@ -1647,10 +1634,6 @@ export function CustomerOrderDetailModal({
                             gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                             gap: '0.35rem 0.75rem'
                           }}>
-                            <div>
-                              • Phí khảo sát: <strong>{(q.surveyFee ?? 0).toLocaleString('vi-VN')} đ</strong>
-                              {q.waiveSurveyIfRepaired ? ' (Miễn khi sửa)' : ''}
-                            </div>
                             <div>
                               • Phí di chuyển: <strong>{(q.travelFee ?? 0).toLocaleString('vi-VN')} đ</strong>
                               {q.waiveTravelIfRepaired ? ' (Miễn khi sửa)' : ''}

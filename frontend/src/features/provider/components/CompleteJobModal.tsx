@@ -210,10 +210,10 @@ export function CompleteJobModal({
                 <span>Tiền vật tư / linh kiện:</span>
                 <strong>{(job.materialsFee ?? 0).toLocaleString('vi-VN')} đ</strong>
               </div>
-              {((job.appliedSurveyFee ?? 0) > 0 || (job.appliedTravelFee ?? 0) > 0) && (
+              {(job.appliedTravelFee ?? 0) > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Phí khảo sát & di chuyển áp dụng:</span>
-                  <strong>{((job.appliedSurveyFee ?? 0) + (job.appliedTravelFee ?? 0)).toLocaleString('vi-VN')} đ</strong>
+                  <span>Phí di chuyển áp dụng:</span>
+                  <strong>{(job.appliedTravelFee ?? 0).toLocaleString('vi-VN')} đ</strong>
                 </div>
               )}
               <div style={{
